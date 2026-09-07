@@ -1,0 +1,25 @@
+[
+  {
+    "id": "c1",
+    "username": "cashier",
+    "password": "68070254",
+    "name": "Jane Cashier",
+    "role": "CASHIER",
+    "createdAt": "2026-08-30T10:00:00Z"
+  },
+  {
+    "id": "f1",
+    "username": "fitting",
+    "password": "68070056",
+    "name": "John Fitting",
+    "role": "FITTING_STAFF",
+    "createdAt": "2026-08-30T10:00:00Z"
+  },
+  {
+    "id": "u1",
+    "phone": "0812345678",
+    "name": "Alice Customer",
+    "role": "CUSTOMER",
+    "createdAt": "2026-08-30T10:00:00Z"
+  }
+]

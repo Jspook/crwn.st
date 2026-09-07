@@ -1,0 +1,2127 @@
+[
+  {
+    "id": "p1",
+    "barcode": "8901234567891",
+    "name": "Oversized Cashmere Scarf",
+    "category": "Accessories",
+    "price": 255,
+    "tags": [
+      "luxe",
+      "minimal",
+      "streetwear"
+    ],
+    "variants": [
+      {
+        "sku": "p1-os-navy",
+        "size": "OS",
+        "color": "Navy",
+        "stock": 0
+      },
+      {
+        "sku": "p1-os-olive",
+        "size": "OS",
+        "color": "Olive",
+        "stock": 19
+      },
+      {
+        "sku": "p1-os-red",
+        "size": "OS",
+        "color": "Red",
+        "stock": 5
+      }
+    ],
+    "image": "https://picsum.photos/seed/100/800/800"
+  },
+  {
+    "id": "p2",
+    "barcode": "8901234567892",
+    "name": "Oversized Denim Sweater",
+    "category": "Knitwear",
+    "price": 184,
+    "tags": [
+      "winter",
+      "vintage",
+      "casual"
+    ],
+    "variants": [
+      {
+        "sku": "p2-s-grey",
+        "size": "S",
+        "color": "Grey",
+        "stock": 16
+      },
+      {
+        "sku": "p2-m-grey",
+        "size": "M",
+        "color": "Grey",
+        "stock": 18
+      },
+      {
+        "sku": "p2-l-grey",
+        "size": "L",
+        "color": "Grey",
+        "stock": 1
+      },
+      {
+        "sku": "p2-xl-grey",
+        "size": "XL",
+        "color": "Grey",
+        "stock": 9
+      },
+      {
+        "sku": "p2-s-beige",
+        "size": "S",
+        "color": "Beige",
+        "stock": 14
+      },
+      {
+        "sku": "p2-m-beige",
+        "size": "M",
+        "color": "Beige",
+        "stock": 12
+      },
+      {
+        "sku": "p2-l-beige",
+        "size": "L",
+        "color": "Beige",
+        "stock": 4
+      },
+      {
+        "sku": "p2-xl-beige",
+        "size": "XL",
+        "color": "Beige",
+        "stock": 16
+      }
+    ],
+    "image": "https://picsum.photos/seed/200/800/800"
+  },
+  {
+    "id": "p3",
+    "barcode": "8901234567893",
+    "name": "Classic Cotton Skirt",
+    "category": "Bottoms",
+    "price": 89,
+    "tags": [
+      "elegant",
+      "streetwear"
+    ],
+    "variants": [
+      {
+        "sku": "p3-s-grey",
+        "size": "S",
+        "color": "Grey",
+        "stock": 14
+      },
+      {
+        "sku": "p3-m-grey",
+        "size": "M",
+        "color": "Grey",
+        "stock": 12
+      },
+      {
+        "sku": "p3-l-grey",
+        "size": "L",
+        "color": "Grey",
+        "stock": 17
+      }
+    ],
+    "image": "https://picsum.photos/seed/300/800/800"
+  },
+  {
+    "id": "p4",
+    "barcode": "8901234567894",
+    "name": "Premium Wool Scarf",
+    "category": "Accessories",
+    "price": 192,
+    "tags": [
+      "party",
+      "streetwear",
+      "luxe"
+    ],
+    "variants": [
+      {
+        "sku": "p4-os-navy",
+        "size": "OS",
+        "color": "Navy",
+        "stock": 2
+      }
+    ],
+    "image": "https://picsum.photos/seed/400/800/800"
+  },
+  {
+    "id": "p5",
+    "barcode": "8901234567895",
+    "name": "Premium Silk T-Shirt",
+    "category": "Tops",
+    "price": 112,
+    "tags": [
+      "elegant",
+      "streetwear",
+      "minimal"
+    ],
+    "variants": [
+      {
+        "sku": "p5-s-black",
+        "size": "S",
+        "color": "Black",
+        "stock": 8
+      },
+      {
+        "sku": "p5-m-black",
+        "size": "M",
+        "color": "Black",
+        "stock": 8
+      },
+      {
+        "sku": "p5-s-beige",
+        "size": "S",
+        "color": "Beige",
+        "stock": 19
+      },
+      {
+        "sku": "p5-m-beige",
+        "size": "M",
+        "color": "Beige",
+        "stock": 18
+      },
+      {
+        "sku": "p5-s-white",
+        "size": "S",
+        "color": "White",
+        "stock": 18
+      },
+      {
+        "sku": "p5-m-white",
+        "size": "M",
+        "color": "White",
+        "stock": 15
+      }
+    ],
+    "image": "https://picsum.photos/seed/500/800/800"
+  },
+  {
+    "id": "p6",
+    "barcode": "8901234567896",
+    "name": "Tailored Denim Skirt",
+    "category": "Bottoms",
+    "price": 291,
+    "tags": [
+      "casual",
+      "streetwear",
+      "luxe"
+    ],
+    "variants": [
+      {
+        "sku": "p6-s-grey",
+        "size": "S",
+        "color": "Grey",
+        "stock": 10
+      },
+      {
+        "sku": "p6-m-grey",
+        "size": "M",
+        "color": "Grey",
+        "stock": 18
+      },
+      {
+        "sku": "p6-s-navy",
+        "size": "S",
+        "color": "Navy",
+        "stock": 17
+      },
+      {
+        "sku": "p6-m-navy",
+        "size": "M",
+        "color": "Navy",
+        "stock": 7
+      }
+    ],
+    "image": "https://picsum.photos/seed/600/800/800"
+  },
+  {
+    "id": "p7",
+    "barcode": "8901234567897",
+    "name": "Essential Silk Jacket",
+    "category": "Outerwear",
+    "price": 129,
+    "tags": [
+      "office",
+      "vintage",
+      "summer"
+    ],
+    "variants": [
+      {
+        "sku": "p7-s-white",
+        "size": "S",
+        "color": "White",
+        "stock": 0
+      },
+      {
+        "sku": "p7-m-white",
+        "size": "M",
+        "color": "White",
+        "stock": 5
+      },
+      {
+        "sku": "p7-l-white",
+        "size": "L",
+        "color": "White",
+        "stock": 5
+      },
+      {
+        "sku": "p7-s-brown",
+        "size": "S",
+        "color": "Brown",
+        "stock": 14
+      },
+      {
+        "sku": "p7-m-brown",
+        "size": "M",
+        "color": "Brown",
+        "stock": 8
+      },
+      {
+        "sku": "p7-l-brown",
+        "size": "L",
+        "color": "Brown",
+        "stock": 11
+      }
+    ],
+    "image": "https://picsum.photos/seed/700/800/800"
+  },
+  {
+    "id": "p8",
+    "barcode": "8901234567898",
+    "name": "Chic Wool Belt",
+    "category": "Accessories",
+    "price": 254,
+    "tags": [
+      "office"
+    ],
+    "variants": [
+      {
+        "sku": "p8-os-brown",
+        "size": "OS",
+        "color": "Brown",
+        "stock": 6
+      },
+      {
+        "sku": "p8-os-navy",
+        "size": "OS",
+        "color": "Navy",
+        "stock": 5
+      }
+    ],
+    "image": "https://picsum.photos/seed/800/800/800"
+  },
+  {
+    "id": "p9",
+    "barcode": "8901234567899",
+    "name": "Ethereal Cashmere Jeans",
+    "category": "Bottoms",
+    "price": 266,
+    "tags": [
+      "winter",
+      "vintage",
+      "summer"
+    ],
+    "variants": [
+      {
+        "sku": "p9-s-brown",
+        "size": "S",
+        "color": "Brown",
+        "stock": 8
+      },
+      {
+        "sku": "p9-m-brown",
+        "size": "M",
+        "color": "Brown",
+        "stock": 5
+      },
+      {
+        "sku": "p9-l-brown",
+        "size": "L",
+        "color": "Brown",
+        "stock": 18
+      },
+      {
+        "sku": "p9-xl-brown",
+        "size": "XL",
+        "color": "Brown",
+        "stock": 5
+      }
+    ],
+    "image": "https://picsum.photos/seed/900/800/800"
+  },
+  {
+    "id": "p10",
+    "barcode": "8901234567900",
+    "name": "Chic Velvet Blouse",
+    "category": "Tops",
+    "price": 79,
+    "tags": [
+      "party",
+      "office",
+      "winter"
+    ],
+    "variants": [
+      {
+        "sku": "p10-s-black",
+        "size": "S",
+        "color": "Black",
+        "stock": 17
+      },
+      {
+        "sku": "p10-m-black",
+        "size": "M",
+        "color": "Black",
+        "stock": 11
+      },
+      {
+        "sku": "p10-l-black",
+        "size": "L",
+        "color": "Black",
+        "stock": 8
+      },
+      {
+        "sku": "p10-s-white",
+        "size": "S",
+        "color": "White",
+        "stock": 15
+      },
+      {
+        "sku": "p10-m-white",
+        "size": "M",
+        "color": "White",
+        "stock": 15
+      },
+      {
+        "sku": "p10-l-white",
+        "size": "L",
+        "color": "White",
+        "stock": 18
+      },
+      {
+        "sku": "p10-s-navy",
+        "size": "S",
+        "color": "Navy",
+        "stock": 13
+      },
+      {
+        "sku": "p10-m-navy",
+        "size": "M",
+        "color": "Navy",
+        "stock": 2
+      },
+      {
+        "sku": "p10-l-navy",
+        "size": "L",
+        "color": "Navy",
+        "stock": 11
+      }
+    ],
+    "image": "https://picsum.photos/seed/1000/800/800"
+  },
+  {
+    "id": "p11",
+    "barcode": "8901234567901",
+    "name": "Structured Cashmere Skirt",
+    "category": "Bottoms",
+    "price": 61,
+    "tags": [
+      "summer",
+      "elegant",
+      "casual"
+    ],
+    "variants": [
+      {
+        "sku": "p11-s-grey",
+        "size": "S",
+        "color": "Grey",
+        "stock": 14
+      },
+      {
+        "sku": "p11-m-grey",
+        "size": "M",
+        "color": "Grey",
+        "stock": 8
+      },
+      {
+        "sku": "p11-l-grey",
+        "size": "L",
+        "color": "Grey",
+        "stock": 1
+      },
+      {
+        "sku": "p11-xl-grey",
+        "size": "XL",
+        "color": "Grey",
+        "stock": 1
+      }
+    ],
+    "image": "https://picsum.photos/seed/1100/800/800"
+  },
+  {
+    "id": "p12",
+    "barcode": "8901234567902",
+    "name": "Structured Satin Jeans",
+    "category": "Bottoms",
+    "price": 170,
+    "tags": [
+      "office",
+      "luxe"
+    ],
+    "variants": [
+      {
+        "sku": "p12-s-black",
+        "size": "S",
+        "color": "Black",
+        "stock": 0
+      },
+      {
+        "sku": "p12-m-black",
+        "size": "M",
+        "color": "Black",
+        "stock": 13
+      },
+      {
+        "sku": "p12-l-black",
+        "size": "L",
+        "color": "Black",
+        "stock": 9
+      },
+      {
+        "sku": "p12-s-navy",
+        "size": "S",
+        "color": "Navy",
+        "stock": 19
+      },
+      {
+        "sku": "p12-m-navy",
+        "size": "M",
+        "color": "Navy",
+        "stock": 4
+      },
+      {
+        "sku": "p12-l-navy",
+        "size": "L",
+        "color": "Navy",
+        "stock": 14
+      }
+    ],
+    "image": "https://picsum.photos/seed/1200/800/800"
+  },
+  {
+    "id": "p13",
+    "barcode": "8901234567903",
+    "name": "Tailored Suede Bag",
+    "category": "Accessories",
+    "price": 106,
+    "tags": [
+      "casual",
+      "minimal"
+    ],
+    "variants": [
+      {
+        "sku": "p13-os-brown",
+        "size": "OS",
+        "color": "Brown",
+        "stock": 8
+      }
+    ],
+    "image": "https://picsum.photos/seed/1300/800/800"
+  },
+  {
+    "id": "p14",
+    "barcode": "8901234567904",
+    "name": "Oversized Velvet Coat",
+    "category": "Outerwear",
+    "price": 161,
+    "tags": [
+      "elegant",
+      "summer",
+      "winter"
+    ],
+    "variants": [
+      {
+        "sku": "p14-s-grey",
+        "size": "S",
+        "color": "Grey",
+        "stock": 18
+      },
+      {
+        "sku": "p14-m-grey",
+        "size": "M",
+        "color": "Grey",
+        "stock": 5
+      },
+      {
+        "sku": "p14-l-grey",
+        "size": "L",
+        "color": "Grey",
+        "stock": 0
+      },
+      {
+        "sku": "p14-s-olive",
+        "size": "S",
+        "color": "Olive",
+        "stock": 0
+      },
+      {
+        "sku": "p14-m-olive",
+        "size": "M",
+        "color": "Olive",
+        "stock": 13
+      },
+      {
+        "sku": "p14-l-olive",
+        "size": "L",
+        "color": "Olive",
+        "stock": 10
+      },
+      {
+        "sku": "p14-s-beige",
+        "size": "S",
+        "color": "Beige",
+        "stock": 7
+      },
+      {
+        "sku": "p14-m-beige",
+        "size": "M",
+        "color": "Beige",
+        "stock": 3
+      },
+      {
+        "sku": "p14-l-beige",
+        "size": "L",
+        "color": "Beige",
+        "stock": 0
+      }
+    ],
+    "image": "https://picsum.photos/seed/1400/800/800"
+  },
+  {
+    "id": "p15",
+    "barcode": "8901234567905",
+    "name": "Structured Silk Jeans",
+    "category": "Bottoms",
+    "price": 163,
+    "tags": [
+      "streetwear",
+      "office"
+    ],
+    "variants": [
+      {
+        "sku": "p15-s-black",
+        "size": "S",
+        "color": "Black",
+        "stock": 10
+      },
+      {
+        "sku": "p15-m-black",
+        "size": "M",
+        "color": "Black",
+        "stock": 13
+      },
+      {
+        "sku": "p15-l-black",
+        "size": "L",
+        "color": "Black",
+        "stock": 17
+      },
+      {
+        "sku": "p15-xl-black",
+        "size": "XL",
+        "color": "Black",
+        "stock": 0
+      }
+    ],
+    "image": "https://picsum.photos/seed/1500/800/800"
+  },
+  {
+    "id": "p16",
+    "barcode": "8901234567906",
+    "name": "Structured Cotton Bag",
+    "category": "Accessories",
+    "price": 111,
+    "tags": [
+      "office",
+      "winter",
+      "elegant"
+    ],
+    "variants": [
+      {
+        "sku": "p16-os-brown",
+        "size": "OS",
+        "color": "Brown",
+        "stock": 12
+      }
+    ],
+    "image": "https://picsum.photos/seed/1600/800/800"
+  },
+  {
+    "id": "p17",
+    "barcode": "8901234567907",
+    "name": "Modern Wool Jacket",
+    "category": "Outerwear",
+    "price": 122,
+    "tags": [
+      "elegant",
+      "winter",
+      "summer"
+    ],
+    "variants": [
+      {
+        "sku": "p17-s-red",
+        "size": "S",
+        "color": "Red",
+        "stock": 7
+      },
+      {
+        "sku": "p17-m-red",
+        "size": "M",
+        "color": "Red",
+        "stock": 10
+      },
+      {
+        "sku": "p17-l-red",
+        "size": "L",
+        "color": "Red",
+        "stock": 19
+      },
+      {
+        "sku": "p17-s-navy",
+        "size": "S",
+        "color": "Navy",
+        "stock": 3
+      },
+      {
+        "sku": "p17-m-navy",
+        "size": "M",
+        "color": "Navy",
+        "stock": 10
+      },
+      {
+        "sku": "p17-l-navy",
+        "size": "L",
+        "color": "Navy",
+        "stock": 4
+      },
+      {
+        "sku": "p17-s-white",
+        "size": "S",
+        "color": "White",
+        "stock": 19
+      },
+      {
+        "sku": "p17-m-white",
+        "size": "M",
+        "color": "White",
+        "stock": 0
+      },
+      {
+        "sku": "p17-l-white",
+        "size": "L",
+        "color": "White",
+        "stock": 1
+      }
+    ],
+    "image": "https://picsum.photos/seed/1700/800/800"
+  },
+  {
+    "id": "p18",
+    "barcode": "8901234567908",
+    "name": "Tailored Cotton Jacket",
+    "category": "Outerwear",
+    "price": 101,
+    "tags": [
+      "streetwear",
+      "winter",
+      "casual"
+    ],
+    "variants": [
+      {
+        "sku": "p18-s-grey",
+        "size": "S",
+        "color": "Grey",
+        "stock": 6
+      },
+      {
+        "sku": "p18-m-grey",
+        "size": "M",
+        "color": "Grey",
+        "stock": 2
+      }
+    ],
+    "image": "https://picsum.photos/seed/1800/800/800"
+  },
+  {
+    "id": "p19",
+    "barcode": "8901234567909",
+    "name": "Premium Leather Dress",
+    "category": "Dresses",
+    "price": 49,
+    "tags": [
+      "luxe",
+      "minimal",
+      "elegant"
+    ],
+    "variants": [
+      {
+        "sku": "p19-s-red",
+        "size": "S",
+        "color": "Red",
+        "stock": 17
+      },
+      {
+        "sku": "p19-m-red",
+        "size": "M",
+        "color": "Red",
+        "stock": 15
+      },
+      {
+        "sku": "p19-s-beige",
+        "size": "S",
+        "color": "Beige",
+        "stock": 10
+      },
+      {
+        "sku": "p19-m-beige",
+        "size": "M",
+        "color": "Beige",
+        "stock": 12
+      },
+      {
+        "sku": "p19-s-grey",
+        "size": "S",
+        "color": "Grey",
+        "stock": 7
+      },
+      {
+        "sku": "p19-m-grey",
+        "size": "M",
+        "color": "Grey",
+        "stock": 2
+      }
+    ],
+    "image": "https://picsum.photos/seed/1900/800/800"
+  },
+  {
+    "id": "p20",
+    "barcode": "8901234567910",
+    "name": "Structured Denim Cardigan",
+    "category": "Knitwear",
+    "price": 91,
+    "tags": [
+      "elegant",
+      "vintage"
+    ],
+    "variants": [
+      {
+        "sku": "p20-s-navy",
+        "size": "S",
+        "color": "Navy",
+        "stock": 6
+      },
+      {
+        "sku": "p20-m-navy",
+        "size": "M",
+        "color": "Navy",
+        "stock": 7
+      },
+      {
+        "sku": "p20-l-navy",
+        "size": "L",
+        "color": "Navy",
+        "stock": 19
+      },
+      {
+        "sku": "p20-xl-navy",
+        "size": "XL",
+        "color": "Navy",
+        "stock": 5
+      },
+      {
+        "sku": "p20-s-olive",
+        "size": "S",
+        "color": "Olive",
+        "stock": 7
+      },
+      {
+        "sku": "p20-m-olive",
+        "size": "M",
+        "color": "Olive",
+        "stock": 9
+      },
+      {
+        "sku": "p20-l-olive",
+        "size": "L",
+        "color": "Olive",
+        "stock": 8
+      },
+      {
+        "sku": "p20-xl-olive",
+        "size": "XL",
+        "color": "Olive",
+        "stock": 11
+      }
+    ],
+    "image": "https://picsum.photos/seed/2000/800/800"
+  },
+  {
+    "id": "p21",
+    "barcode": "8901234567911",
+    "name": "Premium Cotton Scarf",
+    "category": "Accessories",
+    "price": 152,
+    "tags": [
+      "winter",
+      "casual",
+      "streetwear"
+    ],
+    "variants": [
+      {
+        "sku": "p21-os-grey",
+        "size": "OS",
+        "color": "Grey",
+        "stock": 1
+      },
+      {
+        "sku": "p21-os-navy",
+        "size": "OS",
+        "color": "Navy",
+        "stock": 18
+      }
+    ],
+    "image": "https://picsum.photos/seed/2100/800/800"
+  },
+  {
+    "id": "p22",
+    "barcode": "8901234567912",
+    "name": "Premium Silk Trousers",
+    "category": "Bottoms",
+    "price": 118,
+    "tags": [
+      "office",
+      "minimal",
+      "winter"
+    ],
+    "variants": [
+      {
+        "sku": "p22-s-black",
+        "size": "S",
+        "color": "Black",
+        "stock": 5
+      },
+      {
+        "sku": "p22-m-black",
+        "size": "M",
+        "color": "Black",
+        "stock": 18
+      },
+      {
+        "sku": "p22-l-black",
+        "size": "L",
+        "color": "Black",
+        "stock": 19
+      },
+      {
+        "sku": "p22-s-grey",
+        "size": "S",
+        "color": "Grey",
+        "stock": 7
+      },
+      {
+        "sku": "p22-m-grey",
+        "size": "M",
+        "color": "Grey",
+        "stock": 5
+      },
+      {
+        "sku": "p22-l-grey",
+        "size": "L",
+        "color": "Grey",
+        "stock": 13
+      }
+    ],
+    "image": "https://picsum.photos/seed/2200/800/800"
+  },
+  {
+    "id": "p23",
+    "barcode": "8901234567913",
+    "name": "Modern Silk Blouse",
+    "category": "Tops",
+    "price": 107,
+    "tags": [
+      "vintage",
+      "elegant",
+      "winter"
+    ],
+    "variants": [
+      {
+        "sku": "p23-s-brown",
+        "size": "S",
+        "color": "Brown",
+        "stock": 2
+      },
+      {
+        "sku": "p23-m-brown",
+        "size": "M",
+        "color": "Brown",
+        "stock": 19
+      },
+      {
+        "sku": "p23-l-brown",
+        "size": "L",
+        "color": "Brown",
+        "stock": 16
+      },
+      {
+        "sku": "p23-xl-brown",
+        "size": "XL",
+        "color": "Brown",
+        "stock": 9
+      }
+    ],
+    "image": "https://picsum.photos/seed/2300/800/800"
+  },
+  {
+    "id": "p24",
+    "barcode": "8901234567914",
+    "name": "Ethereal Cashmere Sweater",
+    "category": "Knitwear",
+    "price": 276,
+    "tags": [
+      "minimal",
+      "winter"
+    ],
+    "variants": [
+      {
+        "sku": "p24-s-olive",
+        "size": "S",
+        "color": "Olive",
+        "stock": 2
+      },
+      {
+        "sku": "p24-m-olive",
+        "size": "M",
+        "color": "Olive",
+        "stock": 11
+      }
+    ],
+    "image": "https://picsum.photos/seed/2400/800/800"
+  },
+  {
+    "id": "p25",
+    "barcode": "8901234567915",
+    "name": "Modern Satin Bag",
+    "category": "Accessories",
+    "price": 157,
+    "tags": [
+      "vintage",
+      "office",
+      "streetwear"
+    ],
+    "variants": [
+      {
+        "sku": "p25-os-black",
+        "size": "OS",
+        "color": "Black",
+        "stock": 11
+      },
+      {
+        "sku": "p25-os-grey",
+        "size": "OS",
+        "color": "Grey",
+        "stock": 11
+      }
+    ],
+    "image": "https://picsum.photos/seed/2500/800/800"
+  },
+  {
+    "id": "p26",
+    "barcode": "8901234567916",
+    "name": "Classic Leather Blazer",
+    "category": "Outerwear",
+    "price": 202,
+    "tags": [
+      "party",
+      "casual",
+      "winter"
+    ],
+    "variants": [
+      {
+        "sku": "p26-s-black",
+        "size": "S",
+        "color": "Black",
+        "stock": 4
+      },
+      {
+        "sku": "p26-m-black",
+        "size": "M",
+        "color": "Black",
+        "stock": 8
+      },
+      {
+        "sku": "p26-s-grey",
+        "size": "S",
+        "color": "Grey",
+        "stock": 12
+      },
+      {
+        "sku": "p26-m-grey",
+        "size": "M",
+        "color": "Grey",
+        "stock": 16
+      }
+    ],
+    "image": "https://picsum.photos/seed/2600/800/800"
+  },
+  {
+    "id": "p27",
+    "barcode": "8901234567917",
+    "name": "Chic Denim Trousers",
+    "category": "Bottoms",
+    "price": 211,
+    "tags": [
+      "vintage",
+      "party"
+    ],
+    "variants": [
+      {
+        "sku": "p27-s-red",
+        "size": "S",
+        "color": "Red",
+        "stock": 2
+      },
+      {
+        "sku": "p27-m-red",
+        "size": "M",
+        "color": "Red",
+        "stock": 1
+      },
+      {
+        "sku": "p27-l-red",
+        "size": "L",
+        "color": "Red",
+        "stock": 19
+      },
+      {
+        "sku": "p27-xl-red",
+        "size": "XL",
+        "color": "Red",
+        "stock": 6
+      }
+    ],
+    "image": "https://picsum.photos/seed/2700/800/800"
+  },
+  {
+    "id": "p28",
+    "barcode": "8901234567918",
+    "name": "Oversized Leather Skirt",
+    "category": "Bottoms",
+    "price": 199,
+    "tags": [
+      "elegant",
+      "office",
+      "casual"
+    ],
+    "variants": [
+      {
+        "sku": "p28-s-navy",
+        "size": "S",
+        "color": "Navy",
+        "stock": 19
+      },
+      {
+        "sku": "p28-m-navy",
+        "size": "M",
+        "color": "Navy",
+        "stock": 17
+      },
+      {
+        "sku": "p28-l-navy",
+        "size": "L",
+        "color": "Navy",
+        "stock": 9
+      }
+    ],
+    "image": "https://picsum.photos/seed/2800/800/800"
+  },
+  {
+    "id": "p29",
+    "barcode": "8901234567919",
+    "name": "Structured Silk Skirt",
+    "category": "Bottoms",
+    "price": 136,
+    "tags": [
+      "streetwear",
+      "casual",
+      "winter"
+    ],
+    "variants": [
+      {
+        "sku": "p29-s-brown",
+        "size": "S",
+        "color": "Brown",
+        "stock": 4
+      },
+      {
+        "sku": "p29-m-brown",
+        "size": "M",
+        "color": "Brown",
+        "stock": 16
+      },
+      {
+        "sku": "p29-s-red",
+        "size": "S",
+        "color": "Red",
+        "stock": 14
+      },
+      {
+        "sku": "p29-m-red",
+        "size": "M",
+        "color": "Red",
+        "stock": 4
+      }
+    ],
+    "image": "https://picsum.photos/seed/2900/800/800"
+  },
+  {
+    "id": "p30",
+    "barcode": "8901234567920",
+    "name": "Modern Suede Coat",
+    "category": "Outerwear",
+    "price": 79,
+    "tags": [
+      "streetwear",
+      "party"
+    ],
+    "variants": [
+      {
+        "sku": "p30-s-red",
+        "size": "S",
+        "color": "Red",
+        "stock": 4
+      },
+      {
+        "sku": "p30-m-red",
+        "size": "M",
+        "color": "Red",
+        "stock": 17
+      }
+    ],
+    "image": "https://picsum.photos/seed/3000/800/800"
+  },
+  {
+    "id": "p31",
+    "barcode": "8901234567921",
+    "name": "Chic Silk Blouse",
+    "category": "Tops",
+    "price": 120,
+    "tags": [
+      "summer",
+      "office",
+      "winter"
+    ],
+    "variants": [
+      {
+        "sku": "p31-s-navy",
+        "size": "S",
+        "color": "Navy",
+        "stock": 3
+      },
+      {
+        "sku": "p31-m-navy",
+        "size": "M",
+        "color": "Navy",
+        "stock": 18
+      }
+    ],
+    "image": "https://picsum.photos/seed/3100/800/800"
+  },
+  {
+    "id": "p32",
+    "barcode": "8901234567922",
+    "name": "Essential Satin Coat",
+    "category": "Outerwear",
+    "price": 230,
+    "tags": [
+      "office",
+      "elegant"
+    ],
+    "variants": [
+      {
+        "sku": "p32-s-grey",
+        "size": "S",
+        "color": "Grey",
+        "stock": 16
+      },
+      {
+        "sku": "p32-m-grey",
+        "size": "M",
+        "color": "Grey",
+        "stock": 0
+      },
+      {
+        "sku": "p32-s-red",
+        "size": "S",
+        "color": "Red",
+        "stock": 4
+      },
+      {
+        "sku": "p32-m-red",
+        "size": "M",
+        "color": "Red",
+        "stock": 17
+      },
+      {
+        "sku": "p32-s-beige",
+        "size": "S",
+        "color": "Beige",
+        "stock": 14
+      },
+      {
+        "sku": "p32-m-beige",
+        "size": "M",
+        "color": "Beige",
+        "stock": 5
+      }
+    ],
+    "image": "https://picsum.photos/seed/3200/800/800"
+  },
+  {
+    "id": "p33",
+    "barcode": "8901234567923",
+    "name": "Essential Leather Dress",
+    "category": "Dresses",
+    "price": 211,
+    "tags": [
+      "elegant",
+      "summer"
+    ],
+    "variants": [
+      {
+        "sku": "p33-s-navy",
+        "size": "S",
+        "color": "Navy",
+        "stock": 10
+      },
+      {
+        "sku": "p33-m-navy",
+        "size": "M",
+        "color": "Navy",
+        "stock": 10
+      },
+      {
+        "sku": "p33-s-beige",
+        "size": "S",
+        "color": "Beige",
+        "stock": 8
+      },
+      {
+        "sku": "p33-m-beige",
+        "size": "M",
+        "color": "Beige",
+        "stock": 0
+      }
+    ],
+    "image": "https://picsum.photos/seed/3300/800/800"
+  },
+  {
+    "id": "p34",
+    "barcode": "8901234567924",
+    "name": "Oversized Wool Jacket",
+    "category": "Outerwear",
+    "price": 94,
+    "tags": [
+      "party",
+      "casual"
+    ],
+    "variants": [
+      {
+        "sku": "p34-s-beige",
+        "size": "S",
+        "color": "Beige",
+        "stock": 15
+      },
+      {
+        "sku": "p34-m-beige",
+        "size": "M",
+        "color": "Beige",
+        "stock": 2
+      },
+      {
+        "sku": "p34-l-beige",
+        "size": "L",
+        "color": "Beige",
+        "stock": 12
+      }
+    ],
+    "image": "https://picsum.photos/seed/3400/800/800"
+  },
+  {
+    "id": "p35",
+    "barcode": "8901234567925",
+    "name": "Classic Cashmere Blazer",
+    "category": "Outerwear",
+    "price": 120,
+    "tags": [
+      "vintage",
+      "luxe",
+      "streetwear"
+    ],
+    "variants": [
+      {
+        "sku": "p35-s-white",
+        "size": "S",
+        "color": "White",
+        "stock": 18
+      },
+      {
+        "sku": "p35-m-white",
+        "size": "M",
+        "color": "White",
+        "stock": 17
+      },
+      {
+        "sku": "p35-s-red",
+        "size": "S",
+        "color": "Red",
+        "stock": 12
+      },
+      {
+        "sku": "p35-m-red",
+        "size": "M",
+        "color": "Red",
+        "stock": 5
+      },
+      {
+        "sku": "p35-s-navy",
+        "size": "S",
+        "color": "Navy",
+        "stock": 5
+      },
+      {
+        "sku": "p35-m-navy",
+        "size": "M",
+        "color": "Navy",
+        "stock": 17
+      }
+    ],
+    "image": "https://picsum.photos/seed/3500/800/800"
+  },
+  {
+    "id": "p36",
+    "barcode": "8901234567926",
+    "name": "Ethereal Suede Skirt",
+    "category": "Bottoms",
+    "price": 206,
+    "tags": [
+      "summer",
+      "vintage"
+    ],
+    "variants": [
+      {
+        "sku": "p36-s-white",
+        "size": "S",
+        "color": "White",
+        "stock": 10
+      },
+      {
+        "sku": "p36-m-white",
+        "size": "M",
+        "color": "White",
+        "stock": 16
+      },
+      {
+        "sku": "p36-l-white",
+        "size": "L",
+        "color": "White",
+        "stock": 2
+      },
+      {
+        "sku": "p36-xl-white",
+        "size": "XL",
+        "color": "White",
+        "stock": 7
+      }
+    ],
+    "image": "https://picsum.photos/seed/3600/800/800"
+  },
+  {
+    "id": "p37",
+    "barcode": "8901234567927",
+    "name": "Ethereal Cashmere Skirt",
+    "category": "Bottoms",
+    "price": 205,
+    "tags": [
+      "streetwear",
+      "summer",
+      "winter"
+    ],
+    "variants": [
+      {
+        "sku": "p37-s-olive",
+        "size": "S",
+        "color": "Olive",
+        "stock": 15
+      },
+      {
+        "sku": "p37-m-olive",
+        "size": "M",
+        "color": "Olive",
+        "stock": 9
+      },
+      {
+        "sku": "p37-l-olive",
+        "size": "L",
+        "color": "Olive",
+        "stock": 3
+      },
+      {
+        "sku": "p37-xl-olive",
+        "size": "XL",
+        "color": "Olive",
+        "stock": 2
+      },
+      {
+        "sku": "p37-s-red",
+        "size": "S",
+        "color": "Red",
+        "stock": 1
+      },
+      {
+        "sku": "p37-m-red",
+        "size": "M",
+        "color": "Red",
+        "stock": 2
+      },
+      {
+        "sku": "p37-l-red",
+        "size": "L",
+        "color": "Red",
+        "stock": 12
+      },
+      {
+        "sku": "p37-xl-red",
+        "size": "XL",
+        "color": "Red",
+        "stock": 8
+      },
+      {
+        "sku": "p37-s-navy",
+        "size": "S",
+        "color": "Navy",
+        "stock": 0
+      },
+      {
+        "sku": "p37-m-navy",
+        "size": "M",
+        "color": "Navy",
+        "stock": 6
+      },
+      {
+        "sku": "p37-l-navy",
+        "size": "L",
+        "color": "Navy",
+        "stock": 12
+      },
+      {
+        "sku": "p37-xl-navy",
+        "size": "XL",
+        "color": "Navy",
+        "stock": 10
+      }
+    ],
+    "image": "https://picsum.photos/seed/3700/800/800"
+  },
+  {
+    "id": "p38",
+    "barcode": "8901234567928",
+    "name": "Ethereal Leather Dress",
+    "category": "Dresses",
+    "price": 266,
+    "tags": [
+      "streetwear",
+      "vintage",
+      "party"
+    ],
+    "variants": [
+      {
+        "sku": "p38-s-black",
+        "size": "S",
+        "color": "Black",
+        "stock": 8
+      },
+      {
+        "sku": "p38-m-black",
+        "size": "M",
+        "color": "Black",
+        "stock": 12
+      },
+      {
+        "sku": "p38-l-black",
+        "size": "L",
+        "color": "Black",
+        "stock": 11
+      },
+      {
+        "sku": "p38-xl-black",
+        "size": "XL",
+        "color": "Black",
+        "stock": 13
+      },
+      {
+        "sku": "p38-s-beige",
+        "size": "S",
+        "color": "Beige",
+        "stock": 14
+      },
+      {
+        "sku": "p38-m-beige",
+        "size": "M",
+        "color": "Beige",
+        "stock": 0
+      },
+      {
+        "sku": "p38-l-beige",
+        "size": "L",
+        "color": "Beige",
+        "stock": 4
+      },
+      {
+        "sku": "p38-xl-beige",
+        "size": "XL",
+        "color": "Beige",
+        "stock": 0
+      },
+      {
+        "sku": "p38-s-white",
+        "size": "S",
+        "color": "White",
+        "stock": 4
+      },
+      {
+        "sku": "p38-m-white",
+        "size": "M",
+        "color": "White",
+        "stock": 2
+      },
+      {
+        "sku": "p38-l-white",
+        "size": "L",
+        "color": "White",
+        "stock": 8
+      },
+      {
+        "sku": "p38-xl-white",
+        "size": "XL",
+        "color": "White",
+        "stock": 17
+      }
+    ],
+    "image": "https://picsum.photos/seed/3800/800/800"
+  },
+  {
+    "id": "p39",
+    "barcode": "8901234567929",
+    "name": "Modern Wool Sweater",
+    "category": "Knitwear",
+    "price": 294,
+    "tags": [
+      "summer",
+      "party"
+    ],
+    "variants": [
+      {
+        "sku": "p39-s-brown",
+        "size": "S",
+        "color": "Brown",
+        "stock": 1
+      },
+      {
+        "sku": "p39-m-brown",
+        "size": "M",
+        "color": "Brown",
+        "stock": 4
+      },
+      {
+        "sku": "p39-l-brown",
+        "size": "L",
+        "color": "Brown",
+        "stock": 4
+      }
+    ],
+    "image": "https://picsum.photos/seed/3900/800/800"
+  },
+  {
+    "id": "p40",
+    "barcode": "8901234567930",
+    "name": "Structured Cotton Jacket",
+    "category": "Outerwear",
+    "price": 151,
+    "tags": [
+      "casual",
+      "summer"
+    ],
+    "variants": [
+      {
+        "sku": "p40-s-black",
+        "size": "S",
+        "color": "Black",
+        "stock": 12
+      },
+      {
+        "sku": "p40-m-black",
+        "size": "M",
+        "color": "Black",
+        "stock": 17
+      },
+      {
+        "sku": "p40-s-beige",
+        "size": "S",
+        "color": "Beige",
+        "stock": 11
+      },
+      {
+        "sku": "p40-m-beige",
+        "size": "M",
+        "color": "Beige",
+        "stock": 3
+      }
+    ],
+    "image": "https://picsum.photos/seed/4000/800/800"
+  },
+  {
+    "id": "p41",
+    "barcode": "8901234567931",
+    "name": "Modern Wool Coat",
+    "category": "Outerwear",
+    "price": 103,
+    "tags": [
+      "casual",
+      "streetwear",
+      "office"
+    ],
+    "variants": [
+      {
+        "sku": "p41-s-beige",
+        "size": "S",
+        "color": "Beige",
+        "stock": 12
+      },
+      {
+        "sku": "p41-m-beige",
+        "size": "M",
+        "color": "Beige",
+        "stock": 3
+      },
+      {
+        "sku": "p41-l-beige",
+        "size": "L",
+        "color": "Beige",
+        "stock": 2
+      }
+    ],
+    "image": "https://picsum.photos/seed/4100/800/800"
+  },
+  {
+    "id": "p42",
+    "barcode": "8901234567932",
+    "name": "Structured Velvet Belt",
+    "category": "Accessories",
+    "price": 215,
+    "tags": [
+      "winter",
+      "streetwear",
+      "minimal"
+    ],
+    "variants": [
+      {
+        "sku": "p42-os-olive",
+        "size": "OS",
+        "color": "Olive",
+        "stock": 14
+      },
+      {
+        "sku": "p42-os-brown",
+        "size": "OS",
+        "color": "Brown",
+        "stock": 1
+      }
+    ],
+    "image": "https://picsum.photos/seed/4200/800/800"
+  },
+  {
+    "id": "p43",
+    "barcode": "8901234567933",
+    "name": "Oversized Cashmere Sweater",
+    "category": "Knitwear",
+    "price": 240,
+    "tags": [
+      "luxe",
+      "vintage",
+      "winter"
+    ],
+    "variants": [
+      {
+        "sku": "p43-s-grey",
+        "size": "S",
+        "color": "Grey",
+        "stock": 13
+      },
+      {
+        "sku": "p43-m-grey",
+        "size": "M",
+        "color": "Grey",
+        "stock": 5
+      },
+      {
+        "sku": "p43-l-grey",
+        "size": "L",
+        "color": "Grey",
+        "stock": 4
+      }
+    ],
+    "image": "https://picsum.photos/seed/4300/800/800"
+  },
+  {
+    "id": "p44",
+    "barcode": "8901234567934",
+    "name": "Tailored Denim Sweater",
+    "category": "Knitwear",
+    "price": 254,
+    "tags": [
+      "luxe",
+      "winter",
+      "elegant"
+    ],
+    "variants": [
+      {
+        "sku": "p44-s-black",
+        "size": "S",
+        "color": "Black",
+        "stock": 19
+      },
+      {
+        "sku": "p44-m-black",
+        "size": "M",
+        "color": "Black",
+        "stock": 3
+      },
+      {
+        "sku": "p44-l-black",
+        "size": "L",
+        "color": "Black",
+        "stock": 5
+      },
+      {
+        "sku": "p44-xl-black",
+        "size": "XL",
+        "color": "Black",
+        "stock": 16
+      },
+      {
+        "sku": "p44-s-navy",
+        "size": "S",
+        "color": "Navy",
+        "stock": 9
+      },
+      {
+        "sku": "p44-m-navy",
+        "size": "M",
+        "color": "Navy",
+        "stock": 10
+      },
+      {
+        "sku": "p44-l-navy",
+        "size": "L",
+        "color": "Navy",
+        "stock": 11
+      },
+      {
+        "sku": "p44-xl-navy",
+        "size": "XL",
+        "color": "Navy",
+        "stock": 17
+      }
+    ],
+    "image": "https://picsum.photos/seed/4400/800/800"
+  },
+  {
+    "id": "p45",
+    "barcode": "8901234567935",
+    "name": "Chic Silk Skirt",
+    "category": "Bottoms",
+    "price": 112,
+    "tags": [
+      "vintage",
+      "elegant",
+      "summer"
+    ],
+    "variants": [
+      {
+        "sku": "p45-s-brown",
+        "size": "S",
+        "color": "Brown",
+        "stock": 7
+      },
+      {
+        "sku": "p45-m-brown",
+        "size": "M",
+        "color": "Brown",
+        "stock": 15
+      },
+      {
+        "sku": "p45-l-brown",
+        "size": "L",
+        "color": "Brown",
+        "stock": 11
+      },
+      {
+        "sku": "p45-s-beige",
+        "size": "S",
+        "color": "Beige",
+        "stock": 19
+      },
+      {
+        "sku": "p45-m-beige",
+        "size": "M",
+        "color": "Beige",
+        "stock": 10
+      },
+      {
+        "sku": "p45-l-beige",
+        "size": "L",
+        "color": "Beige",
+        "stock": 15
+      }
+    ],
+    "image": "https://picsum.photos/seed/4500/800/800"
+  },
+  {
+    "id": "p46",
+    "barcode": "8901234567936",
+    "name": "Essential Suede T-Shirt",
+    "category": "Tops",
+    "price": 63,
+    "tags": [
+      "summer",
+      "vintage"
+    ],
+    "variants": [
+      {
+        "sku": "p46-s-black",
+        "size": "S",
+        "color": "Black",
+        "stock": 6
+      },
+      {
+        "sku": "p46-m-black",
+        "size": "M",
+        "color": "Black",
+        "stock": 14
+      },
+      {
+        "sku": "p46-l-black",
+        "size": "L",
+        "color": "Black",
+        "stock": 7
+      },
+      {
+        "sku": "p46-s-grey",
+        "size": "S",
+        "color": "Grey",
+        "stock": 8
+      },
+      {
+        "sku": "p46-m-grey",
+        "size": "M",
+        "color": "Grey",
+        "stock": 3
+      },
+      {
+        "sku": "p46-l-grey",
+        "size": "L",
+        "color": "Grey",
+        "stock": 5
+      },
+      {
+        "sku": "p46-s-brown",
+        "size": "S",
+        "color": "Brown",
+        "stock": 10
+      },
+      {
+        "sku": "p46-m-brown",
+        "size": "M",
+        "color": "Brown",
+        "stock": 14
+      },
+      {
+        "sku": "p46-l-brown",
+        "size": "L",
+        "color": "Brown",
+        "stock": 0
+      }
+    ],
+    "image": "https://picsum.photos/seed/4600/800/800"
+  },
+  {
+    "id": "p47",
+    "barcode": "8901234567937",
+    "name": "Structured Leather Trousers",
+    "category": "Bottoms",
+    "price": 270,
+    "tags": [
+      "office",
+      "winter",
+      "streetwear"
+    ],
+    "variants": [
+      {
+        "sku": "p47-s-beige",
+        "size": "S",
+        "color": "Beige",
+        "stock": 8
+      },
+      {
+        "sku": "p47-m-beige",
+        "size": "M",
+        "color": "Beige",
+        "stock": 14
+      },
+      {
+        "sku": "p47-l-beige",
+        "size": "L",
+        "color": "Beige",
+        "stock": 11
+      },
+      {
+        "sku": "p47-xl-beige",
+        "size": "XL",
+        "color": "Beige",
+        "stock": 2
+      }
+    ],
+    "image": "https://picsum.photos/seed/4700/800/800"
+  },
+  {
+    "id": "p48",
+    "barcode": "8901234567938",
+    "name": "Essential Velvet Scarf",
+    "category": "Accessories",
+    "price": 228,
+    "tags": [
+      "casual",
+      "summer",
+      "luxe"
+    ],
+    "variants": [
+      {
+        "sku": "p48-os-beige",
+        "size": "OS",
+        "color": "Beige",
+        "stock": 10
+      },
+      {
+        "sku": "p48-os-black",
+        "size": "OS",
+        "color": "Black",
+        "stock": 17
+      }
+    ],
+    "image": "https://picsum.photos/seed/4800/800/800"
+  },
+  {
+    "id": "p49",
+    "barcode": "8901234567939",
+    "name": "Structured Silk Dress",
+    "category": "Dresses",
+    "price": 283,
+    "tags": [
+      "casual",
+      "luxe",
+      "summer"
+    ],
+    "variants": [
+      {
+        "sku": "p49-s-navy",
+        "size": "S",
+        "color": "Navy",
+        "stock": 3
+      },
+      {
+        "sku": "p49-m-navy",
+        "size": "M",
+        "color": "Navy",
+        "stock": 9
+      }
+    ],
+    "image": "https://picsum.photos/seed/4900/800/800"
+  },
+  {
+    "id": "p50",
+    "barcode": "8901234567940",
+    "name": "Relaxed Denim Cardigan",
+    "category": "Knitwear",
+    "price": 115,
+    "tags": [
+      "streetwear",
+      "winter",
+      "casual"
+    ],
+    "variants": [
+      {
+        "sku": "p50-s-grey",
+        "size": "S",
+        "color": "Grey",
+        "stock": 17
+      },
+      {
+        "sku": "p50-m-grey",
+        "size": "M",
+        "color": "Grey",
+        "stock": 16
+      },
+      {
+        "sku": "p50-l-grey",
+        "size": "L",
+        "color": "Grey",
+        "stock": 11
+      },
+      {
+        "sku": "p50-xl-grey",
+        "size": "XL",
+        "color": "Grey",
+        "stock": 6
+      },
+      {
+        "sku": "p50-s-olive",
+        "size": "S",
+        "color": "Olive",
+        "stock": 18
+      },
+      {
+        "sku": "p50-m-olive",
+        "size": "M",
+        "color": "Olive",
+        "stock": 3
+      },
+      {
+        "sku": "p50-l-olive",
+        "size": "L",
+        "color": "Olive",
+        "stock": 9
+      },
+      {
+        "sku": "p50-xl-olive",
+        "size": "XL",
+        "color": "Olive",
+        "stock": 13
+      }
+    ],
+    "image": "https://picsum.photos/seed/5000/800/800"
+  }
+]

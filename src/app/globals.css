@@ -1,0 +1,405 @@
+@import "tailwindcss";
+
+/* ============================================
+   crwn.st DESIGN SYSTEM — Design Tokens
+   ============================================ */
+
+:root {
+  /* Core palette — Quiet Luxury (60-30-10) */
+  --color-base: #F5F2EB;         /* 60% — warm ecru canvas */
+  --color-secondary: #A3907C;     /* 10% — muted taupe accents */
+  --color-primary: #1F2421;       /* 30% — deep forest noir */
+  --color-muted: #8A8177;         /* muted body copy */
+  --color-text-secondary: #6B635A;/* secondary text */
+
+  /* Accent tints for subtle highlights */
+  --color-accent-warm: #D4C5B2;
+  --color-accent-rose: #C9A598;
+  --color-accent-sage: #9BAF9F;
+
+  /* Glass tokens — warm glassmorphism */
+  --glass-bg: rgba(245, 242, 235, 0.65);
+  --glass-bg-hover: rgba(245, 242, 235, 0.80);
+  --glass-border: rgba(163, 144, 124, 0.25);
+  --glass-border-hover: rgba(163, 144, 124, 0.45);
+  --glass-blur: 16px;
+  --glass-blur-heavy: 32px;
+
+  /* Shadows — refined, warm */
+  --shadow-float: 0 8px 32px rgba(31, 36, 33, 0.06), 0 2px 8px rgba(31, 36, 33, 0.04);
+  --shadow-float-hover: 0 16px 48px rgba(31, 36, 33, 0.10), 0 4px 12px rgba(31, 36, 33, 0.06);
+  --shadow-subtle: 0 1px 3px rgba(31, 36, 33, 0.05);
+
+  /* Spacing & Radius */
+  --radius-glass: 16px;
+  --radius-card: 12px;
+  --radius-pill: 9999px;
+}
+
+/* ============================================
+   Tailwind Theme Integration
+   ============================================ */
+
+@theme inline {
+  --color-background: var(--color-base);
+  --color-foreground: var(--color-primary);
+  --font-sans: 'Outfit', sans-serif;
+  --font-serif: 'Playfair Display', serif;
+  --font-mono: var(--font-geist-mono);
+}
+
+/* ============================================
+   Base Styles
+   ============================================ */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-base);
+  color: var(--color-primary);
+  font-family: 'Outfit', sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ============================================
+   Ambient Background — Soft Warm Aurora
+   ============================================ */
+
+@keyframes drift-1 {
+  0%, 100% {
+    transform: translate(0%, 0%) scale(1) rotate(0deg);
+    opacity: 0.25;
+  }
+  25% {
+    transform: translate(15%, -10%) scale(1.15) rotate(45deg);
+    opacity: 0.35;
+  }
+  50% {
+    transform: translate(-5%, 15%) scale(0.95) rotate(90deg);
+    opacity: 0.20;
+  }
+  75% {
+    transform: translate(-15%, -5%) scale(1.08) rotate(135deg);
+    opacity: 0.30;
+  }
+}
+
+@keyframes drift-2 {
+  0%, 100% {
+    transform: translate(0%, 0%) scale(1.05) rotate(0deg);
+    opacity: 0.20;
+  }
+  33% {
+    transform: translate(-12%, 12%) scale(0.85) rotate(60deg);
+    opacity: 0.30;
+  }
+  66% {
+    transform: translate(10%, -8%) scale(1.2) rotate(120deg);
+    opacity: 0.15;
+  }
+}
+
+@keyframes drift-3 {
+  0%, 100% {
+    transform: translate(0%, 0%) scale(0.95) rotate(0deg);
+    opacity: 0.18;
+  }
+  50% {
+    transform: translate(8%, 10%) scale(1.1) rotate(90deg);
+    opacity: 0.28;
+  }
+}
+
+/* ============================================
+   Floating Animation Keyframes
+   ============================================ */
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes float-slow {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-5px) rotate(0.5deg);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================
+   Glass Morphism Utility Classes
+   ============================================ */
+
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-glass);
+  box-shadow: var(--shadow-float);
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.glass:hover {
+  background: var(--glass-bg-hover);
+  border-color: var(--glass-border-hover);
+  box-shadow: var(--shadow-float-hover);
+}
+
+.glass-heavy {
+  background: rgba(245, 242, 235, 0.80);
+  backdrop-filter: blur(var(--glass-blur-heavy));
+  -webkit-backdrop-filter: blur(var(--glass-blur-heavy));
+  border: 1px solid rgba(163, 144, 124, 0.30);
+  border-radius: var(--radius-glass);
+  box-shadow: var(--shadow-float);
+}
+
+.glass-subtle {
+  background: rgba(245, 242, 235, 0.40);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(163, 144, 124, 0.12);
+  border-radius: var(--radius-glass);
+}
+
+/* ============================================
+   Animation Utility Classes
+   ============================================ */
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-float-slow {
+  animation: float-slow 8s ease-in-out infinite;
+}
+
+.animate-float-delay-1 {
+  animation: float 6s ease-in-out 1s infinite;
+}
+
+.animate-float-delay-2 {
+  animation: float 6s ease-in-out 2s infinite;
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(163, 144, 124, 0.08) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.6s ease-out forwards;
+}
+
+/* ============================================
+   Ambient Background Component Styles
+   ============================================ */
+
+.aurora-container {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  background: var(--color-base);
+}
+
+.aurora-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  mix-blend-mode: multiply;
+  will-change: transform, opacity;
+}
+
+.aurora-blob-1 {
+  width: 600px;
+  height: 600px;
+  top: -15%;
+  left: -10%;
+  background: radial-gradient(circle, var(--color-accent-warm), transparent 70%);
+  animation: drift-1 25s ease-in-out infinite;
+}
+
+.aurora-blob-2 {
+  width: 500px;
+  height: 500px;
+  top: 35%;
+  right: -12%;
+  background: radial-gradient(circle, var(--color-accent-sage), transparent 70%);
+  animation: drift-2 30s ease-in-out infinite;
+}
+
+.aurora-blob-3 {
+  width: 450px;
+  height: 450px;
+  bottom: -10%;
+  left: 25%;
+  background: radial-gradient(circle, var(--color-accent-rose), transparent 70%);
+  animation: drift-3 22s ease-in-out infinite;
+}
+
+.aurora-blob-4 {
+  width: 350px;
+  height: 350px;
+  top: 15%;
+  left: 55%;
+  background: radial-gradient(circle, var(--color-accent-warm), transparent 70%);
+  animation: drift-2 28s ease-in-out infinite reverse;
+}
+
+.aurora-noise {
+  position: absolute;
+  inset: 0;
+  opacity: 0.015;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  pointer-events: none;
+}
+
+.aurora-gradient-overlay {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 50%, transparent 0%, var(--color-base) 75%);
+  pointer-events: none;
+}
+
+/* ============================================
+   Custom Scrollbar
+   ============================================ */
+
+::-webkit-scrollbar {
+  width: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(163, 144, 124, 0.25);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(163, 144, 124, 0.45);
+}
+
+/* ============================================
+   Typography Helpers
+   ============================================ */
+
+.text-gradient-brand {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.heading-serif {
+  font-family: 'Playfair Display', serif;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--color-primary);
+}
+
+/* ============================================
+   Button Variants
+   ============================================ */
+
+.btn-crwn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.75rem;
+  font-weight: 500;
+  font-size: 0.9rem;
+  letter-spacing: 0.02em;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  color: var(--color-primary);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-crwn:hover {
+  border-color: var(--glass-border-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-float-hover);
+  background: var(--glass-bg-hover);
+}
+
+.btn-crwn:active {
+  transform: translateY(0px);
+}
+
+.btn-crwn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.75rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  letter-spacing: 0.02em;
+  border-radius: var(--radius-pill);
+  border: none;
+  background: var(--color-primary);
+  color: var(--color-base);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.btn-crwn-primary:hover {
+  box-shadow: var(--shadow-float-hover);
+  transform: translateY(-1px);
+  opacity: 0.9;
+}
+
+.btn-crwn-primary:active {
+  transform: translateY(0px);
+}

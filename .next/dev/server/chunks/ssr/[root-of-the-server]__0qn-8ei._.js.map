@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 46, "column": 0}, "map": {"version":3,"sources":["file:///C:/Users/sirav/Code/Webpor/crwn.st/surreal-fit/src/components/ui/AuroraBackground.tsx"],"sourcesContent":["\"use client\";\n\nexport default function AuroraBackground() {\n  return (\n    <div className=\"aurora-container\" aria-hidden=\"true\">\n      <div className=\"aurora-blob aurora-blob-1\" />\n      <div className=\"aurora-blob aurora-blob-2\" />\n      <div className=\"aurora-blob aurora-blob-3\" />\n      <div className=\"aurora-blob aurora-blob-4\" />\n      <div className=\"aurora-noise\" />\n      <div className=\"aurora-gradient-overlay\" />\n    </div>\n  );\n}\n"],"names":["AuroraBackground","className"],"mappings":";;;;;AAAA;;AAEe,SAASA;IACtB,qBACE,8OAAC;QAAIC,WAAU;QAAmB,eAAY;;0BAC5C,8OAAC;gBAAIA,WAAU;;;;;;0BACf,8OAAC;gBAAIA,WAAU;;;;;;0BACf,8OAAC;gBAAIA,WAAU;;;;;;0BACf,8OAAC;gBAAIA,WAAU;;;;;;0BACf,8OAAC;gBAAIA,WAAU;;;;;;0BACf,8OAAC;gBAAIA,WAAU;;;;;;;;;;;;AAGrB"}}]
+}

@@ -1,0 +1,22 @@
+[
+  {
+    "id": "fr1",
+    "name": "Room 1",
+    "status": "available",
+    "currentUserId": null,
+    "requestedItems": []
+  },
+  {
+    "id": "fr2",
+    "name": "Room 2",
+    "status": "occupied",
+    "currentUserId": "u1",
+    "requestedItems": [
+      {
+        "requestId": "req1",
+        "sku": "p1-m-red",
+        "status": "pending" 
+      }
+    ]
+  }
+]
