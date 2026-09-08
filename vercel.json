@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "functions": {
+    "api/index.js": {
+      "includeFiles": [
+        "views/**",
+        "database/**",
+        "data/**"
+      ]
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/api"
+    }
+  ]
+}

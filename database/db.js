@@ -14,14 +14,38 @@ let mysqlPool = null;
 const DB_TYPE = (process.env.DB_TYPE || (process.env.MYSQL_HOST ? 'mysql' : 'sqlite')).toLowerCase();
 
 // Ensure data directory exists
-const dataDir = path.join(__dirname, '..', 'data');
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
+let dataDir;
+if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+  dataDir = path.join('/tmp', 'data');
+} else {
+  dataDir = path.join(__dirname, '..', 'data');
+}
+
+try {
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
+} catch (e) {
+  dataDir = path.join('/tmp', 'data');
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
 }
 
 function getSqliteDb() {
   if (!sqliteDb) {
     const dbPath = path.join(dataDir, 'crwn_store.db');
+
+    // If running in /tmp and a bundled template DB exists in project, copy it over
+    const templateDbPath = path.join(__dirname, '..', 'data', 'crwn_store.db');
+    if (dataDir.startsWith('/tmp') && !fs.existsSync(dbPath) && fs.existsSync(templateDbPath)) {
+      try {
+        fs.copyFileSync(templateDbPath, dbPath);
+      } catch (err) {
+        console.warn('Could not copy seed DB to /tmp, will initialize from scratch:', err);
+      }
+    }
+
     sqliteDb = new DatabaseSync(dbPath);
     sqliteDb.exec('PRAGMA foreign_keys = ON;');
   }

@@ -14,7 +14,7 @@ const apiRoutes = require('./routes/api');
 const viewRoutes = require('./routes/views');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 // View engine setup (EJS with partial templates)
 app.set('view engine', 'ejs');
@@ -47,7 +47,7 @@ async function startServer() {
   try {
     await initDb();
     app.listen(PORT, '0.0.0.0', () => {
-      console.log(`✨ crwn.st Atelier server running smoothly at http://localhost:${PORT}`);
+      console.log(`crwn.st server running smoothly at http://localhost:${PORT}`);
     });
   } catch (err) {
     console.error('Failed to start server:', err);
@@ -55,4 +55,8 @@ async function startServer() {
   }
 }
 
-startServer();
+if (require.main === module) {
+  startServer();
+}
+
+module.exports = app;

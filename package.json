@@ -8,6 +8,9 @@
     "start": "node server.js",
     "lint": "eslint"
   },
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "dependencies": {
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
