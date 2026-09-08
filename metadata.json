@@ -1,0 +1,6 @@
+{
+  "name": "crwn.st",
+  "description": "Quiet luxury retail application featuring customer self-service, cashier POS, and fitting room orchestration",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

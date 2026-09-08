@@ -1,0 +1,48 @@
+<!-- Fitting Room Item Request Modal -->
+<div id="request-modal" class="fixed inset-0 bg-[#1F2421]/40 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+  <div class="w-full max-w-md glass-heavy rounded-3xl p-6 sm:p-8 shadow-2xl border border-white/60 relative animate-fade-in">
+    
+    <!-- Close button -->
+    <button onclick="closeRequestModal()" class="absolute top-5 right-5 p-2 rounded-full hover:bg-white/80 text-[#8A8177] hover:text-[#1F2421] transition">
+      <i data-lucide="x" class="w-5 h-5"></i>
+    </button>
+
+    <!-- Header -->
+    <div class="flex items-center gap-4 mb-6">
+      <img id="request-product-img" src="" alt="Item" class="w-16 h-16 rounded-2xl object-cover bg-[#E8DFD1] border border-[#A3907C]/20 shadow-xs">
+      <div>
+        <span class="text-[10px] uppercase tracking-wider text-[#A3907C] font-semibold">ขอเปลี่ยนขนาดหรือสี</span>
+        <h3 id="request-product-name" class="font-serif text-lg font-semibold text-[#1F2421] leading-snug">ชื่อสินค้า</h3>
+      </div>
+    </div>
+
+    <!-- Size selector -->
+    <div class="mb-4">
+      <label class="block text-xs font-semibold text-[#8A8177] uppercase tracking-wider mb-2">เลือกขนาด (Size):</label>
+      <div id="request-size-options" class="flex flex-wrap gap-2"></div>
+    </div>
+
+    <!-- Color selector -->
+    <div class="mb-6">
+      <label class="block text-xs font-semibold text-[#8A8177] uppercase tracking-wider mb-2">เลือกสี (Color):</label>
+      <div id="request-color-options" class="flex flex-wrap gap-2"></div>
+    </div>
+
+    <!-- Staff Assistance Note -->
+    <div class="p-3 rounded-xl bg-[#F5F2EB] border border-[#A3907C]/20 text-xs text-[#6B635A] flex items-center gap-2 mb-6">
+      <i data-lucide="bell-ring" class="w-4 h-4 text-[#C9A598] flex-shrink-0"></i>
+      <span>พนักงานจะนำสินค้าชิ้นใหม่มาส่งให้ที่หน้าห้องลองของคุณทันที</span>
+    </div>
+
+    <!-- Actions -->
+    <div class="flex gap-3">
+      <button onclick="closeRequestModal()" class="flex-1 btn-secondary text-xs py-3">
+        ยกเลิก
+      </button>
+      <button onclick="submitItemRequest('<%= typeof roomId !== 'undefined' ? roomId : '1' %>')" class="flex-1 btn-primary text-xs py-3">
+        <i data-lucide="send" class="w-4 h-4"></i> ส่งคำขอถึงพนักงาน
+      </button>
+    </div>
+
+  </div>
+</div>

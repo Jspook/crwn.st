@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title><%= typeof title !== 'undefined' ? title : 'crwn.st' %></title>
+  <meta name="description" content="crwn.st">
+
+  <!-- Google Fonts: Outfit (Body) & Playfair Display (Luxury Serif) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            base: '#F5F2EB',
+            primary: '#1F2421',
+            secondary: '#A3907C',
+            muted: '#8A8177',
+            'accent-rose': '#C9A598',
+            'accent-sage': '#9BAF9F',
+            'accent-warm': '#D4C5B2',
+          },
+          fontFamily: {
+            sans: ['Outfit', 'sans-serif'],
+            serif: ['Playfair Display', 'Georgia', 'serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Custom Quiet Luxury Stylesheet -->
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body class="bg-[#F5F2EB] text-[#1F2421] min-h-screen flex flex-col relative selection:bg-[#C9A598]/30 selection:text-[#1F2421]">
+
+  <!-- Ambient Quiet Luxury Aurora Backdrop -->
+  <div class="fixed inset-0 overflow-hidden pointer-events-none z-0">
+    <div class="absolute -top-[15%] -left-[10%] w-[55vw] h-[55vw] rounded-full bg-[#E8DFD1] blur-[120px] opacity-40 animate-drift-1"></div>
+    <div class="absolute top-[35%] -right-[15%] w-[50vw] h-[50vw] rounded-full bg-[#D4C5B2] blur-[140px] opacity-30 animate-drift-2"></div>
+    <div class="absolute -bottom-[20%] left-[25%] w-[60vw] h-[60vw] rounded-full bg-[#E5DDD0] blur-[130px] opacity-35 animate-drift-3"></div>
+  </div>
+
+  <div class="relative z-10 flex-1 flex flex-col">

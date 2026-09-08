@@ -1,0 +1,231 @@
+<%- include('../partials/header', { title: 'สแกนบาร์โค้ด — crwn.st' }) %>
+<%- include('../partials/navbar', { user, showCart: true }) %>
+
+<main class="flex-1 max-w-lg w-full mx-auto px-4 py-4 sm:py-6 flex flex-col justify-between min-h-[calc(100vh-4rem)]">
+
+  <!-- Top Customer Greeting -->
+  <div class="text-center mb-4">
+    <h1 class="font-serif text-2xl sm:text-3xl font-bold text-[#1F2421]">
+      สวัสดี, <%= user ? user.name : 'ท่านสมาชิก' %>
+    </h1>
+    <p class="text-xs text-[#8A8177] mt-1">ส่องกล้องไปที่ป้ายบาร์โค้ดสินค้าเพื่อเพิ่มลงในตะกร้า</p>
+  </div>
+
+  <!-- Central Mobile Barcode Scanner Box -->
+  <div class="w-full flex-1 flex flex-col justify-center my-auto space-y-4">
+    
+    <div class="glass-heavy rounded-3xl p-4 sm:p-5 border border-white/80 shadow-lg relative overflow-hidden">
+      
+      <!-- Scanner Viewfinder Box -->
+      <div id="scanner-container" class="relative w-full aspect-4/3 rounded-2xl bg-[#1F2421] overflow-hidden flex flex-col items-center justify-center border border-white/20 shadow-inner">
+        
+        <!-- Live Video Element (Hidden until camera enabled) -->
+        <video id="camera-feed" class="absolute inset-0 w-full h-full object-cover hidden" playsinline autoplay muted></video>
+
+        <!-- Camera Off State Graphic -->
+        <div id="camera-off-state" class="text-center p-4 z-10 flex flex-col items-center">
+          <div class="w-14 h-14 rounded-2xl bg-white/10 text-[#F5F2EB] flex items-center justify-center mb-3 shadow-inner">
+            <i data-lucide="camera" class="w-7 h-7"></i>
+          </div>
+          <p class="text-sm font-medium text-[#F5F2EB]">กล้องยังไม่ได้เปิดทำงาน</p>
+          <p class="text-[11px] text-[#F5F2EB]/60 mt-1 max-w-[220px]">กดปุ่มด้านล่างเพื่อเปิดกล้องมือถือสแกนป้ายบาร์โค้ด</p>
+        </div>
+
+        <!-- Scanning Beam Laser (Active when camera is on) -->
+        <div id="scan-beam-laser" class="absolute w-full h-1 bg-gradient-to-r from-transparent via-[#C9A598] to-transparent scan-beam shadow-[0_0_12px_#C9A598] hidden z-20"></div>
+
+        <!-- Viewfinder corner brackets -->
+        <div class="absolute inset-6 border-2 border-[#C9A598]/50 rounded-xl pointer-events-none flex items-center justify-center z-20">
+          <span class="text-[10px] text-[#F5F2EB]/50 uppercase tracking-widest bg-black/40 px-2 py-0.5 rounded">จัดวางบาร์โค้ดในกรอบ</span>
+        </div>
+
+      </div>
+
+      <!-- Camera Action Button -->
+      <div class="mt-4 flex gap-2">
+        <button id="btn-toggle-camera" onclick="toggleCamera()" class="flex-1 btn-primary py-3 text-xs sm:text-sm shadow-md flex items-center justify-center gap-2">
+          <i data-lucide="camera" class="w-4 h-4"></i>
+          <span id="btn-camera-text">กดเพื่อเปิดกล้องสแกน</span>
+        </button>
+      </div>
+
+      <!-- Manual Barcode & Test Barcodes for fast testing -->
+      <div class="mt-4 pt-4 border-t border-[#A3907C]/20">
+        <label for="dash-barcode-input" class="block text-[11px] font-semibold text-[#8A8177] uppercase tracking-wider mb-2">หรือพิมพ์/ยิงบาร์โค้ด</label>
+        <div class="flex gap-2">
+          <div class="relative flex-1">
+            <i data-lucide="scan" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#A3907C]"></i>
+            <input type="text" id="dash-barcode-input" placeholder="พิมพ์เลขบาร์โค้ด..." class="w-full pl-10 pr-3 py-2.5 rounded-xl bg-white border border-[#A3907C]/30 text-xs font-mono focus:outline-none focus:border-[#1F2421]" onkeypress="if(event.key==='Enter') triggerBarcodeLookup()">
+          </div>
+          <button onclick="triggerBarcodeLookup()" class="btn-secondary text-xs px-4 py-2.5">
+            ค้นหา
+          </button>
+        </div>
+
+        <!-- Quick barcode chips -->
+        <div class="mt-2.5 flex flex-wrap items-center gap-1.5 text-[11px]">
+          <span class="text-[#8A8177]">ตัวอย่าง:</span>
+          <button onclick="triggerLookupWithCode('8901234567891')" class="px-2 py-1 rounded-lg bg-white/80 border border-[#A3907C]/25 text-[#1F2421] font-mono hover:bg-white transition">8901234567891</button>
+          <button onclick="triggerLookupWithCode('8901234567892')" class="px-2 py-1 rounded-lg bg-white/80 border border-[#A3907C]/25 text-[#1F2421] font-mono hover:bg-white transition">8901234567892</button>
+          <button onclick="triggerLookupWithCode('8901234567893')" class="px-2 py-1 rounded-lg bg-white/80 border border-[#A3907C]/25 text-[#1F2421] font-mono hover:bg-white transition">8901234567893</button>
+        </div>
+      </div>
+
+      <!-- Scanned Product Result Card (Appears upon scanning) -->
+      <div id="scanned-product-card" class="hidden mt-4 pt-4 border-t border-[#A3907C]/20 animate-fade-in"></div>
+
+    </div>
+
+  </div>
+
+  <!-- Bottom Action: Fitting Room Button (Designed for mobile thumb reach) -->
+  <div class="pt-4 pb-2">
+    <button onclick="openRoomModal()" class="w-full glass-heavy rounded-2xl p-4 border border-white/90 shadow-md hover:shadow-lg transition-all flex items-center justify-between group active:scale-[0.98]">
+      <div class="flex items-center gap-3.5">
+        <div class="w-12 h-12 rounded-xl bg-[#1F2421] text-[#F5F2EB] flex items-center justify-center group-hover:scale-105 transition-transform shadow-xs">
+          <i data-lucide="door-open" class="w-6 h-6"></i>
+        </div>
+        <div class="text-left">
+          <span class="block text-xs font-serif font-bold text-[#1F2421]">เข้าห้องลองเสื้อ (Fitting Room)</span>
+          <span class="block text-[11px] text-[#8A8177]">สแกนหรือเลือกห้องลอง 1, 2, 3 เพื่อเริ่มลองชุด</span>
+        </div>
+      </div>
+      <div class="w-8 h-8 rounded-full bg-white/80 flex items-center justify-center text-[#1F2421] group-hover:translate-x-1 transition-transform">
+        <i data-lucide="chevron-right" class="w-5 h-5"></i>
+      </div>
+    </button>
+  </div>
+
+</main>
+
+<%- include('../partials/cart-drawer') %>
+<%- include('../partials/room-modal') %>
+
+<script>
+  let cameraStream = null;
+
+  async function toggleCamera() {
+    const video = document.getElementById('camera-feed');
+    const offState = document.getElementById('camera-off-state');
+    const laser = document.getElementById('scan-beam-laser');
+    const btnText = document.getElementById('btn-camera-text');
+
+    if (cameraStream) {
+      // Stop camera
+      cameraStream.getTracks().forEach(track => track.stop());
+      cameraStream = null;
+      video.classList.add('hidden');
+      offState.classList.remove('hidden');
+      laser.classList.add('hidden');
+      btnText.textContent = 'กดเพื่อเปิดกล้องสแกน';
+      return;
+    }
+
+    // Start camera
+    try {
+      btnText.textContent = 'กำลังเปิดกล้อง...';
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' }
+      });
+      cameraStream = stream;
+      video.srcObject = stream;
+      video.classList.remove('hidden');
+      offState.classList.add('hidden');
+      laser.classList.remove('hidden');
+      btnText.textContent = 'ปิดกล้องสแกน';
+
+      // Start simulated scanning interval if barcode detector not native
+      simulateBarcodeDetection();
+    } catch (err) {
+      console.warn('Camera access denied or unavailable:', err);
+      alert('ไม่สามารถเข้าถึงกล้องได้ กรุณาอนุญาตการเข้าถึงกล้อง หรือใช้รหัสบาร์โค้ดตัวอย่างด้านล่าง');
+      btnText.textContent = 'กดเพื่อเปิดกล้องสแกน';
+    }
+  }
+
+  // Barcode Lookup logic
+  function triggerLookupWithCode(code) {
+    document.getElementById('dash-barcode-input').value = code;
+    triggerBarcodeLookup();
+  }
+
+  async function triggerBarcodeLookup() {
+    const input = document.getElementById('dash-barcode-input');
+    const code = (input.value || '').trim();
+    if (!code) return;
+
+    const resultBox = document.getElementById('scanned-product-card');
+    resultBox.classList.remove('hidden');
+    resultBox.innerHTML = `
+      <div class="p-3 text-center text-xs text-[#8A8177]">
+        <div class="inline-block w-4 h-4 border-2 border-[#1F2421] border-t-transparent rounded-full animate-spin mb-1"></div>
+        <p>กำลังค้นหาสินค้า ${code}...</p>
+      </div>
+    `;
+
+    try {
+      const res = await fetch(`/api/products/barcode/${encodeURIComponent(code)}`);
+      if (!res.ok) throw new Error('ไม่พบข้อมูลสินค้าจากบาร์โค้ดนี้');
+      const product = await res.json();
+      renderScannedCard(product);
+    } catch (err) {
+      resultBox.innerHTML = `
+        <div class="p-3 rounded-xl bg-red-50 text-red-700 text-xs border border-red-200">
+          <p class="font-medium">ไม่พบสินค้า (${code})</p>
+          <p class="text-[11px] mt-0.5">ลองกดรหัสตัวอย่างเช่น 8901234567891</p>
+        </div>
+      `;
+    }
+  }
+
+  function renderScannedCard(p) {
+    const resultBox = document.getElementById('scanned-product-card');
+    const v = (p.variants && p.variants[0]) || { sku: p.id + '-std', color: 'Standard', size: 'M', stock: 10 };
+
+    resultBox.innerHTML = `
+      <div class="p-3.5 rounded-2xl bg-white border border-[#A3907C]/25 shadow-xs">
+        <div class="flex gap-3">
+          <img src="${p.image || 'https://picsum.photos/seed/' + p.id + '/200/200'}" alt="${p.name}" class="w-16 h-16 rounded-xl object-cover bg-[#E8DFD1] flex-shrink-0">
+          <div class="flex-1 min-w-0">
+            <span class="text-[10px] uppercase font-bold tracking-wider text-[#A3907C]">${p.category || 'Atelier'}</span>
+            <h4 class="font-medium text-xs sm:text-sm text-[#1F2421] truncate">${p.name}</h4>
+            <div class="flex items-baseline gap-2 mt-1">
+              <span class="font-bold text-sm text-[#1F2421]">฿${Number(p.price).toLocaleString()}</span>
+              <span class="text-[11px] text-[#8A8177]">ไซส์: ${v.size} / สี: ${v.color}</span>
+            </div>
+          </div>
+        </div>
+        <button onclick="addScannedProduct('${p.id}', '${p.name.replace(/'/g, "\\'")}', ${p.price}, '${v.sku}', '${v.color}', '${v.size}', '${p.image}')" class="w-full btn-primary py-2.5 text-xs mt-3 flex items-center justify-center gap-1.5 shadow-xs">
+          <i data-lucide="shopping-bag" class="w-3.5 h-3.5"></i>
+          <span>เพิ่มลงในตะกร้า</span>
+        </button>
+      </div>
+    `;
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  function addScannedProduct(id, name, price, sku, color, size, image) {
+    Cart.addItem({
+      sku,
+      productId: id,
+      name,
+      price,
+      color,
+      size,
+      image
+    });
+    // Reset scanned card
+    const resultBox = document.getElementById('scanned-product-card');
+    resultBox.classList.add('hidden');
+    document.getElementById('dash-barcode-input').value = '';
+  }
+
+  // Cleanup camera when leaving page
+  window.addEventListener('beforeunload', () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(t => t.stop());
+    }
+  });
+</script>
+
+<%- include('../partials/footer') %>

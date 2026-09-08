@@ -1,0 +1,59 @@
+<!-- Barcode Scanner Simulation Modal -->
+<div id="barcode-modal" class="fixed inset-0 bg-[#1F2421]/40 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+  <div class="w-full max-w-lg glass-heavy rounded-3xl p-6 sm:p-8 shadow-2xl border border-white/60 relative animate-fade-in max-h-[90vh] overflow-y-auto">
+    
+    <!-- Close button -->
+    <button onclick="closeBarcodeModal()" class="absolute top-5 right-5 p-2 rounded-full hover:bg-white/80 text-[#8A8177] hover:text-[#1F2421] transition">
+      <i data-lucide="x" class="w-5 h-5"></i>
+    </button>
+
+    <!-- Header -->
+    <div class="text-center mb-5">
+      <div class="w-14 h-14 rounded-2xl bg-[#E8DFD1]/70 mx-auto flex items-center justify-center text-[#1F2421] mb-2 shadow-xs">
+        <i data-lucide="scan-line" class="w-7 h-7"></i>
+      </div>
+      <h3 class="font-serif text-2xl font-semibold text-[#1F2421]">สแกนบาร์โค้ดสินค้า (Scan Barcode)</h3>
+      <p class="text-xs text-[#8A8177]">ส่องกล้องไปที่ป้ายสินค้า หรือกดเลือกรหัสบาร์โค้ดทดสอบด้านล่าง</p>
+    </div>
+
+    <!-- Scanner Viewport Box with Scanning Beam -->
+    <div class="relative w-full h-44 rounded-2xl bg-[#1F2421] overflow-hidden flex items-center justify-center border border-white/20 shadow-inner">
+      <!-- Crosshairs -->
+      <div class="absolute inset-8 border border-dashed border-[#C9A598]/60 rounded-xl pointer-events-none flex items-center justify-center">
+        <span class="text-[11px] text-[#F5F2EB]/60 uppercase tracking-widest">จัดวางบาร์โค้ดในกรอบ</span>
+      </div>
+      <!-- Animated Laser / Scan Beam -->
+      <div class="absolute w-full h-1 bg-gradient-to-r from-transparent via-[#C9A598] to-transparent scan-beam shadow-[0_0_12px_#C9A598]"></div>
+    </div>
+
+    <!-- Quick test barcode chips -->
+    <div class="mt-4">
+      <p class="text-[11px] font-semibold text-[#8A8177] uppercase tracking-wider mb-2">กดรหัสสินค้าตัวอย่างเพื่อสแกนทันที:</p>
+      <div class="flex flex-wrap gap-2">
+        <button onclick="handleBarcodeLookup('8901234567891')" class="px-2.5 py-1.5 rounded-lg bg-white/80 hover:bg-white border border-[#A3907C]/30 text-xs text-[#1F2421] font-mono hover:border-[#1F2421] transition">
+          8901234567891 (Scarf)
+        </button>
+        <button onclick="handleBarcodeLookup('8901234567892')" class="px-2.5 py-1.5 rounded-lg bg-white/80 hover:bg-white border border-[#A3907C]/30 text-xs text-[#1F2421] font-mono hover:border-[#1F2421] transition">
+          8901234567892 (Sweater)
+        </button>
+        <button onclick="handleBarcodeLookup('8901234567893')" class="px-2.5 py-1.5 rounded-lg bg-white/80 hover:bg-white border border-[#A3907C]/30 text-xs text-[#1F2421] font-mono hover:border-[#1F2421] transition">
+          8901234567893 (Coat)
+        </button>
+      </div>
+    </div>
+
+    <!-- Manual Code Input -->
+    <div class="mt-4 pt-4 border-t border-[#A3907C]/15">
+      <div class="flex gap-2">
+        <input type="text" id="barcode-manual-input" placeholder="พิมพ์เลขบาร์โค้ด หรือ SKU..." class="flex-1 px-4 py-3 rounded-xl bg-white border border-[#A3907C]/30 text-sm focus:outline-none focus:border-[#1F2421] font-mono" onkeypress="if(event.key==='Enter') handleBarcodeLookup()">
+        <button onclick="handleBarcodeLookup()" class="btn-primary text-xs px-5 py-3">
+          ค้นหา
+        </button>
+      </div>
+    </div>
+
+    <!-- Scanned Result Card Container -->
+    <div id="barcode-scan-result"></div>
+
+  </div>
+</div>

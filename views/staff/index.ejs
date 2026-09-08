@@ -1,0 +1,52 @@
+<%- include('../partials/header', { title: 'Staff Portal — crwn.st' }) %>
+<%- include('../partials/navbar', { user }) %>
+
+<main class="flex-1 max-w-4xl w-full mx-auto px-4 py-12 flex flex-col justify-center">
+  
+  <div class="text-center mb-8">
+    <span class="text-xs uppercase tracking-widest text-[#A3907C] font-semibold">Staff Management Center</span>
+    <h1 class="font-serif text-3xl sm:text-4xl font-bold text-[#1F2421] mt-1">ระบบจัดการหน้าร้าน crwn.st</h1>
+    <p class="text-xs sm:text-sm text-[#8A8177] mt-1">เลือกเมนูการปฏิบัติงานตามหน้าที่ของคุณ</p>
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+    
+    <!-- POS Cashier -->
+    <a href="/staff/cashier" class="glass-heavy rounded-3xl p-8 border border-white/70 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all group flex flex-col justify-between">
+      <div>
+        <div class="w-14 h-14 rounded-2xl bg-[#1F2421] text-[#F5F2EB] flex items-center justify-center mb-5 group-hover:scale-110 transition-transform shadow-md">
+          <i data-lucide="calculator" class="w-7 h-7"></i>
+        </div>
+        <h2 class="font-serif text-2xl font-bold text-[#1F2421]">ระบบแคชเชียร์ (POS Cashier)</h2>
+        <p class="text-xs text-[#8A8177] mt-2 leading-relaxed">
+          คิดเงินลูกค้าหน้าร้าน สแกนบาร์โค้ด ค้นหาสมาชิกด้วยเบอร์โทรศัพท์ และออกใบเสร็จรับเงิน
+        </p>
+      </div>
+      <div class="mt-6 flex items-center gap-2 text-sm font-semibold text-[#1F2421] group-hover:text-[#A3907C]">
+        <span>เปิดระบบแคชเชียร์</span>
+        <i data-lucide="arrow-right" class="w-4 h-4"></i>
+      </div>
+    </a>
+
+    <!-- Fitting Room Kanban -->
+    <a href="/staff/fitting" class="glass-heavy rounded-3xl p-8 border border-white/70 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all group flex flex-col justify-between">
+      <div>
+        <div class="w-14 h-14 rounded-2xl bg-[#1F2421] text-[#F5F2EB] flex items-center justify-center mb-5 group-hover:scale-110 transition-transform shadow-md">
+          <i data-lucide="kanban" class="w-7 h-7"></i>
+        </div>
+        <h2 class="font-serif text-2xl font-bold text-[#1F2421]">จัดการห้องลอง (Fitting Orders)</h2>
+        <p class="text-xs text-[#8A8177] mt-2 leading-relaxed">
+          ติดตามคำขอเปลี่ยนขนาด/สีเสื้อผ้าจากลูกค้าในห้องลอง รับงาน และอัปเดตสถานะแบบเรียลไทม์
+        </p>
+      </div>
+      <div class="mt-6 flex items-center gap-2 text-sm font-semibold text-[#1F2421] group-hover:text-[#A3907C]">
+        <span>เปิดบอร์ดคำขอห้องลอง</span>
+        <i data-lucide="arrow-right" class="w-4 h-4"></i>
+      </div>
+    </a>
+
+  </div>
+
+</main>
+
+<%- include('../partials/footer') %>

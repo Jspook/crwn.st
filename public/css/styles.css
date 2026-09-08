@@ -1,0 +1,184 @@
+/* ==========================================================
+   crwn.st Quiet Luxury Theme Stylesheet
+   Palette: Ecru (#F5F2EB), Forest Noir (#1F2421), Muted Taupe (#A3907C)
+   ========================================================== */
+
+:root {
+  --color-base: #F5F2EB;
+  --color-primary: #1F2421;
+  --color-secondary: #A3907C;
+  --color-muted: #8A8177;
+  --color-text-secondary: #6B635A;
+  --color-accent-warm: #D4C5B2;
+  --color-accent-rose: #C9A598;
+  --color-accent-sage: #9BAF9F;
+  --color-border: rgba(163, 144, 124, 0.22);
+}
+
+body {
+  font-family: 'Outfit', sans-serif;
+  background-color: var(--color-base);
+  color: var(--color-primary);
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-serif, .heading-serif {
+  font-family: 'Playfair Display', Georgia, serif;
+}
+
+/* Glassmorphic surfaces */
+.glass {
+  background: rgba(245, 242, 235, 0.72);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 8px 32px 0 rgba(31, 36, 33, 0.04);
+}
+
+.glass-heavy {
+  background: rgba(245, 242, 235, 0.88);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 12px 40px 0 rgba(31, 36, 33, 0.07);
+}
+
+.glass-subtle {
+  background: rgba(245, 242, 235, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(163, 144, 124, 0.15);
+}
+
+.glass-dark {
+  background: rgba(31, 36, 33, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #F5F2EB;
+}
+
+/* Luxury buttons */
+.btn-primary {
+  background: #1F2421;
+  color: #F5F2EB;
+  border-radius: 9999px;
+  font-weight: 500;
+  padding: 0.75rem 1.5rem;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 14px rgba(31, 36, 33, 0.12);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+.btn-primary:hover {
+  background: #2C332F;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(31, 36, 33, 0.18);
+}
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.75);
+  color: #1F2421;
+  border: 1px solid rgba(163, 144, 124, 0.3);
+  border-radius: 9999px;
+  font-weight: 500;
+  padding: 0.75rem 1.5rem;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(163, 144, 124, 0.5);
+  transform: translateY(-1px);
+}
+
+.btn-rose {
+  background: #C9A598;
+  color: #1F2421;
+  border-radius: 9999px;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+.btn-rose:hover {
+  background: #B89285;
+  transform: translateY(-1px);
+}
+
+/* Subtle aurora ambient floating lights */
+@keyframes drift1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(60px, 40px) scale(1.08); }
+}
+
+@keyframes drift2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-50px, 30px) scale(0.95); }
+}
+
+@keyframes drift3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(40px, -50px) scale(1.05); }
+}
+
+.animate-drift-1 {
+  animation: drift1 18s ease-in-out infinite alternate;
+}
+
+.animate-drift-2 {
+  animation: drift2 22s ease-in-out infinite alternate;
+}
+
+.animate-drift-3 {
+  animation: drift3 26s ease-in-out infinite alternate;
+}
+
+/* Scanning beam animation */
+@keyframes scanBeam {
+  0% { top: 0%; opacity: 0.4; }
+  50% { opacity: 0.9; }
+  100% { top: 100%; opacity: 0.4; }
+}
+
+.scan-beam {
+  animation: scanBeam 2.2s ease-in-out infinite alternate;
+}
+
+/* Receipt paper tear effect */
+.receipt-tear {
+  background: radial-gradient(circle, transparent, transparent 4px, #ffffff 4px, #ffffff);
+  background-size: 16px 16px;
+  background-position: -8px -8px;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(163, 144, 124, 0.35);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(163, 144, 124, 0.6);
+}

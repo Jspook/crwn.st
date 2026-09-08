@@ -1,0 +1,56 @@
+<!-- Room Scanner / Selection Modal -->
+<div id="room-modal" class="fixed inset-0 bg-[#1F2421]/40 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+  <div class="w-full max-w-md glass-heavy rounded-3xl p-6 sm:p-8 shadow-2xl border border-white/60 relative animate-fade-in">
+    
+    <!-- Close button -->
+    <button onclick="closeRoomModal()" class="absolute top-5 right-5 p-2 rounded-full hover:bg-white/80 text-[#8A8177] hover:text-[#1F2421] transition">
+      <i data-lucide="x" class="w-5 h-5"></i>
+    </button>
+
+    <!-- Header -->
+    <div class="text-center mb-6">
+      <div class="w-14 h-14 rounded-2xl bg-[#E8DFD1]/70 mx-auto flex items-center justify-center text-[#1F2421] mb-3 shadow-xs">
+        <i data-lucide="door-open" class="w-7 h-7"></i>
+      </div>
+      <h3 class="font-serif text-2xl font-semibold text-[#1F2421]">เข้าห้องลองเสื้อ (Fitting Room)</h3>
+      <p class="text-xs text-[#8A8177] mt-1">สแกน QR Code หน้าห้องลอง หรือเลือกหมายเลขห้องที่คุณกำลังใช้งาน</p>
+    </div>
+
+    <!-- Quick Room Selection -->
+    <div class="space-y-3 mb-6">
+      <p class="text-xs font-semibold text-[#8A8177] uppercase tracking-wider">ห้องลองที่พร้อมให้บริการ</p>
+      
+      <div class="grid grid-cols-3 gap-3">
+        <button onclick="selectRoom('1')" class="p-4 rounded-2xl bg-white/70 hover:bg-white border border-[#A3907C]/25 hover:border-[#1F2421] transition text-center group shadow-xs">
+          <span class="block text-xs text-[#8A8177]">ห้อง</span>
+          <span class="block font-serif text-2xl font-bold text-[#1F2421] group-hover:scale-105 transition-transform">01</span>
+          <span class="inline-block mt-1 text-[10px] px-2 py-0.5 rounded-full bg-[#9BAF9F]/20 text-[#2D4533] font-medium">ว่าง</span>
+        </button>
+
+        <button onclick="selectRoom('2')" class="p-4 rounded-2xl bg-white/70 hover:bg-white border border-[#A3907C]/25 hover:border-[#1F2421] transition text-center group shadow-xs">
+          <span class="block text-xs text-[#8A8177]">ห้อง</span>
+          <span class="block font-serif text-2xl font-bold text-[#1F2421] group-hover:scale-105 transition-transform">02</span>
+          <span class="inline-block mt-1 text-[10px] px-2 py-0.5 rounded-full bg-[#C9A598]/20 text-[#6B3A2C] font-medium">ใช้งานอยู่</span>
+        </button>
+
+        <button onclick="selectRoom('3')" class="p-4 rounded-2xl bg-white/70 hover:bg-white border border-[#A3907C]/25 hover:border-[#1F2421] transition text-center group shadow-xs">
+          <span class="block text-xs text-[#8A8177]">ห้อง</span>
+          <span class="block font-serif text-2xl font-bold text-[#1F2421] group-hover:scale-105 transition-transform">03</span>
+          <span class="inline-block mt-1 text-[10px] px-2 py-0.5 rounded-full bg-[#9BAF9F]/20 text-[#2D4533] font-medium">ว่าง</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Manual Code Input -->
+    <div class="pt-4 border-t border-[#A3907C]/15">
+      <label for="manual-room-input" class="block text-xs font-semibold text-[#8A8177] uppercase tracking-wider mb-2">หรือกรอกรหัสห้องลอง</label>
+      <div class="flex gap-2">
+        <input type="text" id="manual-room-input" placeholder="เช่น 1, 2, 3 หรือ ROOM-1" class="flex-1 px-4 py-3 rounded-xl bg-white border border-[#A3907C]/30 text-sm focus:outline-none focus:border-[#1F2421]">
+        <button onclick="selectRoom(document.getElementById('manual-room-input').value.trim() || '1')" class="btn-primary text-xs px-5 py-3">
+          เข้าสู่ห้อง
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>

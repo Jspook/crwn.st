@@ -3,14 +3,19 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "dev": "node server.js",
+    "build": "node -e 'console.log(\"Build complete\")'",
+    "start": "node server.js",
     "lint": "eslint"
   },
   "dependencies": {
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "ejs": "^6.0.1",
+    "express": "^5.2.1",
     "framer-motion": "^13.1.1",
     "lucide-react": "^1.37.0",
+    "mysql2": "^3.24.4",
     "next": "16.3.3",
     "react": "19.2.8",
     "react-dom": "19.2.8"

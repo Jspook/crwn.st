@@ -1,0 +1,53 @@
+<header class="sticky top-0 z-30 w-full glass border-b border-[#A3907C]/15 transition-all">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+    
+    <!-- Left: Back button or Brand -->
+    <div class="flex items-center gap-3">
+      <% if (typeof backAction !== 'undefined' && backAction) { %>
+        <button onclick="<%= backAction %>" class="p-2 -ml-2 rounded-full hover:bg-white/60 text-[#1F2421] transition" title="ย้อนกลับ">
+          <i data-lucide="arrow-left" class="w-5 h-5"></i>
+        </button>
+      <% } else if (typeof backUrl !== 'undefined' && backUrl) { %>
+        <a href="<%= backUrl %>" class="p-2 -ml-2 rounded-full hover:bg-white/60 text-[#1F2421] transition" title="ย้อนกลับ">
+          <i data-lucide="arrow-left" class="w-5 h-5"></i>
+        </a>
+      <% } %>
+
+      <a href="<%= typeof user !== 'undefined' && user?.role === 'CUSTOMER' ? '/customer/dashboard' : (typeof user !== 'undefined' && (user?.role === 'CASHIER' || user?.role === 'FITTING_STAFF') ? '/staff' : '/') %>" class="flex items-center gap-2 group">
+        <span class="font-serif text-xl sm:text-2xl tracking-tight text-[#1F2421] font-semibold">crwn<span class="text-[#A3907C]">.st</span></span>
+      </a>
+    </div>
+
+    <!-- Right: Status / User & Cart / Logout -->
+    <div class="flex items-center gap-2 sm:gap-4">
+      <% if (typeof user !== 'undefined' && user) { %>
+        
+        <!-- Role/User badge -->
+        <div class="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/70 border border-[#A3907C]/20 text-xs">
+          <span class="w-2 h-2 rounded-full <%= user.role === 'CUSTOMER' ? 'bg-[#9BAF9F]' : 'bg-[#C9A598]' %>"></span>
+          <span class="font-medium text-[#1F2421]"><%= user.name %></span>
+          <span class="text-[10px] text-[#8A8177] uppercase">(<%= user.role === 'CUSTOMER' ? 'สมาชิก' : (user.role === 'CASHIER' ? 'แคชเชียร์' : 'พนักงานห้องลอง') %>)</span>
+        </div>
+
+        <!-- Cart trigger (for customer views) -->
+        <% if (user.role === 'CUSTOMER' || typeof showCart !== 'undefined') { %>
+          <button onclick="Cart.openDrawer()" class="relative p-2.5 rounded-full bg-white/80 border border-[#A3907C]/20 hover:bg-white transition text-[#1F2421] shadow-xs" title="ดูตะกร้าสินค้า">
+            <i data-lucide="shopping-bag" class="w-5 h-5"></i>
+            <span class="cart-badge absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[#1F2421] text-[#F5F2EB] text-[10px] font-bold items-center justify-center hidden shadow-sm">
+              0
+            </span>
+          </button>
+        <% } %>
+
+        <!-- Logout button -->
+        <button onclick="handleLogout()" class="p-2.5 rounded-full hover:bg-white/80 text-[#8A8177] hover:text-[#1F2421] transition" title="ออกจากระบบ">
+          <i data-lucide="log-out" class="w-5 h-5"></i>
+        </button>
+
+      <% } else { %>
+        <a href="/" class="btn-primary text-xs py-2 px-4">เข้าสู่ระบบ</a>
+      <% } %>
+    </div>
+
+  </div>
+</header>

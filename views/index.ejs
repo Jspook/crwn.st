@@ -1,0 +1,168 @@
+<%- include('partials/header', { title: 'เข้าสู่ระบบ — crwn.st' }) %>
+
+<main class="flex-1 flex items-center justify-center p-4 sm:p-6 py-12">
+  <div class="w-full max-w-md">
+    
+    <!-- Header -->
+    <div class="text-center mb-8">
+      <h1 class="font-serif text-4xl sm:text-5xl font-bold tracking-tight text-[#1F2421]">crwn<span class="text-[#A3907C]">.st</span></h1>
+      <div class="w-12 h-px bg-[#A3907C]/40 mx-auto mt-4"></div>
+    </div>
+
+    <!-- Auth Card -->
+    <div class="glass-heavy rounded-3xl p-6 sm:p-8 shadow-xl border border-white/70">
+      
+      <!-- Role Tabs -->
+      <div class="flex p-1 rounded-2xl bg-[#E8DFD1]/60 mb-6">
+        <button id="tab-customer" onclick="switchAuthTab('customer')" class="flex-1 py-2.5 rounded-xl font-medium text-xs sm:text-sm transition-all bg-[#1F2421] text-[#F5F2EB] shadow-xs flex items-center justify-center gap-1.5">
+          <i data-lucide="user" class="w-4 h-4"></i>
+          <span>ลูกค้า</span>
+        </button>
+        <button id="tab-staff" onclick="switchAuthTab('staff')" class="flex-1 py-2.5 rounded-xl font-medium text-xs sm:text-sm transition-all text-[#8A8177] hover:text-[#1F2421] flex items-center justify-center gap-1.5">
+          <i data-lucide="shield" class="w-4 h-4"></i>
+          <span>พนักงาน</span>
+        </button>
+      </div>
+
+      <!-- Customer Form -->
+      <form id="form-customer" onsubmit="handleCustomerLogin(event)" class="space-y-4">
+        <div>
+          <label for="customer-phone" class="block text-xs font-semibold text-[#8A8177] uppercase tracking-wider mb-2">เบอร์โทรศัพท์มือถือ</label>
+          <div class="relative">
+            <i data-lucide="phone" class="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-[#A3907C]"></i>
+            <input type="tel" id="customer-phone" value="0812345678" required placeholder="0812345678" class="w-full pl-11 pr-4 py-3.5 rounded-2xl bg-white border border-[#A3907C]/30 text-sm focus:outline-none focus:border-[#1F2421] text-[#1F2421] font-mono shadow-inner">
+          </div>
+          <p class="text-[11px] text-[#8A8177] mt-1.5">เบอร์ทดสอบ: <button type="button" onclick="document.getElementById('customer-phone').value='0812345678'" class="underline hover:text-[#1F2421]">0812345678 (Alice)</button></p>
+        </div>
+
+        <button type="submit" id="btn-login-customer" class="w-full btn-primary py-3.5 text-sm mt-2 shadow-md">
+          <span>เข้าสู่ระบบ</span>
+          <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </button>
+      </form>
+
+      <!-- Staff Form (Hidden initially) -->
+      <form id="form-staff" onsubmit="handleStaffLogin(event)" class="space-y-4 hidden">
+        <div>
+          <label for="staff-username" class="block text-xs font-semibold text-[#8A8177] uppercase tracking-wider mb-2">ชื่อผู้ใช้ (Username)</label>
+          <div class="relative">
+            <i data-lucide="user-check" class="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-[#A3907C]"></i>
+            <input type="text" id="staff-username" value="cashier" required placeholder="cashier หรือ fitting" class="w-full pl-11 pr-4 py-3.5 rounded-2xl bg-white border border-[#A3907C]/30 text-sm focus:outline-none focus:border-[#1F2421] text-[#1F2421]">
+          </div>
+        </div>
+
+        <div>
+          <label for="staff-password" class="block text-xs font-semibold text-[#8A8177] uppercase tracking-wider mb-2">รหัสผ่าน (Password)</label>
+          <div class="relative">
+            <i data-lucide="lock" class="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-[#A3907C]"></i>
+            <input type="password" id="staff-password" value="68070254" required placeholder="รหัสผ่าน" class="w-full pl-11 pr-4 py-3.5 rounded-2xl bg-white border border-[#A3907C]/30 text-sm focus:outline-none focus:border-[#1F2421] text-[#1F2421]">
+          </div>
+        </div>
+
+        <!-- Quick staff demo credentials -->
+        <div class="p-3 rounded-xl bg-white/60 border border-[#A3907C]/20 text-[11px] text-[#8A8177] space-y-1">
+          <div class="flex items-center justify-between">
+            <span>แคชเชียร์ (POS):</span>
+            <button type="button" onclick="setStaffCreds('cashier', '68070254')" class="font-mono text-[#1F2421] hover:underline">cashier / 68070254</button>
+          </div>
+          <div class="flex items-center justify-between">
+            <span>พนักงานห้องลอง:</span>
+            <button type="button" onclick="setStaffCreds('fitting', '68070056')" class="font-mono text-[#1F2421] hover:underline">fitting / 68070056</button>
+          </div>
+        </div>
+
+        <button type="submit" id="btn-login-staff" class="w-full btn-primary py-3.5 text-sm mt-2 shadow-md">
+          <span>เข้าสู่ระบบพนักงาน</span>
+          <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </button>
+      </form>
+
+      <div id="login-error" class="hidden mt-4 p-3 rounded-xl bg-red-50 text-red-700 text-xs border border-red-200"></div>
+
+    </div>
+
+  </div>
+</main>
+
+<script>
+  function switchAuthTab(tab) {
+    const tabCus = document.getElementById('tab-customer');
+    const tabStf = document.getElementById('tab-staff');
+    const formCus = document.getElementById('form-customer');
+    const formStf = document.getElementById('form-staff');
+    const err = document.getElementById('login-error');
+    err.classList.add('hidden');
+
+    if (tab === 'customer') {
+      tabCus.className = 'flex-1 py-2.5 rounded-xl font-medium text-xs sm:text-sm transition-all bg-[#1F2421] text-[#F5F2EB] shadow-xs flex items-center justify-center gap-1.5';
+      tabStf.className = 'flex-1 py-2.5 rounded-xl font-medium text-xs sm:text-sm transition-all text-[#8A8177] hover:text-[#1F2421] flex items-center justify-center gap-1.5';
+      formCus.classList.remove('hidden');
+      formStf.classList.add('hidden');
+    } else {
+      tabStf.className = 'flex-1 py-2.5 rounded-xl font-medium text-xs sm:text-sm transition-all bg-[#1F2421] text-[#F5F2EB] shadow-xs flex items-center justify-center gap-1.5';
+      tabCus.className = 'flex-1 py-2.5 rounded-xl font-medium text-xs sm:text-sm transition-all text-[#8A8177] hover:text-[#1F2421] flex items-center justify-center gap-1.5';
+      formStf.classList.remove('hidden');
+      formCus.classList.add('hidden');
+    }
+  }
+
+  function setStaffCreds(username, password) {
+    document.getElementById('staff-username').value = username;
+    document.getElementById('staff-password').value = password;
+  }
+
+  async function handleCustomerLogin(e) {
+    e.preventDefault();
+    const phone = document.getElementById('customer-phone').value.trim();
+    const btn = document.getElementById('btn-login-customer');
+    const err = document.getElementById('login-error');
+    err.classList.add('hidden');
+    btn.disabled = true;
+
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: 'CUSTOMER', phone })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'เข้าสู่ระบบไม่สำเร็จ');
+      window.location.href = '/customer/dashboard';
+    } catch (error) {
+      err.textContent = error.message;
+      err.classList.remove('hidden');
+      btn.disabled = false;
+    }
+  }
+
+  async function handleStaffLogin(e) {
+    e.preventDefault();
+    const username = document.getElementById('staff-username').value.trim();
+    const password = document.getElementById('staff-password').value.trim();
+    const btn = document.getElementById('btn-login-staff');
+    const err = document.getElementById('login-error');
+    err.classList.add('hidden');
+    btn.disabled = true;
+
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: 'STAFF', username, password })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
+      if (data.user.role === 'CASHIER') {
+        window.location.href = '/staff/cashier';
+      } else {
+        window.location.href = '/staff/fitting';
+      }
+    } catch (error) {
+      err.textContent = error.message;
+      err.classList.remove('hidden');
+      btn.disabled = false;
+    }
+  }
+</script>
+
+<%- include('partials/footer') %>

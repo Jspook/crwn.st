@@ -1,0 +1,380 @@
+<%- include('../partials/header', { title: 'POS Cashier — crwn.st' }) %>
+<%- include('../partials/navbar', { user, backUrl: '/staff' }) %>
+
+<main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
+
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <span class="text-xs uppercase tracking-widest text-[#A3907C] font-semibold">Point of Sale Terminal</span>
+      <h1 class="font-serif text-2xl sm:text-3xl font-bold text-[#1F2421]">ระบบแคชเชียร์หน้าร้าน (POS)</h1>
+    </div>
+    <div class="text-right text-xs text-[#8A8177]">
+      <span>แคชเชียร์: </span><span class="font-semibold text-[#1F2421]"><%= user.name %></span>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+    
+    <!-- Left Column: Barcode & Items Table (8 cols) -->
+    <div class="lg:col-span-8 space-y-4">
+      
+      <!-- Scan Barcode Box -->
+      <div class="glass-heavy rounded-2xl p-4 sm:p-5 border border-white/70 shadow-xs">
+        <label class="block text-xs font-semibold text-[#8A8177] uppercase tracking-wider mb-2">สแกนหรือพิมพ์บาร์โค้ดสินค้า (Scan Barcode / SKU)</label>
+        <div class="flex gap-2">
+          <div class="relative flex-1">
+            <i data-lucide="scan-barcode" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#A3907C]"></i>
+            <input type="text" id="pos-barcode-input" placeholder="ยิงบาร์โค้ด หรือพิมพ์ เช่น 8901234567891, 8901234567892..." class="w-full pl-10 pr-4 py-3 rounded-xl bg-white border border-[#A3907C]/30 text-sm font-mono focus:outline-none focus:border-[#1F2421]" onkeypress="if(event.key==='Enter') posScanItem()">
+          </div>
+          <button onclick="posScanItem()" class="btn-primary text-xs px-5 py-3">
+            เพิ่มสินค้า
+          </button>
+        </div>
+
+        <!-- Quick Sample Chips -->
+        <div class="flex flex-wrap gap-2 mt-3 text-[11px]">
+          <span class="text-[#8A8177] py-1">ตัวอย่างบาร์โค้ด:</span>
+          <button onclick="posAddByCode('8901234567891')" class="px-2 py-1 rounded-md bg-white/70 hover:bg-white border border-[#A3907C]/25 text-[#1F2421] font-mono">8901234567891 (Scarf)</button>
+          <button onclick="posAddByCode('8901234567892')" class="px-2 py-1 rounded-md bg-white/70 hover:bg-white border border-[#A3907C]/25 text-[#1F2421] font-mono">8901234567892 (Sweater)</button>
+          <button onclick="posAddByCode('8901234567893')" class="px-2 py-1 rounded-md bg-white/70 hover:bg-white border border-[#A3907C]/25 text-[#1F2421] font-mono">8901234567893 (Coat)</button>
+        </div>
+      </div>
+
+      <!-- Items Table -->
+      <div class="glass-heavy rounded-2xl p-5 border border-white/70 shadow-xs min-h-[360px] flex flex-col justify-between">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead>
+              <tr class="border-b border-[#A3907C]/20 text-[#8A8177] uppercase text-[10px] tracking-wider">
+                <th class="pb-3">สินค้า</th>
+                <th class="pb-3">ขนาด/สี</th>
+                <th class="pb-3 text-right">ราคา</th>
+                <th class="pb-3 text-center">จำนวน</th>
+                <th class="pb-3 text-right">รวม</th>
+                <th class="pb-3 text-center w-10">ลบ</th>
+              </tr>
+            </thead>
+            <tbody id="pos-table-body" class="divide-y divide-[#A3907C]/10">
+              <!-- Rendered by JS -->
+            </tbody>
+          </table>
+
+          <div id="pos-empty-state" class="py-16 text-center text-[#8A8177]">
+            <i data-lucide="shopping-cart" class="w-10 h-10 mx-auto text-[#A3907C]/50 mb-2"></i>
+            <p>ยังไม่มีรายการสินค้าในบิลนี้</p>
+            <p class="text-[11px] mt-0.5">กรุณาสแกนบาร์โค้ดเพื่อเริ่มต้นการขาย</p>
+          </div>
+        </div>
+
+        <div class="pt-4 border-t border-[#A3907C]/15 flex items-center justify-between">
+          <button onclick="posClearCart()" class="text-xs text-[#8A8177] hover:text-red-500 transition">
+            ล้างบิลทั้งหมด
+          </button>
+          <div class="text-xs text-[#8A8177]">
+            รวม <span id="pos-total-items" class="font-bold text-[#1F2421]">0</span> ชิ้น
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right Column: Member Lookup & Checkout (4 cols) -->
+    <div class="lg:col-span-4 space-y-4">
+      
+      <!-- Member Search Box -->
+      <div class="glass-heavy rounded-2xl p-4 sm:p-5 border border-white/70 shadow-xs">
+        <label class="block text-xs font-semibold text-[#8A8177] uppercase tracking-wider mb-2">ค้นหาสมาชิก (Member Search)</label>
+        <div class="flex gap-2">
+          <div class="relative flex-1">
+            <i data-lucide="phone" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#A3907C]"></i>
+            <input type="tel" id="pos-member-phone" placeholder="เบอร์โทรศัพท์ (เช่น 0812345678)" class="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white border border-[#A3907C]/30 text-xs font-mono focus:outline-none focus:border-[#1F2421]">
+          </div>
+          <button onclick="posLookupMember()" class="btn-secondary text-xs px-3.5 py-2.5">
+            ค้นหา
+          </button>
+        </div>
+
+        <div id="pos-member-info" class="mt-3 p-3 rounded-xl bg-white/70 border border-[#A3907C]/20 text-xs hidden">
+          <div class="flex justify-between items-center">
+            <div>
+              <span id="pos-member-name" class="font-semibold text-[#1F2421] block">Alice Customer</span>
+              <span id="pos-member-id" class="text-[10px] text-[#8A8177]">ID: u1</span>
+            </div>
+            <button onclick="posRemoveMember()" class="text-[10px] text-red-500 hover:underline">ยกเลิก</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Payment & Bill Summary Box -->
+      <div class="glass-heavy rounded-2xl p-5 border border-white/70 shadow-md space-y-4">
+        <h3 class="font-serif text-base font-semibold text-[#1F2421]">สรุปการชำระเงิน</h3>
+
+        <!-- Payment Method -->
+        <div>
+          <label class="block text-[11px] font-semibold text-[#8A8177] uppercase tracking-wider mb-2">วิธีชำระเงิน</label>
+          <div class="grid grid-cols-3 gap-2">
+            <button onclick="posSelectMethod('cash')" id="btn-method-cash" class="py-2 px-1 rounded-xl text-xs font-medium border-2 border-[#1F2421] bg-white text-[#1F2421] transition">
+              เงินสด
+            </button>
+            <button onclick="posSelectMethod('credit')" id="btn-method-credit" class="py-2 px-1 rounded-xl text-xs font-medium border border-[#A3907C]/30 bg-white/70 text-[#1F2421] transition">
+              บัตรเครดิต
+            </button>
+            <button onclick="posSelectMethod('qr')" id="btn-method-qr" class="py-2 px-1 rounded-xl text-xs font-medium border border-[#A3907C]/30 bg-white/70 text-[#1F2421] transition">
+              Thai QR
+            </button>
+          </div>
+        </div>
+
+        <!-- Cash Calculation Field (if cash selected) -->
+        <div id="pos-cash-container" class="space-y-2 p-3 rounded-xl bg-white/60 border border-[#A3907C]/20 text-xs">
+          <div class="flex items-center justify-between">
+            <span class="text-[#8A8177]">รับเงินสด:</span>
+            <input type="number" id="pos-cash-received" oninput="posCalcChange()" placeholder="0.00" class="w-28 px-2 py-1 rounded bg-white border border-[#A3907C]/30 text-right font-mono font-bold">
+          </div>
+          <div class="flex items-center justify-between text-[#1F2421] font-semibold pt-1 border-t border-[#A3907C]/10">
+            <span>เงินทอน:</span>
+            <span id="pos-cash-change" class="font-mono text-sm">฿0.00</span>
+          </div>
+        </div>
+
+        <!-- Summary Totals -->
+        <div class="pt-2 border-t border-[#A3907C]/15 space-y-1.5 text-xs">
+          <div class="flex justify-between text-[#8A8177]">
+            <span>ราคาสินค้ารวม</span>
+            <span id="pos-subtotal" class="font-mono text-[#1F2421]">฿0.00</span>
+          </div>
+          <div class="flex justify-between text-[#8A8177]">
+            <span>VAT 7%</span>
+            <span>รวมแล้ว</span>
+          </div>
+          <div class="flex justify-between text-base font-bold text-[#1F2421] pt-2 border-t border-[#A3907C]/15">
+            <span>ยอดชำระสุทธิ</span>
+            <span id="pos-total" class="font-serif text-2xl font-bold">฿0.00</span>
+          </div>
+        </div>
+
+        <!-- Checkout Button -->
+        <button onclick="posSubmitOrder()" id="pos-submit-btn" class="w-full btn-primary py-3.5 text-sm shadow-md" disabled>
+          <span>ชำระเงินและออกใบเสร็จ</span>
+          <i data-lucide="check" class="w-4 h-4"></i>
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</main>
+
+<script>
+  let posCart = [];
+  let currentMember = null;
+  let currentMethod = 'cash';
+
+  async function posScanItem() {
+    const input = document.getElementById('pos-barcode-input');
+    const code = (input.value || '').trim();
+    if (!code) return;
+    await posAddByCode(code);
+    input.value = '';
+    input.focus();
+  }
+
+  async function posAddByCode(code) {
+    try {
+      const res = await fetch(`/api/products/barcode/${encodeURIComponent(code)}`);
+      if (!res.ok) throw new Error('ไม่พบสินค้า');
+      const p = await res.json();
+      const v = (p.variants && p.variants[0]) || { sku: p.id + '-std', color: 'Standard', size: 'M' };
+
+      const existing = posCart.find(i => i.sku === v.sku);
+      if (existing) {
+        existing.quantity += 1;
+      } else {
+        posCart.push({
+          sku: v.sku,
+          productId: p.id,
+          name: p.name,
+          color: v.color || 'Standard',
+          size: v.size || 'M',
+          price: Number(p.price),
+          quantity: 1
+        });
+      }
+      posRenderCart();
+    } catch (e) {
+      alert('ไม่พบข้อมูลสินค้ารหัส ' + code);
+    }
+  }
+
+  function posUpdateQty(sku, delta) {
+    const idx = posCart.findIndex(i => i.sku === sku);
+    if (idx === -1) return;
+    posCart[idx].quantity += delta;
+    if (posCart[idx].quantity <= 0) {
+      posCart.splice(idx, 1);
+    }
+    posRenderCart();
+  }
+
+  function posRemoveItem(sku) {
+    posCart = posCart.filter(i => i.sku !== sku);
+    posRenderCart();
+  }
+
+  function posClearCart() {
+    posCart = [];
+    posRenderCart();
+  }
+
+  function posRenderCart() {
+    const tbody = document.getElementById('pos-table-body');
+    const empty = document.getElementById('pos-empty-state');
+    const itemsCount = document.getElementById('pos-total-items');
+    const subtotalEl = document.getElementById('pos-subtotal');
+    const totalEl = document.getElementById('pos-total');
+    const submitBtn = document.getElementById('pos-submit-btn');
+
+    if (posCart.length === 0) {
+      tbody.innerHTML = '';
+      empty.classList.remove('hidden');
+      itemsCount.textContent = '0';
+      subtotalEl.textContent = '฿0.00';
+      totalEl.textContent = '฿0.00';
+      submitBtn.disabled = true;
+      posCalcChange();
+      return;
+    }
+
+    empty.classList.add('hidden');
+    submitBtn.disabled = false;
+
+    let total = 0;
+    let count = 0;
+
+    tbody.innerHTML = posCart.map(i => {
+      const lineTotal = i.price * i.quantity;
+      total += lineTotal;
+      count += i.quantity;
+
+      return `
+        <tr class="hover:bg-white/40 transition">
+          <td class="py-3 font-medium text-[#1F2421]">${i.name}</td>
+          <td class="py-3 text-[#8A8177]">${i.size} / ${i.color}</td>
+          <td class="py-3 text-right font-mono">฿${i.price.toLocaleString()}</td>
+          <td class="py-3 text-center">
+            <div class="inline-flex items-center gap-1 border border-[#A3907C]/30 rounded-full px-2 py-0.5 bg-white">
+              <button onclick="posUpdateQty('${i.sku}', -1)" class="text-[#8A8177] hover:text-[#1F2421] px-1 font-bold">-</button>
+              <span class="px-1 font-semibold text-[#1F2421]">${i.quantity}</span>
+              <button onclick="posUpdateQty('${i.sku}', 1)" class="text-[#8A8177] hover:text-[#1F2421] px-1 font-bold">+</button>
+            </div>
+          </td>
+          <td class="py-3 text-right font-mono font-semibold text-[#1F2421]">฿${lineTotal.toLocaleString()}</td>
+          <td class="py-3 text-center">
+            <button onclick="posRemoveItem('${i.sku}')" class="text-[#8A8177] hover:text-red-500 p-1">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    itemsCount.textContent = count;
+    const formatted = '฿' + total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    subtotalEl.textContent = formatted;
+    totalEl.textContent = formatted;
+
+    posCalcChange();
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  function posSelectMethod(m) {
+    currentMethod = m;
+    const cashBox = document.getElementById('pos-cash-container');
+    const bCash = document.getElementById('btn-method-cash');
+    const bCredit = document.getElementById('btn-method-credit');
+    const bQr = document.getElementById('btn-method-qr');
+
+    [bCash, bCredit, bQr].forEach(b => {
+      b.className = 'py-2 px-1 rounded-xl text-xs font-medium border border-[#A3907C]/30 bg-white/70 text-[#1F2421] transition';
+    });
+
+    if (m === 'cash') {
+      bCash.className = 'py-2 px-1 rounded-xl text-xs font-medium border-2 border-[#1F2421] bg-white text-[#1F2421] transition';
+      cashBox.classList.remove('hidden');
+    } else if (m === 'credit') {
+      bCredit.className = 'py-2 px-1 rounded-xl text-xs font-medium border-2 border-[#1F2421] bg-white text-[#1F2421] transition';
+      cashBox.classList.add('hidden');
+    } else {
+      bQr.className = 'py-2 px-1 rounded-xl text-xs font-medium border-2 border-[#1F2421] bg-white text-[#1F2421] transition';
+      cashBox.classList.add('hidden');
+    }
+  }
+
+  function posCalcChange() {
+    const received = Number(document.getElementById('pos-cash-received')?.value || 0);
+    const total = posCart.reduce((s, i) => s + (i.price * i.quantity), 0);
+    const changeEl = document.getElementById('pos-cash-change');
+    if (!changeEl) return;
+    const change = Math.max(0, received - total);
+    changeEl.textContent = '฿' + change.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  async function posLookupMember() {
+    const phone = document.getElementById('pos-member-phone').value.trim();
+    if (!phone) return;
+    try {
+      const res = await fetch(`/api/users?phone=${encodeURIComponent(phone)}`);
+      const users = await res.json();
+      const found = users.find(u => u.phone === phone);
+      if (found) {
+        currentMember = found;
+        document.getElementById('pos-member-name').textContent = found.name;
+        document.getElementById('pos-member-id').textContent = `ID: ${found.id} (${found.phone})`;
+        document.getElementById('pos-member-info').classList.remove('hidden');
+      } else {
+        alert('ไม่พบข้อมูลสมาชิกเบอร์ ' + phone);
+      }
+    } catch {
+      alert('เกิดข้อผิดพลาดในการค้นหาสมาชิก');
+    }
+  }
+
+  function posRemoveMember() {
+    currentMember = null;
+    document.getElementById('pos-member-info').classList.add('hidden');
+    document.getElementById('pos-member-phone').value = '';
+  }
+
+  async function posSubmitOrder() {
+    if (posCart.length === 0) return;
+    const total = posCart.reduce((s, i) => s + (i.price * i.quantity), 0);
+
+    try {
+      const res = await fetch('/api/receipts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          memberId: currentMember ? currentMember.id : null,
+          paymentMethod: currentMethod,
+          channel: 'pos_cashier',
+          items: posCart,
+          total
+        })
+      });
+
+      if (!res.ok) throw new Error('ไม่สามารถทำรายการได้');
+      const order = await res.json();
+      window.location.href = `/customer/receipt/${order.id}`;
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('pos-barcode-input')?.focus();
+  });
+</script>
+
+<%- include('../partials/footer') %>
