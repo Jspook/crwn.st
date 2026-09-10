@@ -1,6 +1,6 @@
 [
   {
-    "roomId": "1",
+    "roomId": "2",
     "sku": "p1-s-red",
     "productName": "Ethereal Silk Dress",
     "size": "S",
@@ -11,7 +11,7 @@
     "updatedAt": "2026-08-30T03:34:24.619Z"
   },
   {
-    "roomId": "1",
+    "roomId": "2",
     "sku": "p2-m-cream",
     "productName": "Cashmere Oversized Knit",
     "size": "M",

@@ -66,15 +66,25 @@ router.get('/customer/fitting-room', requireCustomer, async (req, res) => {
       return res.redirect('/customer/dashboard?roomError=not_found');
     }
 
+    let activeSession = await get(
+      `SELECT * FROM FITTING_SESSION WHERE FTR_NUM = ? ORDER BY FTS_DateTime DESC LIMIT 1`,
+      [roomId]
+    );
+
     if (room.FTR_Status === 'occupied') {
-      const lastSession = await get(
-        `SELECT * FROM FITTING_SESSION WHERE FTR_NUM = ? ORDER BY FTS_DateTime DESC LIMIT 1`,
-        [roomId]
-      );
-      if (!lastSession || lastSession.CUS_ID !== req.user.id) {
+      if (!activeSession || activeSession.CUS_ID !== req.user.id) {
         // Room is currently in use by another customer or locked: redirect back to dashboard
         return res.redirect(`/customer/dashboard?roomOccupied=${roomId}`);
       }
+    } else {
+      // If room was available, mark occupied and create a fresh session for this customer
+      const newSessionId = `fts_${roomId}_${Date.now()}`;
+      await run(`UPDATE FITTING_ROOM SET FTR_Status = 'occupied' WHERE FTR_Num = ?`, [roomId]);
+      await run(
+        `INSERT INTO FITTING_SESSION (FTS_ID, FTR_NUM, CUS_ID, FTS_DateTime) VALUES (?, ?, ?, ?)`,
+        [newSessionId, roomId, req.user.id, new Date().toISOString()]
+      );
+      activeSession = { FTS_ID: newSessionId, FTR_NUM: roomId, CUS_ID: req.user.id };
     }
 
     const products = await query(`SELECT * FROM ITEM ORDER BY ITM_ID ASC`);
@@ -99,6 +109,7 @@ router.get('/customer/fitting-room', requireCustomer, async (req, res) => {
     res.render('customer/fitting-room', {
       user: req.user,
       roomId,
+      sessionId: activeSession ? activeSession.FTS_ID : '',
       products
     });
   } catch (err) {

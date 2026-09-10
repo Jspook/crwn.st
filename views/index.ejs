@@ -38,17 +38,28 @@
           <p class="text-[11px] text-[#8A8177] mt-1.5">ลูกค้ากรอกเบอร์โทรศัพท์ / พนักงานกรอกรหัสพนักงาน</p>
         </div>
 
-        <!-- Quick Demo Credentials Helper -->
-        <div class="p-3 rounded-2xl bg-white/70 border border-[#A3907C]/20 text-xs space-y-2">
-          <span class="text-[10px] font-bold text-[#8A8177] uppercase tracking-wider block">ข้อมูลทดสอบระบบ (คลิกเพื่อใส่ค่า):</span>
-          <div class="flex flex-wrap gap-1.5 text-[11px]">
-            <button type="button" onclick="setLoginIdentifier('0812345678')" class="px-2.5 py-1 rounded-lg bg-white border border-[#A3907C]/30 hover:border-[#1F2421] text-[#1F2421] font-medium transition shadow-2xs">
-              👤 ลูกค้า: <span class="font-mono font-bold">0812345678</span>
+        <div>
+          <label for="login-password" class="block text-xs font-semibold text-[#8A8177] uppercase tracking-wider mb-2">รหัสผ่าน (Password)</label>
+          <div class="relative">
+            <i data-lucide="lock" class="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-[#A3907C]"></i>
+            <input type="password" id="login-password" value="123456" required placeholder="กรอกรหัสผ่านของคุณ" class="w-full pl-11 pr-11 py-3.5 rounded-2xl bg-white border border-[#A3907C]/30 text-sm focus:outline-none focus:border-[#1F2421] text-[#1F2421] shadow-inner">
+            <button type="button" onclick="togglePasswordVisibility('login-password', 'login-eye-icon')" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#8A8177] hover:text-[#1F2421] p-1">
+              <i id="login-eye-icon" data-lucide="eye" class="w-4 h-4"></i>
             </button>
-            <button type="button" onclick="setLoginIdentifier('68070254')" class="px-2.5 py-1 rounded-lg bg-white border border-[#A3907C]/30 hover:border-[#1F2421] text-[#1F2421] font-medium transition shadow-2xs">
+          </div>
+        </div>
+
+        <!-- Quick Demo Credentials Helper -->
+        <div class="p-3.5 rounded-2xl bg-white/70 border border-[#A3907C]/20 text-xs space-y-2">
+          <span class="text-[10px] font-bold text-[#8A8177] uppercase tracking-wider block">ข้อมูลทดสอบระบบ (คลิกเพื่อใส่ค่าอัตโนมัติ):</span>
+          <div class="flex flex-wrap gap-1.5 text-[11px]">
+            <button type="button" onclick="setDemoUser('0812345678', '123456')" class="px-2.5 py-1 rounded-lg bg-white border border-[#A3907C]/30 hover:border-[#1F2421] text-[#1F2421] font-medium transition shadow-2xs">
+              👤 ลูกค้า: <span class="font-mono font-bold">0812345678</span> <span class="text-[10px] text-[#8A8177]">(pass: 123456)</span>
+            </button>
+            <button type="button" onclick="setDemoUser('68070254', '68070254')" class="px-2.5 py-1 rounded-lg bg-white border border-[#A3907C]/30 hover:border-[#1F2421] text-[#1F2421] font-medium transition shadow-2xs">
               💼 แคชเชียร์: <span class="font-mono font-bold">68070254</span>
             </button>
-            <button type="button" onclick="setLoginIdentifier('68070056')" class="px-2.5 py-1 rounded-lg bg-white border border-[#A3907C]/30 hover:border-[#1F2421] text-[#1F2421] font-medium transition shadow-2xs">
+            <button type="button" onclick="setDemoUser('68070056', '68070056')" class="px-2.5 py-1 rounded-lg bg-white border border-[#A3907C]/30 hover:border-[#1F2421] text-[#1F2421] font-medium transition shadow-2xs">
               🚪 ห้องลอง: <span class="font-mono font-bold">68070056</span>
             </button>
           </div>
@@ -95,6 +106,28 @@
           <div class="relative">
             <i data-lucide="mail" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#A3907C]"></i>
             <input type="email" id="reg-email" placeholder="example@crwn.st" class="w-full pl-10 pr-3.5 py-3 rounded-xl bg-white border border-[#A3907C]/30 text-xs sm:text-sm focus:outline-none focus:border-[#1F2421] text-[#1F2421]">
+          </div>
+        </div>
+
+        <div>
+          <label for="reg-password" class="block text-[11px] font-semibold text-[#8A8177] uppercase tracking-wider mb-1.5">รหัสผ่าน (Password) *</label>
+          <div class="relative">
+            <i data-lucide="lock" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#A3907C]"></i>
+            <input type="password" id="reg-password" required minlength="4" placeholder="กำหนดรหัสผ่านอย่างน้อย 4 ตัวอักษร" class="w-full pl-10 pr-10 py-3 rounded-xl bg-white border border-[#A3907C]/30 text-xs sm:text-sm focus:outline-none focus:border-[#1F2421] text-[#1F2421]">
+            <button type="button" onclick="togglePasswordVisibility('reg-password', 'reg-eye-icon-1')" class="absolute right-3 top-1/2 -translate-y-1/2 text-[#8A8177] hover:text-[#1F2421] p-1">
+              <i id="reg-eye-icon-1" data-lucide="eye" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label for="reg-password-confirm" class="block text-[11px] font-semibold text-[#8A8177] uppercase tracking-wider mb-1.5">ยืนยันรหัสผ่าน (Confirm Password) *</label>
+          <div class="relative">
+            <i data-lucide="shield-check" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#A3907C]"></i>
+            <input type="password" id="reg-password-confirm" required minlength="4" placeholder="พิมพ์รหัสผ่านอีกครั้ง" class="w-full pl-10 pr-10 py-3 rounded-xl bg-white border border-[#A3907C]/30 text-xs sm:text-sm focus:outline-none focus:border-[#1F2421] text-[#1F2421]">
+            <button type="button" onclick="togglePasswordVisibility('reg-password-confirm', 'reg-eye-icon-2')" class="absolute right-3 top-1/2 -translate-y-1/2 text-[#8A8177] hover:text-[#1F2421] p-1">
+              <i id="reg-eye-icon-2" data-lucide="eye" class="w-4 h-4"></i>
+            </button>
           </div>
         </div>
 
@@ -191,10 +224,30 @@
     }
   }
 
+  function togglePasswordVisibility(inputId, iconId) {
+    const input = document.getElementById(inputId);
+    const icon = document.getElementById(iconId);
+    if (!input) return;
+    if (input.type === 'password') {
+      input.type = 'text';
+      if (icon) icon.setAttribute('data-lucide', 'eye-off');
+    } else {
+      input.type = 'password';
+      if (icon) icon.setAttribute('data-lucide', 'eye');
+    }
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  function setDemoUser(identifier, pass) {
+    const idInput = document.getElementById('login-identifier');
+    const passInput = document.getElementById('login-password');
+    if (idInput) idInput.value = identifier;
+    if (passInput) passInput.value = pass || '123456';
+    if (idInput) idInput.focus();
+  }
+
   function setLoginIdentifier(val) {
-    const input = document.getElementById('login-identifier');
-    input.value = val;
-    input.focus();
+    setDemoUser(val, '123456');
   }
 
   function clearClientCartStorage() {
@@ -204,12 +257,23 @@
     } catch (e) {}
   }
 
-  // Unified Login (Single field for phone or staff code)
+  // Unified Login (Identifier + Password)
   async function handleUnifiedLogin(e) {
     e.preventDefault();
     hideAlerts();
     const identifier = document.getElementById('login-identifier').value.trim();
+    const password = document.getElementById('login-password').value.trim();
     const btn = document.getElementById('btn-login');
+
+    if (!identifier) {
+      showError('กรุณากรอกเบอร์โทรศัพท์ หรือรหัสพนักงาน');
+      return;
+    }
+    if (!password) {
+      showError('กรุณากรอกรหัสผ่าน');
+      return;
+    }
+
     btn.disabled = true;
 
     try {
@@ -219,7 +283,7 @@
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier })
+        body: JSON.stringify({ identifier, password })
       });
       const data = await res.json();
 
@@ -254,7 +318,19 @@
     const lastName = document.getElementById('reg-lastname').value.trim();
     const phone = document.getElementById('reg-phone').value.trim();
     const email = document.getElementById('reg-email').value.trim();
+    const password = document.getElementById('reg-password').value.trim();
+    const confirmPassword = document.getElementById('reg-password-confirm').value.trim();
     const btn = document.getElementById('btn-register-customer');
+
+    if (!password || password.length < 4) {
+      showError('กรุณากำหนดรหัสผ่านอย่างน้อย 4 ตัวอักษร');
+      return;
+    }
+    if (password !== confirmPassword) {
+      showError('รหัสผ่านและยืนยันรหัสผ่านไม่ตรงกัน กรุณาตรวจสอบอีกครั้ง');
+      return;
+    }
+
     btn.disabled = true;
 
     try {
@@ -263,7 +339,7 @@
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ firstName, lastName, phone, email })
+        body: JSON.stringify({ firstName, lastName, phone, email, password })
       });
       const data = await res.json();
 

@@ -174,6 +174,7 @@
 <script>
   const catalogData = <%- JSON.stringify(products) %>;
   const currentRoomId = '<%= roomId %>';
+  const currentSessionId = '<%= typeof sessionId !== "undefined" ? sessionId : "" %>';
   let sessionTriedItems = [];
 
   function filterCategory(cat) {
@@ -228,18 +229,20 @@
     openRequestModal(productPayload);
   }
 
-  // Poll orders status for this room
+  // Poll orders status for this room & session
   async function refreshOrdersStatus() {
     try {
-      const res = await fetch('/api/fitting-orders');
+      const url = currentSessionId 
+        ? `/api/fitting-orders?sessionId=${encodeURIComponent(currentSessionId)}` 
+        : `/api/fitting-orders?roomId=${encodeURIComponent(currentRoomId)}`;
+      const res = await fetch(url);
       if (!res.ok) return;
-      const allOrders = await res.json();
-      const roomOrders = allOrders.filter(o => String(o.roomId) === String(currentRoomId));
+      const roomOrders = await res.json();
 
       const banner = document.getElementById('live-requests-banner');
       const list = document.getElementById('live-requests-list');
 
-      if (roomOrders.length === 0) {
+      if (!roomOrders || roomOrders.length === 0) {
         banner.classList.add('hidden');
         return;
       }
@@ -274,22 +277,22 @@
   // ==========================================================
 
   async function confirmExitFittingRoom() {
-    // Collect tried items from localStorage
-    let items = getTriedFittingItems(currentRoomId);
-
-    // Also check orders from server to merge if needed
+    // Only check orders requested in THIS fitting session
+    let items = [];
     try {
-      const res = await fetch('/api/fitting-orders');
+      const url = currentSessionId 
+        ? `/api/fitting-orders?sessionId=${encodeURIComponent(currentSessionId)}` 
+        : `/api/fitting-orders?roomId=${encodeURIComponent(currentRoomId)}`;
+      const res = await fetch(url);
       if (res.ok) {
-        const allOrders = await res.json();
-        const roomOrders = allOrders.filter(o => String(o.roomId) === String(currentRoomId));
+        const roomOrders = await res.json();
         roomOrders.forEach(ro => {
           if (!items.some(i => i.sku === ro.sku)) {
-            const prod = catalogData.find(p => p.name === ro.productName);
+            const prod = catalogData.find(p => p.name === ro.productName || p.ITM_ID === ro.sku.split('-')[0]);
             items.push({
               sku: ro.sku,
-              productId: prod ? prod.ITM_ID : 'p1',
-              name: ro.productName || 'เสื้อผ้า',
+              productId: prod ? prod.ITM_ID : ro.sku.split('-')[0],
+              name: ro.productName || (prod ? prod.ITM_Name : 'เสื้อผ้า'),
               price: prod ? Number(prod.ITM_Price) : 2500,
               color: ro.color || 'Standard',
               size: ro.size || 'M',
@@ -305,7 +308,8 @@
 
     sessionTriedItems = items;
 
-    // If no items were tried, confirm direct exit
+    // If no items were requested to try in this session, exit directly without showing modal
+    // Pay & Go cart items remain isolated in Pay & Go cart
     if (sessionTriedItems.length === 0) {
       if (confirm('คุณต้องการออกจากห้องลองเสื้อ Room ' + currentRoomId + ' ใช่หรือไม่?')) {
         await releaseCurrentRoom();
@@ -314,7 +318,7 @@
       return;
     }
 
-    // Show Exit Modal with items list
+    // Show Exit Modal with items requested in this session
     renderExitItemsList();
     const modal = document.getElementById('exit-fitting-modal');
     modal.classList.remove('hidden');

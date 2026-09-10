@@ -1,22 +1,22 @@
 <!-- Cart Drawer Overlay -->
-<div id="cart-drawer-overlay" onclick="Cart.closeDrawer()" class="fixed inset-0 bg-[#1F2421]/30 backdrop-blur-xs z-40 hidden transition-opacity"></div>
+<div id="cart-drawer-overlay" onclick="Cart.closeDrawer()" class="fixed inset-0 bg-[#1F2421]/40 backdrop-blur-xs z-[80] hidden transition-opacity touch-none overscroll-none"></div>
 
 <!-- Cart Slide-over Drawer -->
-<div id="cart-drawer" class="fixed top-0 right-0 h-full w-full sm:w-[420px] glass-heavy border-l border-[#A3907C]/20 shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
+<div id="cart-drawer" class="fixed inset-y-0 right-0 h-screen h-[100dvh] max-h-[100dvh] w-full sm:w-[420px] bg-[#FAF8F5] border-l border-[#A3907C]/20 shadow-2xl z-[90] transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col overflow-hidden overscroll-contain">
   
   <!-- Header -->
-  <div class="p-5 border-b border-[#A3907C]/15 flex items-center justify-between">
+  <div class="flex-shrink-0 p-5 border-b border-[#A3907C]/15 flex items-center justify-between bg-[#FAF8F5]">
     <div class="flex items-center gap-2">
       <i data-lucide="shopping-bag" class="w-5 h-5 text-[#1F2421]"></i>
       <h3 class="font-serif text-lg font-semibold text-[#1F2421]">ตะกร้าของคุณ</h3>
     </div>
-    <button onclick="Cart.closeDrawer()" class="p-2 rounded-full hover:bg-white/80 text-[#8A8177] hover:text-[#1F2421] transition">
+    <button type="button" onclick="Cart.closeDrawer()" class="p-2 rounded-full hover:bg-black/5 text-[#8A8177] hover:text-[#1F2421] transition" title="ปิดตะกร้า">
       <i data-lucide="x" class="w-5 h-5"></i>
     </button>
   </div>
 
   <!-- Items list (Scrollable) -->
-  <div class="flex-1 overflow-y-auto p-5 space-y-3">
+  <div class="flex-1 min-h-0 overflow-y-auto overscroll-contain p-5 space-y-3">
     
     <!-- Empty State -->
     <div id="cart-empty-state" class="py-16 text-center">
@@ -32,19 +32,19 @@
 
   </div>
 
-  <!-- Footer with Total & Checkout -->
-  <div id="cart-drawer-footer" class="p-5 border-t border-[#A3907C]/15 glass-subtle space-y-4 hidden">
+  <!-- Footer with Total & Checkout (Firmly pinned to bottom, never pushed out of viewport) -->
+  <div id="cart-drawer-footer" class="flex-shrink-0 p-5 pb-8 sm:pb-6 border-t border-[#A3907C]/20 bg-[#F5F2EB] space-y-4 hidden shadow-[0_-4px_20px_rgba(0,0,0,0.06)] relative z-10">
     <div class="flex items-center justify-between text-sm">
-      <span class="text-[#8A8177]">ยอดรวมทั้งหมด</span>
+      <span class="text-[#8A8177] font-medium">ยอดรวมทั้งหมด</span>
       <span id="cart-total-amount" class="font-serif text-xl font-bold text-[#1F2421]">฿0.00</span>
     </div>
 
-    <div class="space-y-2">
-      <a href="/customer/checkout" class="w-full btn-primary py-3.5 text-center flex items-center justify-center gap-2 text-sm shadow-md">
+    <div class="space-y-2.5">
+      <a href="/customer/checkout" id="btn-cart-checkout" class="w-full btn-primary py-3.5 text-center flex items-center justify-center gap-2 text-sm shadow-md active:scale-[0.98] transition cursor-pointer relative z-20">
         <span>ดำเนินการชำระเงิน (Pay & Go)</span>
         <i data-lucide="arrow-right" class="w-4 h-4"></i>
       </a>
-      <button onclick="Cart.clear()" class="w-full py-2 text-center text-xs text-[#8A8177] hover:text-red-500 transition">
+      <button type="button" onclick="Cart.clear()" class="w-full py-2 text-center text-xs text-[#8A8177] hover:text-red-500 transition">
         ล้างตะกร้าสินค้า
       </button>
     </div>

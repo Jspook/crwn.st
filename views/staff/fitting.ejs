@@ -83,7 +83,12 @@
 </main>
 
 <script>
+  let lastKanbanSignature = '';
+  let lastRoomSignature = '';
+  let isActionInProgress = false;
+
   async function loadFittingOrders() {
+    if (isActionInProgress) return;
     try {
       const res = await fetch('/api/fitting-orders');
       if (!res.ok) return;
@@ -95,13 +100,27 @@
   }
 
   function renderKanban(orders) {
+    // Generate signature to detect if anything actually changed
+    const signature = orders.map(o => `${o.id}_${o.status}_${o.roomId}_${o.sku}_${o.staffName || ''}`).join('|');
+    if (signature === lastKanbanSignature) {
+      // Data unchanged: do not touch DOM, completely eliminates flickering and card jumping!
+      return;
+    }
+    lastKanbanSignature = signature;
+
     const colPending = document.getElementById('col-pending');
     const colPreparing = document.getElementById('col-preparing');
     const colComplete = document.getElementById('col-complete');
 
-    const pending = orders.filter(o => o.status === 'pending');
-    const preparing = orders.filter(o => o.status === 'preparing');
-    const complete = orders.filter(o => o.status === 'complete');
+    // Deterministic sorting
+    const pending = orders.filter(o => o.status === 'pending')
+      .sort((a, b) => (new Date(a.createdAt || 0) - new Date(b.createdAt || 0)) || String(a.id).localeCompare(String(b.id)));
+      
+    const preparing = orders.filter(o => o.status === 'preparing')
+      .sort((a, b) => (new Date(a.createdAt || 0) - new Date(b.createdAt || 0)) || String(a.id).localeCompare(String(b.id)));
+      
+    const complete = orders.filter(o => o.status === 'complete')
+      .sort((a, b) => (new Date(b.createdAt || 0) - new Date(a.createdAt || 0)) || String(b.id).localeCompare(String(a.id)));
 
     document.getElementById('count-pending').textContent = pending.length;
     document.getElementById('count-preparing').textContent = preparing.length;
@@ -128,20 +147,20 @@
     let actionBtn = '';
     if (status === 'pending') {
       actionBtn = `
-        <button onclick="updateOrderStatus('${o.id}', 'preparing')" class="w-full btn-primary text-xs py-2 shadow-xs">
+        <button id="btn-order-${o.id}" onclick="updateOrderStatus('${o.id}', 'preparing', this)" class="w-full btn-primary text-xs py-2 shadow-xs cursor-pointer active:scale-95 transition">
           <i data-lucide="play" class="w-3.5 h-3.5"></i> รับงานจัดเตรียม
         </button>
       `;
     } else if (status === 'preparing') {
       actionBtn = `
-        <button onclick="updateOrderStatus('${o.id}', 'complete')" class="w-full py-2 px-3 rounded-xl bg-[#9BAF9F] hover:bg-[#8AA08E] text-[#1F2421] text-xs font-semibold flex items-center justify-center gap-1.5 transition shadow-xs">
+        <button id="btn-order-${o.id}" onclick="updateOrderStatus('${o.id}', 'complete', this)" class="w-full py-2 px-3 rounded-xl bg-[#9BAF9F] hover:bg-[#8AA08E] text-[#1F2421] text-xs font-semibold flex items-center justify-center gap-1.5 transition shadow-xs cursor-pointer active:scale-95">
           <i data-lucide="check" class="w-3.5 h-3.5"></i> นำส่งที่ตู้เสื้อผ้าห้องลองแล้ว
         </button>
       `;
     }
 
     return `
-      <div class="p-4 rounded-2xl bg-white border border-[#A3907C]/20 shadow-xs space-y-3">
+      <div id="card-order-${o.id}" class="p-4 rounded-2xl bg-white border border-[#A3907C]/20 shadow-xs space-y-3 transition-all">
         <div class="flex items-center justify-between">
           <span class="px-2.5 py-1 rounded-lg bg-[#1F2421] text-[#F5F2EB] font-serif font-bold text-xs">
             ห้อง ${o.roomId || '1'}
@@ -163,20 +182,32 @@
     `;
   }
 
-  async function updateOrderStatus(id, status) {
+  async function updateOrderStatus(id, status, btnElement) {
+    if (btnElement) {
+      btnElement.disabled = true;
+      btnElement.innerHTML = `<span class="inline-block w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin"></span> กำลังบันทึก...`;
+    }
+    isActionInProgress = true;
+
     try {
       const res = await fetch(`/api/fitting-orders/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })
       });
+
       if (res.ok) {
-        loadFittingOrders();
+        lastKanbanSignature = ''; // Force refresh
+        await loadFittingOrders();
       } else {
         alert('เกิดข้อผิดพลาดในการปรับสถานะ');
+        if (btnElement) btnElement.disabled = false;
       }
     } catch (e) {
       alert(e.message);
+      if (btnElement) btnElement.disabled = false;
+    } finally {
+      isActionInProgress = false;
     }
   }
 
@@ -188,6 +219,12 @@
       const res = await fetch('/api/fitting-rooms');
       if (!res.ok) return;
       const rooms = await res.json();
+
+      const roomSig = rooms.map(r => `${r.FTR_Num}_${r.FTR_Status}_${r.occupantName || ''}`).join('|');
+      if (roomSig === lastRoomSignature) {
+        return; // Room status unchanged
+      }
+      lastRoomSignature = roomSig;
 
       grid.innerHTML = rooms.map(r => {
         const isOccupied = r.FTR_Status === 'occupied';
@@ -208,7 +245,7 @@
                   <p class="text-[11px] text-[#8A8177] truncate max-w-[130px]">${r.occupantName || 'กำลังลองชุด'}</p>
                 </div>
               </div>
-              <button onclick="releaseStaffRoom('${r.FTR_Num}')" class="text-xs py-1.5 px-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 transition font-medium">
+              <button onclick="releaseStaffRoom('${r.FTR_Num}')" class="text-xs py-1.5 px-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 transition font-medium cursor-pointer">
                 ปล่อยห้องว่าง
               </button>
             </div>
@@ -246,7 +283,10 @@
     try {
       const res = await fetch(`/api/fitting-rooms/${roomNum}/release`, { method: 'POST' });
       if (res.ok) {
+        lastRoomSignature = '';
+        lastKanbanSignature = '';
         await loadStaffRooms();
+        await loadFittingOrders();
       } else {
         alert('ไม่สามารถปล่อยห้องว่างได้');
       }

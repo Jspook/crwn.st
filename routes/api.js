@@ -149,7 +149,7 @@ router.get('/products/barcode/:code', async (req, res) => {
 });
 
 // ==========================================================
-// 2. CART (PAY_CART & PAY_CART_LINE)
+// 2. CART (PAY_CART & PAY_CART_ITEM)
 // ==========================================================
 
 // GET /api/cart
@@ -171,7 +171,7 @@ router.get('/cart', async (req, res) => {
 
     const lines = await query(
       `SELECT l.*, i.ITM_Name, i.ITM_Price, i.ITM_Image, v.ITV_Color, v.ITV_Size
-       FROM PAY_CART_LINE l
+       FROM PAY_CART_ITEM l
        JOIN ITEM_VARIANT v ON l.ITV_SKUID = v.ITV_SKUID
        JOIN ITEM i ON v.ITM_ID = i.ITM_ID
        WHERE l.PAY_CART_ID = ?`,
@@ -185,7 +185,7 @@ router.get('/cart', async (req, res) => {
       image: l.ITM_Image,
       color: l.ITV_Color,
       size: l.ITV_Size,
-      quantity: l.PAY_CART_LINE_Qty
+      quantity: l.QTY || 1
     }));
 
     res.json({ items });
@@ -208,14 +208,14 @@ router.post('/cart', async (req, res) => {
     const cartId = 'cart_' + cusId;
     await run(`INSERT OR IGNORE INTO PAY_CART (PAY_CART_ID, CUS_ID) VALUES (?, ?)`, [cartId, cusId]);
 
-    // Clear old lines
-    await run(`DELETE FROM PAY_CART_LINE WHERE PAY_CART_ID = ?`, [cartId]);
+    // Clear old items
+    await run(`DELETE FROM PAY_CART_ITEM WHERE PAY_CART_ID = ?`, [cartId]);
 
-    // Insert new lines
+    // Insert new items
     if (Array.isArray(items)) {
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
-        const lineId = `pline_${cartId}_${i}_${Date.now()}`;
+        const lineId = `pitem_${cartId}_${i}_${Date.now()}`;
         // Ensure SKU exists
         let sku = item.sku;
         const v = await get(`SELECT ITV_SKUID FROM ITEM_VARIANT WHERE ITV_SKUID = ?`, [sku]);
@@ -224,7 +224,7 @@ router.post('/cart', async (req, res) => {
           sku = firstV ? firstV.ITV_SKUID : 'p1-os-navy';
         }
         await run(
-          `INSERT OR IGNORE INTO PAY_CART_LINE (PAY_CART_LINE_ID, PAY_CART_ID, ITV_SKUID, PAY_CART_LINE_Qty) 
+          `INSERT OR IGNORE INTO PAY_CART_ITEM (PAY_ITEM_ID, PAY_CART_ID, ITV_SKUID, QTY) 
            VALUES (?, ?, ?, ?)`,
           [lineId, cartId, sku, item.quantity || 1]
         );
@@ -247,7 +247,7 @@ router.delete('/cart', async (req, res) => {
   const cusId = user.id;
   try {
     const cartId = 'cart_' + cusId;
-    await run(`DELETE FROM PAY_CART_LINE WHERE PAY_CART_ID = ?`, [cartId]);
+    await run(`DELETE FROM PAY_CART_ITEM WHERE PAY_CART_ID = ?`, [cartId]);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to clear cart' });
@@ -349,6 +349,17 @@ router.post('/fitting-rooms/:num/release', async (req, res) => {
   const num = String(req.params.num || '1').trim();
   try {
     await run(`UPDATE FITTING_ROOM SET FTR_Status = 'available' WHERE FTR_Num = ?`, [num]);
+    // Mark any active orders for this room's completed session as complete
+    const lastSession = await get(
+      `SELECT FTS_ID FROM FITTING_SESSION WHERE FTR_NUM = ? ORDER BY FTS_DateTime DESC LIMIT 1`,
+      [num]
+    );
+    if (lastSession) {
+      await run(
+        `UPDATE FITTING_ROOM_ORDER SET FTR_ORD_Status = 'complete' WHERE FTS_ID = ? AND FTR_ORD_Status != 'complete'`,
+        [lastSession.FTS_ID]
+      );
+    }
     res.json({ success: true, roomNum: num, status: 'available' });
   } catch (err) {
     console.error('Release room error:', err);
@@ -362,10 +373,11 @@ router.post('/fitting-rooms/:num/release', async (req, res) => {
 
 // GET /api/fitting-orders
 router.get('/fitting-orders', async (req, res) => {
+  const { roomId, sessionId } = req.query;
   try {
-    const orders = await query(
-      `SELECT o.FTR_ORD_ID as id, o.FTR_ORD_Status as status, o.FTR_ORD_DateTime as createdAt,
-              s.FTR_NUM as roomId, s.CUS_ID as memberId,
+    let sql = `
+      SELECT o.FTR_ORD_ID as id, o.FTR_ORD_Status as status, o.FTR_ORD_DateTime as createdAt,
+              s.FTR_NUM as roomId, s.CUS_ID as memberId, s.FTS_ID as sessionId,
               v.ITV_SKUID as sku, v.ITV_Size as size, v.ITV_Color as color,
               i.ITM_Name as productName, i.ITM_Image as image,
               e.EMP_FName as staffName
@@ -374,8 +386,31 @@ router.get('/fitting-orders', async (req, res) => {
        JOIN ITEM_VARIANT v ON o.ITV_SKUID = v.ITV_SKUID
        JOIN ITEM i ON v.ITM_ID = i.ITM_ID
        LEFT JOIN EMPLOYEE e ON o.EMP_ID = e.EMP_ID
-       ORDER BY o.FTR_ORD_DateTime DESC`
-    );
+    `;
+    const params = [];
+
+    if (sessionId) {
+      sql += ` WHERE o.FTS_ID = ? `;
+      params.push(sessionId);
+    } else if (roomId) {
+      sql += ` WHERE s.FTR_NUM = ? AND s.FTS_ID = (SELECT FTS_ID FROM FITTING_SESSION WHERE FTR_NUM = ? ORDER BY FTS_DateTime DESC LIMIT 1) `;
+      params.push(roomId, roomId);
+    }
+
+    // Deterministic sorting prevents cards jumping / flickering in staff kanban!
+    sql += `
+      ORDER BY 
+        CASE o.FTR_ORD_Status 
+          WHEN 'pending' THEN 1 
+          WHEN 'preparing' THEN 2 
+          WHEN 'complete' THEN 3 
+          ELSE 4 
+        END ASC,
+        o.FTR_ORD_DateTime ASC,
+        o.FTR_ORD_ID ASC
+    `;
+
+    const orders = await query(sql, params);
     res.json(orders);
   } catch (err) {
     console.error(err);
@@ -385,19 +420,25 @@ router.get('/fitting-orders', async (req, res) => {
 
 // POST /api/fitting-orders
 router.post('/fitting-orders', async (req, res) => {
-  const { roomId, sku, productName, size, color } = req.body;
+  const { roomId, sessionId: reqSessionId, sku, productName, size, color } = req.body;
   const user = getCurrentUser(req);
   const cusId = user && user.role === 'CUSTOMER' ? user.id : 'u1';
 
   try {
     const roomNum = String(roomId || '1');
     // Ensure session exists
-    let session = await get(`SELECT FTS_ID FROM FITTING_SESSION WHERE FTR_NUM = ? ORDER BY FTS_DateTime DESC LIMIT 1`, [roomNum]);
+    let session = null;
+    if (reqSessionId) {
+      session = await get(`SELECT FTS_ID FROM FITTING_SESSION WHERE FTS_ID = ?`, [reqSessionId]);
+    }
     if (!session) {
-      const sessionId = `fts_${roomNum}_${Date.now()}`;
+      session = await get(`SELECT FTS_ID FROM FITTING_SESSION WHERE FTR_NUM = ? ORDER BY FTS_DateTime DESC LIMIT 1`, [roomNum]);
+    }
+    if (!session) {
+      const newSessionId = `fts_${roomNum}_${Date.now()}`;
       await run(`INSERT INTO FITTING_SESSION (FTS_ID, FTR_NUM, CUS_ID, FTS_DateTime) VALUES (?, ?, ?, ?)`,
-        [sessionId, roomNum, cusId, new Date().toISOString()]);
-      session = { FTS_ID: sessionId };
+        [newSessionId, roomNum, cusId, new Date().toISOString()]);
+      session = { FTS_ID: newSessionId };
     }
 
     // Verify SKU exists in ITEM_VARIANT
@@ -414,12 +455,13 @@ router.post('/fitting-orders', async (req, res) => {
     await run(
       `INSERT INTO FITTING_ROOM_ORDER (FTR_ORD_ID, FTS_ID, ITV_SKUID, EMP_ID, FTR_ORD_Status, FTR_ORD_DateTime)
        VALUES (?, ?, ?, ?, ?, ?)`,
-      [orderId, session.FTS_ID, targetSku, 'f1', 'pending', now]
+      [orderId, session.FTS_ID, targetSku, '68070056', 'pending', now]
     );
 
     res.json({
       id: orderId,
       roomId: roomNum,
+      sessionId: session.FTS_ID,
       sku: targetSku,
       productName,
       size,
@@ -436,10 +478,16 @@ router.post('/fitting-orders', async (req, res) => {
 // PATCH /api/fitting-orders/:id
 router.patch('/fitting-orders/:id', async (req, res) => {
   const { id } = req.params;
-  const { status } = req.body; // 'pending', 'preparing', 'complete'
+  const { status, empId } = req.body; // 'pending', 'preparing', 'complete'
+  const user = getCurrentUser(req);
+  const staffId = empId || (user && user.role !== 'CUSTOMER' ? user.id : '68070056');
 
   try {
-    await run(`UPDATE FITTING_ROOM_ORDER SET FTR_ORD_Status = ? WHERE FTR_ORD_ID = ?`, [status, id]);
+    if (status === 'preparing') {
+      await run(`UPDATE FITTING_ROOM_ORDER SET FTR_ORD_Status = ?, EMP_ID = ? WHERE FTR_ORD_ID = ?`, [status, staffId, id]);
+    } else {
+      await run(`UPDATE FITTING_ROOM_ORDER SET FTR_ORD_Status = ? WHERE FTR_ORD_ID = ?`, [status, id]);
+    }
     res.json({ success: true, id, status });
   } catch (err) {
     res.status(500).json({ error: 'Failed to update order status' });

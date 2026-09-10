@@ -20,19 +20,23 @@ function getCurrentUser(req) {
 
 // POST /api/auth/register (Customer Registration)
 router.post('/register', async (req, res) => {
-  const { firstName, lastName, phone, email } = req.body;
+  const { firstName, lastName, phone, email, password } = req.body;
 
   try {
     const cleanPhone = (phone || '').trim().replace(/[-\s]/g, '');
     const cleanFName = (firstName || '').trim();
     const cleanLName = (lastName || '').trim();
     const cleanEmail = (email || '').trim() || `${cleanPhone}@crwn.st`;
+    const cleanPass = String(password || '').trim();
 
     if (!cleanPhone) {
       return res.status(400).json({ error: 'กรุณาระบุเบอร์โทรศัพท์' });
     }
     if (!cleanFName || !cleanLName) {
       return res.status(400).json({ error: 'กรุณาระบุชื่อและนามสกุล' });
+    }
+    if (!cleanPass || cleanPass.length < 4) {
+      return res.status(400).json({ error: 'กรุณากำหนดรหัสผ่านอย่างน้อย 4 ตัวอักษร' });
     }
 
     // Check if phone already registered
@@ -45,7 +49,7 @@ router.post('/register', async (req, res) => {
     await run(
       `INSERT INTO CUSTOMER (CUS_ID, CUS_FName, CUS_LName, CUS_Email, CUS_Tel, CUS_Pass) 
        VALUES (?, ?, ?, ?, ?, ?)`,
-      [newId, cleanFName, cleanLName, cleanEmail, cleanPhone, '123456']
+      [newId, cleanFName, cleanLName, cleanEmail, cleanPhone, cleanPass]
     );
 
     const customer = {
@@ -71,12 +75,16 @@ router.post('/register', async (req, res) => {
 
 // POST /api/auth/login
 router.post('/login', async (req, res) => {
-  const { role, phone, staffCode, username, password, identifier } = req.body;
+  const { phone, staffCode, username, password, identifier } = req.body;
   const input = String(identifier || phone || staffCode || username || '').trim();
+  const inputPass = String(password || '').trim();
 
   try {
     if (!input) {
       return res.status(400).json({ error: 'กรุณากรอกเบอร์โทรศัพท์ หรือรหัสพนักงาน' });
+    }
+    if (!inputPass) {
+      return res.status(400).json({ error: 'กรุณากรอกรหัสผ่าน' });
     }
 
     // 1. First, check if input matches an EMPLOYEE (EMP_ID or EMP_Pass / Staff Code)
@@ -88,6 +96,11 @@ router.post('/login', async (req, res) => {
     );
 
     if (employee) {
+      // Validate employee password (matches EMP_Pass or EMP_ID)
+      if (employee.staffCode !== inputPass && employee.id !== inputPass) {
+        return res.status(401).json({ error: 'รหัสผ่านพนักงานไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง' });
+      }
+
       const staffUser = {
         id: employee.id,
         name: employee.name,
@@ -108,20 +121,32 @@ router.post('/login', async (req, res) => {
     // 2. If not an employee, check if input matches a CUSTOMER (CUS_Tel or CUS_ID)
     const cleanPhone = input.replace(/[-\s]/g, '');
     const customer = await get(
-      `SELECT CUS_ID as id, (CUS_FName || ' ' || CUS_LName) as name, CUS_Tel as phone, 'CUSTOMER' as role 
+      `SELECT CUS_ID as id, (CUS_FName || ' ' || CUS_LName) as name, CUS_Tel as phone, CUS_Pass as password, 'CUSTOMER' as role 
        FROM CUSTOMER 
        WHERE CUS_Tel = ? OR CUS_ID = ?`,
       [cleanPhone, input]
     );
 
     if (customer) {
-      res.cookie('crwn_auth', JSON.stringify(customer), {
+      // Validate customer password
+      if (customer.password && customer.password !== inputPass) {
+        return res.status(401).json({ error: 'รหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบและลองใหม่อีกครั้ง' });
+      }
+
+      const customerUser = {
+        id: customer.id,
+        name: customer.name,
+        phone: customer.phone,
+        role: 'CUSTOMER'
+      };
+
+      res.cookie('crwn_auth', JSON.stringify(customerUser), {
         httpOnly: false,
         maxAge: 7 * 24 * 60 * 60 * 1000,
         path: '/'
       });
 
-      return res.json({ success: true, user: customer, redirectUrl: '/customer/dashboard' });
+      return res.json({ success: true, user: customerUser, redirectUrl: '/customer/dashboard' });
     }
 
     // 3. Neither found: return clear guidance

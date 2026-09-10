@@ -91,14 +91,14 @@
 
   <!-- Bottom Action: Fitting Room Button (Designed for mobile thumb reach) -->
   <div class="pt-4 pb-2">
-    <button onclick="openRoomModal()" class="w-full glass-heavy rounded-2xl p-4 border border-white/90 shadow-md hover:shadow-lg transition-all flex items-center justify-between group active:scale-[0.98]">
+    <button onclick="openRoomModal()" class="w-full glass-heavy rounded-2xl p-4 border border-white/90 shadow-md hover:shadow-lg transition-all flex items-center justify-between group active:scale-[0.98] cursor-pointer">
       <div class="flex items-center gap-3.5">
         <div class="w-12 h-12 rounded-xl bg-[#1F2421] text-[#F5F2EB] flex items-center justify-center group-hover:scale-105 transition-transform shadow-xs">
-          <i data-lucide="door-open" class="w-6 h-6"></i>
+          <i data-lucide="qr-code" class="w-6 h-6"></i>
         </div>
         <div class="text-left">
-          <span class="block text-xs font-serif font-bold text-[#1F2421]">เข้าห้องลองเสื้อ (Fitting Room)</span>
-          <span class="block text-[11px] text-[#8A8177]">สแกนหรือเลือกห้องลอง 1, 2, 3 เพื่อเริ่มลองชุด</span>
+          <span class="block text-xs font-serif font-bold text-[#1F2421]">สแกน QR Code เข้าห้องลอง (Fitting Room)</span>
+          <span class="block text-[11px] text-[#8A8177]">ส่องกล้องสแกน QR Code หน้าห้องลองที่ว่างเพื่อเริ่มลองชุด</span>
         </div>
       </div>
       <div class="w-8 h-8 rounded-full bg-white/80 flex items-center justify-center text-[#1F2421] group-hover:translate-x-1 transition-transform">
@@ -239,12 +239,12 @@
       const banner = document.getElementById('room-occupied-alert');
       const text = document.getElementById('room-occupied-text');
       if (banner && text) {
-        text.textContent = `ห้องลองหมายเลข ${roomOccupied} ล็อกอยู่และมีผู้ใช้งานในขณะนี้ ไม่สามารถเข้าได้ กรุณาเลือกห้องอื่นที่ว่าง`;
+        text.textContent = `ห้องลองหมายเลข ${roomOccupied} ล็อกอยู่และมีผู้ใช้งานในขณะนี้ ไม่สามารถเข้าได้ กรุณาสแกนห้องอื่นที่ว่าง`;
         banner.classList.remove('hidden');
       }
       setTimeout(() => {
         openRoomModal();
-        showRoomModalError(`ห้องลองหมายเลข ${roomOccupied} ล็อกอยู่และมีผู้ใช้งานในขณะนี้ ไม่สามารถเข้าได้ กรุณาเลือกห้องอื่นที่ว่าง`);
+        showRoomModalError(`ห้องลองหมายเลข ${roomOccupied} ล็อกอยู่และมีผู้ใช้งานในขณะนี้ ไม่สามารถเข้าได้ กรุณาสแกนห้องอื่นที่ว่าง`);
         window.history.replaceState(null, '', window.location.pathname);
       }, 200);
     }

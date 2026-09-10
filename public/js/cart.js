@@ -230,6 +230,8 @@ const Cart = {
     if (drawer) {
       drawer.classList.remove('translate-x-full');
       if (overlay) overlay.classList.remove('hidden');
+      document.body.classList.add('overflow-hidden');
+      document.documentElement.classList.add('overflow-hidden');
       this.updateUI();
     }
   },
@@ -240,6 +242,8 @@ const Cart = {
     if (drawer) {
       drawer.classList.add('translate-x-full');
       if (overlay) overlay.classList.add('hidden');
+      document.body.classList.remove('overflow-hidden');
+      document.documentElement.classList.remove('overflow-hidden');
     }
   },
 
@@ -265,6 +269,19 @@ Cart.loadFromStorage();
 
 document.addEventListener('DOMContentLoaded', () => {
   Cart.init();
+
+  // Handle escape key to close drawer and unlock scroll
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      Cart.closeDrawer();
+    }
+  });
+
+  // Restore scroll on page leave
+  window.addEventListener('beforeunload', () => {
+    document.body.classList.remove('overflow-hidden');
+    document.documentElement.classList.remove('overflow-hidden');
+  });
 });
 
 // Cross-tab / cross-window sync
