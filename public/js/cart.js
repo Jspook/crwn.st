@@ -6,51 +6,74 @@
 const Cart = {
   items: [],
 
+  getUserKey() {
+    try {
+      if (window.currentUser && window.currentUser.id) {
+        return window.currentUser.id;
+      }
+      const match = document.cookie.match(/crwn_auth=([^;]+)/);
+      if (match) {
+        const parsed = JSON.parse(decodeURIComponent(match[1]));
+        if (parsed && parsed.id) return parsed.id;
+      }
+    } catch (e) {}
+    return 'guest';
+  },
+
+  getStorageKey() {
+    return 'crwn_cart_' + this.getUserKey();
+  },
+
   loadFromStorage() {
     try {
-      const stored = localStorage.getItem('crwn_cart');
+      const key = this.getStorageKey();
+      const stored = localStorage.getItem(key);
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) {
           this.items = parsed;
+          return;
         }
       }
+      this.items = [];
     } catch (e) {
       console.warn('Failed to read cart from localStorage:', e);
+      this.items = [];
     }
   },
 
   saveToStorage() {
     try {
-      localStorage.setItem('crwn_cart', JSON.stringify(this.items));
+      const key = this.getStorageKey();
+      localStorage.setItem(key, JSON.stringify(this.items));
     } catch (e) {
       console.warn('Failed to save cart to localStorage:', e);
     }
   },
 
   async init() {
-    // 1. Synchronously load from localStorage immediately
+    // 1. Immediately load cart keyed specifically to this user (empty if brand-new user)
     this.loadFromStorage();
     this.updateUI();
 
-    // 2. If cart is empty locally, check if server has persisted cart for this user
-    if (this.items.length === 0) {
-      try {
-        const res = await fetch('/api/cart');
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data.items) && data.items.length > 0) {
+    // 2. Fetch server cart for the active user (server authoritative)
+    try {
+      const res = await fetch('/api/cart');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.items)) {
+          // If server has cart, use it; otherwise if user has local items for their key, sync them
+          if (data.items.length > 0) {
             this.items = data.items;
             this.saveToStorage();
             this.updateUI();
+          } else if (this.items.length > 0) {
+            this.syncBackend();
           }
         }
-      } catch (err) {
-        // Ignore background fetch error
       }
-    } else {
-      // Background sync local cart to server
-      this.syncBackend();
+    } catch (err) {
+      // Ignore background fetch error
     }
   },
 
@@ -112,6 +135,7 @@ const Cart = {
 
   async clear() {
     this.items = [];
+    localStorage.removeItem(this.getStorageKey());
     localStorage.removeItem('crwn_cart');
     this.updateUI();
     window.dispatchEvent(new CustomEvent('crwn:cart-updated', { detail: { items: [] } }));

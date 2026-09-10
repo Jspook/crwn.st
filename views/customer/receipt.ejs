@@ -1,5 +1,18 @@
 <%- include('../partials/header', { title: 'ใบเสร็จรับเงิน — crwn.st' }) %>
-<%- include('../partials/navbar', { user, backUrl: '/customer/dashboard' }) %>
+<% 
+  let homeUrl = '/customer/dashboard';
+  let homeLabel = 'กลับหน้าหลัก';
+  if (typeof user !== 'undefined' && user) {
+    if (user.role === 'CASHIER') {
+      homeUrl = '/staff/cashier';
+      homeLabel = 'กลับหน้าขาย (POS)';
+    } else if (user.role === 'FITTING_STAFF') {
+      homeUrl = '/staff/fitting';
+      homeLabel = 'กลับหน้าห้องลอง';
+    }
+  }
+%>
+<%- include('../partials/navbar', { user, backUrl: homeUrl }) %>
 
 <main class="flex-1 max-w-md w-full mx-auto px-4 py-6 flex flex-col items-center">
 
@@ -115,9 +128,9 @@
       <i data-lucide="printer" class="w-4 h-4"></i>
       <span>พิมพ์ใบเสร็จ / PDF</span>
     </button>
-    <a href="/customer/dashboard" class="flex-1 py-3 px-4 rounded-2xl bg-black text-white text-xs font-bold flex items-center justify-center gap-2 shadow-md active:scale-[0.98] transition text-center">
+    <a href="<%= homeUrl %>" class="flex-1 py-3 px-4 rounded-2xl bg-black text-white text-xs font-bold flex items-center justify-center gap-2 shadow-md active:scale-[0.98] transition text-center">
       <i data-lucide="home" class="w-4 h-4"></i>
-      <span>กลับหน้าหลัก</span>
+      <span><%= homeLabel %></span>
     </a>
   </div>
 

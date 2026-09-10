@@ -13,7 +13,16 @@
         </a>
       <% } %>
 
-      <a href="<%= typeof user !== 'undefined' && user?.role === 'CUSTOMER' ? '/customer/dashboard' : (typeof user !== 'undefined' && (user?.role === 'CASHIER' || user?.role === 'FITTING_STAFF') ? '/staff' : '/') %>" class="flex items-center gap-2 group">
+      <% 
+        let brandHomeUrl = '/';
+        if (typeof user !== 'undefined' && user) {
+          if (user.role === 'CUSTOMER') brandHomeUrl = '/customer/dashboard';
+          else if (user.role === 'CASHIER') brandHomeUrl = '/staff/cashier';
+          else if (user.role === 'FITTING_STAFF') brandHomeUrl = '/staff/fitting';
+          else brandHomeUrl = '/staff';
+        }
+      %>
+      <a href="<%= brandHomeUrl %>" class="flex items-center gap-2 group">
         <span class="font-serif text-xl sm:text-2xl tracking-tight text-[#1F2421] font-semibold">crwn<span class="text-[#A3907C]">.st</span></span>
       </a>
     </div>

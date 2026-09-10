@@ -129,7 +129,7 @@
         <div id="pos-cash-container" class="space-y-2 p-3 rounded-xl bg-white/60 border border-[#A3907C]/20 text-xs">
           <div class="flex items-center justify-between">
             <span class="text-[#8A8177]">รับเงินสด:</span>
-            <input type="number" id="pos-cash-received" oninput="posCalcChange()" placeholder="0.00" class="w-28 px-2 py-1 rounded bg-white border border-[#A3907C]/30 text-right font-mono font-bold">
+            <input type="number" id="pos-cash-received" min="0" step="any" onkeydown="if(event.key==='-'||event.key==='e'||event.key==='E'||event.key==='ArrowUp'||event.key==='ArrowDown')event.preventDefault()" oninput="posCalcChange()" placeholder="0.00" class="no-spin w-28 px-2 py-1 rounded bg-white border border-[#A3907C]/30 text-right font-mono font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
           </div>
           <div class="flex items-center justify-between text-[#1F2421] font-semibold pt-1 border-t border-[#A3907C]/10">
             <span>เงินทอน:</span>
@@ -313,11 +313,21 @@
   }
 
   function posCalcChange() {
-    const received = Number(document.getElementById('pos-cash-received')?.value || 0);
+    const input = document.getElementById('pos-cash-received');
+    if (!input) return;
+    let val = parseFloat(input.value);
+    if (isNaN(val) || val < 0) {
+      if (input.value.startsWith('-') || val < 0) {
+        input.value = '0';
+        val = 0;
+      } else {
+        val = 0;
+      }
+    }
     const total = posCart.reduce((s, i) => s + (i.price * i.quantity), 0);
     const changeEl = document.getElementById('pos-cash-change');
     if (!changeEl) return;
-    const change = Math.max(0, received - total);
+    const change = Math.max(0, val - total);
     changeEl.textContent = '฿' + change.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
@@ -376,5 +386,18 @@
     document.getElementById('pos-barcode-input')?.focus();
   });
 </script>
+
+<style>
+  /* Remove number input spinners in Webkit and Firefox */
+  input[type=number]::-webkit-inner-spin-button, 
+  input[type=number]::-webkit-outer-spin-button { 
+    -webkit-appearance: none !important; 
+    margin: 0 !important; 
+  }
+  input[type=number] {
+    -moz-appearance: textfield !important;
+    appearance: textfield !important;
+  }
+</style>
 
 <%- include('../partials/footer') %>

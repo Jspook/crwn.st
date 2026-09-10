@@ -12,7 +12,7 @@
     </div>
     
     <div class="flex items-center gap-3">
-      <button onclick="loadFittingOrders()" class="btn-secondary text-xs py-2 px-3.5 flex items-center gap-1.5">
+      <button onclick="refreshAllFittingData()" class="btn-secondary text-xs py-2 px-3.5 flex items-center gap-1.5">
         <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
         <span>รีเฟรช</span>
       </button>
@@ -20,6 +20,22 @@
         <span class="w-2 h-2 rounded-full bg-[#9BAF9F] animate-pulse"></span>
         <span>ซิงก์อัตโนมัติ</span>
       </span>
+    </div>
+  </div>
+
+  <!-- Real-time Fitting Rooms Status & Control Panel -->
+  <div class="glass-heavy rounded-2xl p-4 sm:p-5 mb-6 border border-white/80 shadow-sm">
+    <div class="flex items-center justify-between mb-3">
+      <div class="flex items-center gap-2">
+        <i data-lucide="door-open" class="w-4 h-4 text-[#A3907C]"></i>
+        <h2 class="text-xs font-semibold uppercase tracking-wider text-[#1F2421]">สถานะห้องลองเสื้อ (Fitting Rooms Occupancy)</h2>
+      </div>
+      <span class="text-[11px] text-[#8A8177]">ห้องที่ใช้งานอยู่จะไม่ให้ลูกค้าคนอื่นกดเข้า</span>
+    </div>
+
+    <div id="staff-rooms-grid" class="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+      <!-- Dynamic rooms populated by loadStaffRooms() -->
+      <div class="p-4 rounded-xl bg-white/60 border border-[#A3907C]/20 text-center animate-pulse text-xs text-[#8A8177]">กำลังโหลดสถานะห้องลอง...</div>
     </div>
   </div>
 
@@ -119,7 +135,7 @@
     } else if (status === 'preparing') {
       actionBtn = `
         <button onclick="updateOrderStatus('${o.id}', 'complete')" class="w-full py-2 px-3 rounded-xl bg-[#9BAF9F] hover:bg-[#8AA08E] text-[#1F2421] text-xs font-semibold flex items-center justify-center gap-1.5 transition shadow-xs">
-          <i data-lucide="check" class="w-3.5 h-3.5"></i> นำส่งหน้าห้องลองแล้ว
+          <i data-lucide="check" class="w-3.5 h-3.5"></i> นำส่งที่ตู้เสื้อผ้าห้องลองแล้ว
         </button>
       `;
     }
@@ -164,9 +180,89 @@
     }
   }
 
-  document.addEventListener('DOMContentLoaded', () => {
+  async function loadStaffRooms() {
+    const grid = document.getElementById('staff-rooms-grid');
+    if (!grid) return;
+
+    try {
+      const res = await fetch('/api/fitting-rooms');
+      if (!res.ok) return;
+      const rooms = await res.json();
+
+      grid.innerHTML = rooms.map(r => {
+        const isOccupied = r.FTR_Status === 'occupied';
+        const numDisplay = String(r.FTR_Num).padStart(2, '0');
+
+        if (isOccupied) {
+          return `
+            <div class="p-3.5 rounded-2xl bg-white border border-rose-200/80 shadow-xs flex items-center justify-between gap-3">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-rose-100 text-rose-800 flex items-center justify-center font-serif font-bold text-base">
+                  ${numDisplay}
+                </div>
+                <div>
+                  <div class="flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                    <span class="text-xs font-bold text-[#1F2421]">มีลูกค้าใช้งาน</span>
+                  </div>
+                  <p class="text-[11px] text-[#8A8177] truncate max-w-[130px]">${r.occupantName || 'กำลังลองชุด'}</p>
+                </div>
+              </div>
+              <button onclick="releaseStaffRoom('${r.FTR_Num}')" class="text-xs py-1.5 px-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 transition font-medium">
+                ปล่อยห้องว่าง
+              </button>
+            </div>
+          `;
+        } else {
+          return `
+            <div class="p-3.5 rounded-2xl bg-white border border-emerald-200/80 shadow-xs flex items-center justify-between gap-3">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-serif font-bold text-base">
+                  ${numDisplay}
+                </div>
+                <div>
+                  <div class="flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    <span class="text-xs font-bold text-[#1F2421]">ห้องว่าง (พร้อมใช้)</span>
+                  </div>
+                  <p class="text-[11px] text-[#8A8177]">ลูกค้ารายต่อไปเข้าได้</p>
+                </div>
+              </div>
+              <span class="text-[11px] font-medium text-emerald-700 px-2 py-1 bg-emerald-50 rounded-lg">Available</span>
+            </div>
+          `;
+        }
+      }).join('');
+
+      if (window.lucide) window.lucide.createIcons();
+    } catch (e) {
+      console.warn('Failed to load staff rooms:', e);
+    }
+  }
+
+  async function releaseStaffRoom(roomNum) {
+    if (!confirm(`ต้องการเคลียร์สถานะห้องลองหมายเลข ${roomNum} ให้กลับเป็น "ห้องว่าง" ใช่หรือไม่?`)) return;
+
+    try {
+      const res = await fetch(`/api/fitting-rooms/${roomNum}/release`, { method: 'POST' });
+      if (res.ok) {
+        await loadStaffRooms();
+      } else {
+        alert('ไม่สามารถปล่อยห้องว่างได้');
+      }
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  function refreshAllFittingData() {
     loadFittingOrders();
-    setInterval(loadFittingOrders, 4000);
+    loadStaffRooms();
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    refreshAllFittingData();
+    setInterval(refreshAllFittingData, 4000);
   });
 </script>
 

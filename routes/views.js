@@ -58,8 +58,25 @@ router.get('/customer/dashboard', requireCustomer, async (req, res) => {
 
 // GET /customer/fitting-room
 router.get('/customer/fitting-room', requireCustomer, async (req, res) => {
-  const roomId = req.query.roomId || '1';
+  const roomId = String(req.query.roomId || '1').trim();
   try {
+    // 1. Verify room status - check if occupied by someone else
+    const room = await get(`SELECT * FROM FITTING_ROOM WHERE FTR_Num = ?`, [roomId]);
+    if (!room) {
+      return res.redirect('/customer/dashboard?roomError=not_found');
+    }
+
+    if (room.FTR_Status === 'occupied') {
+      const lastSession = await get(
+        `SELECT * FROM FITTING_SESSION WHERE FTR_NUM = ? ORDER BY FTS_DateTime DESC LIMIT 1`,
+        [roomId]
+      );
+      if (!lastSession || lastSession.CUS_ID !== req.user.id) {
+        // Room is currently in use by another customer or locked: redirect back to dashboard
+        return res.redirect(`/customer/dashboard?roomOccupied=${roomId}`);
+      }
+    }
+
     const products = await query(`SELECT * FROM ITEM ORDER BY ITM_ID ASC`);
     const variants = await query(`SELECT * FROM ITEM_VARIANT`);
 

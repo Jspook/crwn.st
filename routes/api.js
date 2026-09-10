@@ -155,7 +155,10 @@ router.get('/products/barcode/:code', async (req, res) => {
 // GET /api/cart
 router.get('/cart', async (req, res) => {
   const user = getCurrentUser(req);
-  const cusId = user && user.role === 'CUSTOMER' ? user.id : 'u1';
+  if (!user || user.role !== 'CUSTOMER') {
+    return res.json({ items: [] });
+  }
+  const cusId = user.id;
 
   try {
     // Check or create cart in PAY_CART table
@@ -195,7 +198,10 @@ router.get('/cart', async (req, res) => {
 // POST /api/cart
 router.post('/cart', async (req, res) => {
   const user = getCurrentUser(req);
-  const cusId = user && user.role === 'CUSTOMER' ? user.id : 'u1';
+  if (!user || user.role !== 'CUSTOMER') {
+    return res.json({ success: true, message: 'Cart not stored for non-customer' });
+  }
+  const cusId = user.id;
   const { items } = req.body;
 
   try {
@@ -235,7 +241,10 @@ router.post('/cart', async (req, res) => {
 // DELETE /api/cart
 router.delete('/cart', async (req, res) => {
   const user = getCurrentUser(req);
-  const cusId = user && user.role === 'CUSTOMER' ? user.id : 'u1';
+  if (!user || user.role !== 'CUSTOMER') {
+    return res.json({ success: true });
+  }
+  const cusId = user.id;
   try {
     const cartId = 'cart_' + cusId;
     await run(`DELETE FROM PAY_CART_LINE WHERE PAY_CART_ID = ?`, [cartId]);
@@ -252,8 +261,37 @@ router.delete('/cart', async (req, res) => {
 // GET /api/fitting-rooms
 router.get('/fitting-rooms', async (req, res) => {
   try {
-    const rooms = await query(`SELECT * FROM FITTING_ROOM`);
-    res.json(rooms);
+    const rooms = await query(`SELECT * FROM FITTING_ROOM ORDER BY FTR_Num ASC`);
+    const user = getCurrentUser(req);
+    const cusId = user && user.role === 'CUSTOMER' ? user.id : null;
+
+    const enhanced = await Promise.all(rooms.map(async (r) => {
+      let isMySession = false;
+      let occupantName = null;
+      if (r.FTR_Status === 'occupied') {
+        const lastSession = await get(
+          `SELECT s.*, c.CUS_FName, c.CUS_LName 
+           FROM FITTING_SESSION s 
+           LEFT JOIN CUSTOMER c ON s.CUS_ID = c.CUS_ID 
+           WHERE s.FTR_NUM = ? 
+           ORDER BY s.FTS_DateTime DESC LIMIT 1`,
+          [r.FTR_Num]
+        );
+        if (lastSession) {
+          occupantName = lastSession.CUS_FName ? `${lastSession.CUS_FName} ${lastSession.CUS_LName || ''}`.trim() : 'ลูกค้า';
+          if (cusId && lastSession.CUS_ID === cusId) {
+            isMySession = true;
+          }
+        }
+      }
+      return {
+        ...r,
+        occupantName,
+        isMySession
+      };
+    }));
+
+    res.json(enhanced);
   } catch (err) {
     res.status(500).json({ error: 'Failed to load fitting rooms' });
   }
@@ -264,16 +302,36 @@ router.post('/fitting-sessions', async (req, res) => {
   const { roomNum } = req.body;
   const user = getCurrentUser(req);
   const cusId = user && user.role === 'CUSTOMER' ? user.id : 'u1';
-  const num = String(roomNum || '1');
+  const num = String(roomNum || '1').trim();
 
   try {
+    // 1. Check if room exists
+    const room = await get(`SELECT * FROM FITTING_ROOM WHERE FTR_Num = ?`, [num]);
+    if (!room) {
+      return res.status(404).json({ error: `ไม่พบห้องลองหมายเลข ${num}` });
+    }
+
+    // 2. Check if room is already occupied
+    if (room.FTR_Status === 'occupied') {
+      const lastSession = await get(
+        `SELECT * FROM FITTING_SESSION WHERE FTR_NUM = ? ORDER BY FTS_DateTime DESC LIMIT 1`,
+        [num]
+      );
+      // Strictly prevent entering an occupied/locked room!
+      if (!lastSession || lastSession.CUS_ID !== cusId) {
+        return res.status(409).json({ 
+          error: `ห้องลองหมายเลข ${num} ล็อกอยู่และกำลังมีผู้ใช้งานในขณะนี้ ไม่สามารถเข้าได้ กรุณาเลือกห้องที่ว่าง` 
+        });
+      }
+      // If customer is returning to their own active session
+      return res.json({ sessionId: lastSession.FTS_ID, roomNum: num, status: 'occupied', reentered: true });
+    }
+
+    // 3. Mark room occupied and create session
     const sessionId = `fts_${num}_${Date.now()}`;
     const now = new Date().toISOString();
 
-    // Mark room occupied
     await run(`UPDATE FITTING_ROOM SET FTR_Status = 'occupied' WHERE FTR_Num = ?`, [num]);
-
-    // Create session
     await run(
       `INSERT INTO FITTING_SESSION (FTS_ID, FTR_NUM, CUS_ID, FTS_DateTime) VALUES (?, ?, ?, ?)`,
       [sessionId, num, cusId, now]
@@ -281,8 +339,20 @@ router.post('/fitting-sessions', async (req, res) => {
 
     res.json({ sessionId, roomNum: num, status: 'occupied' });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to start fitting session' });
+    console.error('Fitting session error:', err);
+    res.status(500).json({ error: 'เกิดข้อผิดพลาดในการเข้าห้องลองเสื้อ' });
+  }
+});
+
+// POST /api/fitting-rooms/:num/release (Exit/Release Room)
+router.post('/fitting-rooms/:num/release', async (req, res) => {
+  const num = String(req.params.num || '1').trim();
+  try {
+    await run(`UPDATE FITTING_ROOM SET FTR_Status = 'available' WHERE FTR_Num = ?`, [num]);
+    res.json({ success: true, roomNum: num, status: 'available' });
+  } catch (err) {
+    console.error('Release room error:', err);
+    res.status(500).json({ error: 'Failed to release fitting room' });
   }
 });
 

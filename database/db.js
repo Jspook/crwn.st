@@ -157,6 +157,16 @@ async function initDb() {
       await seedDatabase();
       console.log('✅ Database seeded successfully!');
     }
+
+    // Ensure requested staff IDs exist in EMPLOYEE table
+    await run(
+      `INSERT OR REPLACE INTO EMPLOYEE (EMP_ID, EMP_FName, EMP_LName, EMP_Tel, EMP_Email, EMP_Pass, EMP_Role) 
+       VALUES ('68070254', 'แคชเชียร์', '(POS)', '0891234567', 'cashier@crwn.st', '68070254', 'CASHIER')`
+    );
+    await run(
+      `INSERT OR REPLACE INTO EMPLOYEE (EMP_ID, EMP_FName, EMP_LName, EMP_Tel, EMP_Email, EMP_Pass, EMP_Role) 
+       VALUES ('68070056', 'พนักงาน', 'ห้องลอง', '0891234567', 'fitting@crwn.st', '68070056', 'FITTING_STAFF')`
+    );
   } catch (err) {
     console.error('Error during database initialization:', err);
   }

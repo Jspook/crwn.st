@@ -98,7 +98,7 @@ async function seedDatabase() {
   const now = new Date().toISOString();
   await run(
     `INSERT OR IGNORE INTO FITTING_SESSION (FTS_ID, FTR_NUM, CUS_ID, FTS_DateTime) VALUES (?, ?, ?, ?)`,
-    ['fts_demo_01', '2', 'u1', now]
+    ['fts_demo_01', '2', 'u2', now]
   );
 
   // Pay Cart for customer u1

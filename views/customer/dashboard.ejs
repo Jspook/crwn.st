@@ -11,6 +11,17 @@
     <p class="text-xs text-[#8A8177] mt-1">ส่องกล้องไปที่ป้ายบาร์โค้ดสินค้าเพื่อเพิ่มลงในตะกร้า</p>
   </div>
 
+  <!-- Occupied / Locked Room Warning Banner (shown if redirected) -->
+  <div id="room-occupied-alert" class="hidden mb-4 p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center justify-between shadow-xs">
+    <div class="flex items-center gap-2">
+      <i data-lucide="lock" class="w-4 h-4 text-rose-600 flex-shrink-0"></i>
+      <span id="room-occupied-text" class="font-medium">ห้องลองนี้ล็อกอยู่และกำลังมีผู้ใช้งาน ไม่สามารถเข้าใช้งานได้</span>
+    </div>
+    <button type="button" onclick="document.getElementById('room-occupied-alert').classList.add('hidden')" class="p-1 text-rose-600 hover:text-rose-800">
+      <i data-lucide="x" class="w-3.5 h-3.5"></i>
+    </button>
+  </div>
+
   <!-- Central Mobile Barcode Scanner Box -->
   <div class="w-full flex-1 flex flex-col justify-center my-auto space-y-4">
     
@@ -219,6 +230,25 @@
     resultBox.classList.add('hidden');
     document.getElementById('dash-barcode-input').value = '';
   }
+
+  // Handle room occupied alert from query params
+  document.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    const roomOccupied = params.get('roomOccupied');
+    if (roomOccupied) {
+      const banner = document.getElementById('room-occupied-alert');
+      const text = document.getElementById('room-occupied-text');
+      if (banner && text) {
+        text.textContent = `ห้องลองหมายเลข ${roomOccupied} ล็อกอยู่และมีผู้ใช้งานในขณะนี้ ไม่สามารถเข้าได้ กรุณาเลือกห้องอื่นที่ว่าง`;
+        banner.classList.remove('hidden');
+      }
+      setTimeout(() => {
+        openRoomModal();
+        showRoomModalError(`ห้องลองหมายเลข ${roomOccupied} ล็อกอยู่และมีผู้ใช้งานในขณะนี้ ไม่สามารถเข้าได้ กรุณาเลือกห้องอื่นที่ว่าง`);
+        window.history.replaceState(null, '', window.location.pathname);
+      }, 200);
+    }
+  });
 
   // Cleanup camera when leaving page
   window.addEventListener('beforeunload', () => {
