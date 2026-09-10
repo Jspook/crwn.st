@@ -4,6 +4,17 @@
 
 async function handleLogout() {
   try {
+    if (window.Cart && typeof window.Cart.clear === 'function') {
+      try { await window.Cart.clear(); } catch (e) {}
+    }
+    try {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i);
+        if (k && (k.startsWith('crwn_cart') || k.startsWith('crwn_fitting'))) {
+          localStorage.removeItem(k);
+        }
+      }
+    } catch (e) {}
     await fetch('/api/auth/logout', { method: 'POST' });
   } catch (e) {
     console.error(e);
@@ -348,8 +359,17 @@ async function submitItemRequest(roomId) {
   const color = document.querySelector('input[name="req-color"]:checked')?.value || 'Standard';
 
   const variants = currentRequestProduct.variants || [];
-  const matchedVariant = variants.find(v => v.size === size && v.color === color) || variants[0];
+  let matchedVariant = variants.find(v => v.size === size && v.color === color);
+  if (!matchedVariant) {
+    matchedVariant = variants.find(v => v.size === size) || variants.find(v => v.color === color) || variants[0];
+  }
   const sku = matchedVariant ? matchedVariant.sku : `${currentRequestProduct.id}-${size.toLowerCase()}-${color.toLowerCase()}`;
+
+  const submitBtn = document.querySelector('#request-modal button.btn-primary');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = `<span class="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></span> กำลังส่งคำขอ...`;
+  }
 
   try {
     const res = await fetch('/api/fitting-orders', {
@@ -357,7 +377,7 @@ async function submitItemRequest(roomId) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         roomId: roomId || '1',
-        sessionId: typeof currentSessionId !== 'undefined' ? currentSessionId : undefined,
+        sessionId: typeof currentSessionId !== 'undefined' ? currentSessionId : (window.currentSessionId || undefined),
         sku,
         productName: currentRequestProduct.name,
         size,
@@ -366,9 +386,14 @@ async function submitItemRequest(roomId) {
     });
 
     if (res.ok) {
+      const newOrder = await res.json();
+      if (newOrder && newOrder.sessionId) {
+        window.currentSessionId = newOrder.sessionId;
+      }
+
       // Record item as tried during this session
       recordTriedFittingItem(roomId, {
-        sku,
+        sku: newOrder?.sku || sku,
         productId: currentRequestProduct.id,
         name: currentRequestProduct.name,
         price: Number(currentRequestProduct.price),
@@ -379,13 +404,32 @@ async function submitItemRequest(roomId) {
       });
 
       closeRequestModal();
-      Cart.showToast(`ส่งคำขอ "${currentRequestProduct.name} (${size}/${color})" ถึงพนักงานแล้ว`);
-      if (typeof refreshOrdersStatus === 'function') refreshOrdersStatus();
+      Cart.showToast(`ส่งคำขอ "${currentRequestProduct.name} (${size}/${color})" ถึงพนักงานเรียบร้อยแล้ว`);
+      
+      if (typeof window.addOptimisticFittingOrder === 'function') {
+        window.addOptimisticFittingOrder(newOrder || {
+          id: 'fo_' + Date.now(),
+          productName: currentRequestProduct.name,
+          size,
+          color,
+          image: currentRequestProduct.image,
+          status: 'pending'
+        });
+      }
+      if (typeof refreshOrdersStatus === 'function') {
+        setTimeout(refreshOrdersStatus, 300);
+      }
     } else {
       alert('ไม่สามารถส่งคำขอได้ กรุณาลองใหม่อีกครั้ง');
     }
   } catch (err) {
-    console.error(err);
+    console.error('Submit item request error:', err);
     alert('เกิดข้อผิดพลาดในการส่งคำขอ');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = `<i data-lucide="send" class="w-4 h-4"></i> ส่งคำขอถึงพนักงาน`;
+      if (window.lucide) window.lucide.createIcons();
+    }
   }
 }

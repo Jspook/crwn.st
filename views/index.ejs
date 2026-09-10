@@ -33,7 +33,7 @@
           <label for="login-identifier" class="block text-xs font-semibold text-[#8A8177] uppercase tracking-wider mb-2">เบอร์โทรศัพท์ หรือ รหัสพนักงาน</label>
           <div class="relative">
             <i data-lucide="user-check" class="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-[#A3907C]"></i>
-            <input type="text" id="login-identifier" value="0812345678" required placeholder="เช่น 0812345678 หรือ 68070254" class="w-full pl-11 pr-4 py-3.5 rounded-2xl bg-white border border-[#A3907C]/30 text-sm focus:outline-none focus:border-[#1F2421] text-[#1F2421] font-mono shadow-inner tracking-wide">
+            <input type="text" id="login-identifier" required placeholder="เช่น 0812345678 หรือ 68070254" class="w-full pl-11 pr-4 py-3.5 rounded-2xl bg-white border border-[#A3907C]/30 text-sm focus:outline-none focus:border-[#1F2421] text-[#1F2421] font-mono shadow-inner tracking-wide">
           </div>
           <p class="text-[11px] text-[#8A8177] mt-1.5">ลูกค้ากรอกเบอร์โทรศัพท์ / พนักงานกรอกรหัสพนักงาน</p>
         </div>
@@ -42,25 +42,9 @@
           <label for="login-password" class="block text-xs font-semibold text-[#8A8177] uppercase tracking-wider mb-2">รหัสผ่าน (Password)</label>
           <div class="relative">
             <i data-lucide="lock" class="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-[#A3907C]"></i>
-            <input type="password" id="login-password" value="123456" required placeholder="กรอกรหัสผ่านของคุณ" class="w-full pl-11 pr-11 py-3.5 rounded-2xl bg-white border border-[#A3907C]/30 text-sm focus:outline-none focus:border-[#1F2421] text-[#1F2421] shadow-inner">
+            <input type="password" id="login-password" required placeholder="กรอกรหัสผ่านของคุณ" class="w-full pl-11 pr-11 py-3.5 rounded-2xl bg-white border border-[#A3907C]/30 text-sm focus:outline-none focus:border-[#1F2421] text-[#1F2421] shadow-inner">
             <button type="button" onclick="togglePasswordVisibility('login-password', 'login-eye-icon')" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#8A8177] hover:text-[#1F2421] p-1">
               <i id="login-eye-icon" data-lucide="eye" class="w-4 h-4"></i>
-            </button>
-          </div>
-        </div>
-
-        <!-- Quick Demo Credentials Helper -->
-        <div class="p-3.5 rounded-2xl bg-white/70 border border-[#A3907C]/20 text-xs space-y-2">
-          <span class="text-[10px] font-bold text-[#8A8177] uppercase tracking-wider block">ข้อมูลทดสอบระบบ (คลิกเพื่อใส่ค่าอัตโนมัติ):</span>
-          <div class="flex flex-wrap gap-1.5 text-[11px]">
-            <button type="button" onclick="setDemoUser('0812345678', '123456')" class="px-2.5 py-1 rounded-lg bg-white border border-[#A3907C]/30 hover:border-[#1F2421] text-[#1F2421] font-medium transition shadow-2xs">
-              👤 ลูกค้า: <span class="font-mono font-bold">0812345678</span> <span class="text-[10px] text-[#8A8177]">(pass: 123456)</span>
-            </button>
-            <button type="button" onclick="setDemoUser('68070254', '68070254')" class="px-2.5 py-1 rounded-lg bg-white border border-[#A3907C]/30 hover:border-[#1F2421] text-[#1F2421] font-medium transition shadow-2xs">
-              💼 แคชเชียร์: <span class="font-mono font-bold">68070254</span>
-            </button>
-            <button type="button" onclick="setDemoUser('68070056', '68070056')" class="px-2.5 py-1 rounded-lg bg-white border border-[#A3907C]/30 hover:border-[#1F2421] text-[#1F2421] font-medium transition shadow-2xs">
-              🚪 ห้องลอง: <span class="font-mono font-bold">68070056</span>
             </button>
           </div>
         </div>
@@ -238,22 +222,17 @@
     if (window.lucide) window.lucide.createIcons();
   }
 
-  function setDemoUser(identifier, pass) {
-    const idInput = document.getElementById('login-identifier');
-    const passInput = document.getElementById('login-password');
-    if (idInput) idInput.value = identifier;
-    if (passInput) passInput.value = pass || '123456';
-    if (idInput) idInput.focus();
-  }
-
-  function setLoginIdentifier(val) {
-    setDemoUser(val, '123456');
-  }
-
   function clearClientCartStorage() {
     try {
-      localStorage.removeItem('crwn_cart');
-      localStorage.removeItem('crwn_cart_guest');
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('crwn_cart') || key.startsWith('crwn_fitting'))) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(k => localStorage.removeItem(k));
+      sessionStorage.removeItem('crwn_cart');
     } catch (e) {}
   }
 
@@ -277,7 +256,7 @@
     btn.disabled = true;
 
     try {
-      // Clear previous local cart cache so users never share cart items
+      // Clear previous local cart cache so every login starts with a fresh empty cart
       clearClientCartStorage();
 
       const res = await fetch('/api/auth/login', {
@@ -299,6 +278,9 @@
         btn.disabled = false;
         return;
       }
+
+      // Ensure all cart storage for any user key is completely purged upon login
+      clearClientCartStorage();
 
       showSuccess(`ยินดีต้อนรับคุณ ${data.user.name}`);
       setTimeout(() => {
@@ -348,6 +330,9 @@
         btn.disabled = false;
         return;
       }
+
+      // Ensure all cart storage is reset upon registration/first login
+      clearClientCartStorage();
 
       showSuccess('สมัครสมาชิกสำเร็จ! กำลังนำคุณเข้าสู่ระบบ...');
       setTimeout(() => {

@@ -376,44 +376,59 @@ router.get('/fitting-orders', async (req, res) => {
   const { roomId, sessionId } = req.query;
   try {
     let sql = `
-      SELECT o.FTR_ORD_ID as id, o.FTR_ORD_Status as status, o.FTR_ORD_DateTime as createdAt,
-              s.FTR_NUM as roomId, s.CUS_ID as memberId, s.FTS_ID as sessionId,
-              v.ITV_SKUID as sku, v.ITV_Size as size, v.ITV_Color as color,
-              i.ITM_Name as productName, i.ITM_Image as image,
-              e.EMP_FName as staffName
+      SELECT o.FTR_ORD_ID as id,
+             LOWER(TRIM(o.FTR_ORD_Status)) as status,
+             o.FTR_ORD_DateTime as createdAt,
+             s.FTR_NUM as roomId,
+             s.CUS_ID as memberId,
+             s.FTS_ID as sessionId,
+             o.ITV_SKUID as sku,
+             COALESCE(v.ITV_Size, '-') as size,
+             COALESCE(v.ITV_Color, '-') as color,
+             COALESCE(i.ITM_Name, 'เสื้อผ้าสำหรับลอง') as productName,
+             COALESCE(i.ITM_Image, '') as image,
+             COALESCE(i.ITM_Price, 0) as price,
+             e.EMP_FName as staffName
        FROM FITTING_ROOM_ORDER o
        JOIN FITTING_SESSION s ON o.FTS_ID = s.FTS_ID
-       JOIN ITEM_VARIANT v ON o.ITV_SKUID = v.ITV_SKUID
-       JOIN ITEM i ON v.ITM_ID = i.ITM_ID
+       LEFT JOIN ITEM_VARIANT v ON o.ITV_SKUID = v.ITV_SKUID
+       LEFT JOIN ITEM i ON v.ITM_ID = i.ITM_ID
        LEFT JOIN EMPLOYEE e ON o.EMP_ID = e.EMP_ID
     `;
     const params = [];
 
-    if (sessionId) {
+    if (sessionId && roomId) {
+      sql += ` WHERE (o.FTS_ID = ? OR s.FTR_NUM = ?) `;
+      params.push(sessionId, roomId);
+    } else if (sessionId) {
       sql += ` WHERE o.FTS_ID = ? `;
       params.push(sessionId);
     } else if (roomId) {
-      sql += ` WHERE s.FTR_NUM = ? AND s.FTS_ID = (SELECT FTS_ID FROM FITTING_SESSION WHERE FTR_NUM = ? ORDER BY FTS_DateTime DESC LIMIT 1) `;
+      sql += ` WHERE s.FTR_NUM = ? AND (
+        s.FTS_ID = (SELECT FTS_ID FROM FITTING_SESSION WHERE FTR_NUM = ? ORDER BY FTS_DateTime DESC LIMIT 1)
+        OR LOWER(TRIM(o.FTR_ORD_Status)) IN ('pending', 'preparing', 'complete')
+      ) `;
       params.push(roomId, roomId);
     }
 
-    // Deterministic sorting prevents cards jumping / flickering in staff kanban!
+    // Deterministic sorting: Pending first, Preparing second, Complete last
+    // Within each status, newest orders first
     sql += `
       ORDER BY 
-        CASE o.FTR_ORD_Status 
+        CASE LOWER(TRIM(o.FTR_ORD_Status)) 
           WHEN 'pending' THEN 1 
           WHEN 'preparing' THEN 2 
           WHEN 'complete' THEN 3 
           ELSE 4 
         END ASC,
-        o.FTR_ORD_DateTime ASC,
-        o.FTR_ORD_ID ASC
+        o.FTR_ORD_DateTime DESC,
+        o.FTR_ORD_ID DESC
     `;
 
     const orders = await query(sql, params);
     res.json(orders);
   } catch (err) {
-    console.error(err);
+    console.error('Error fetching fitting orders:', err);
     res.status(500).json({ error: 'Failed to fetch fitting orders' });
   }
 });
@@ -441,12 +456,26 @@ router.post('/fitting-orders', async (req, res) => {
       session = { FTS_ID: newSessionId };
     }
 
-    // Verify SKU exists in ITEM_VARIANT
+    // Verify SKU exists in ITEM_VARIANT; if not, find best variant for this product
     let targetSku = sku;
     const variant = await get(`SELECT ITV_SKUID FROM ITEM_VARIANT WHERE ITV_SKUID = ?`, [targetSku]);
     if (!variant) {
-      const fallback = await get(`SELECT ITV_SKUID FROM ITEM_VARIANT LIMIT 1`);
-      targetSku = fallback ? fallback.ITV_SKUID : 'p1-os-navy';
+      let prodFallback = null;
+      if (sku && sku.includes('-')) {
+        const prodId = sku.split('-')[0];
+        prodFallback = await get(`SELECT ITV_SKUID FROM ITEM_VARIANT WHERE ITM_ID = ? LIMIT 1`, [prodId]);
+      }
+      if (!prodFallback && productName) {
+        prodFallback = await get(`
+          SELECT v.ITV_SKUID FROM ITEM_VARIANT v 
+          JOIN ITEM i ON v.ITM_ID = i.ITM_ID 
+          WHERE i.ITM_Name LIKE ? LIMIT 1
+        `, [`%${productName}%`]);
+      }
+      if (!prodFallback) {
+        prodFallback = await get(`SELECT ITV_SKUID FROM ITEM_VARIANT LIMIT 1`);
+      }
+      targetSku = prodFallback ? prodFallback.ITV_SKUID : 'p1-os-navy';
     }
 
     const orderId = 'fo_' + Date.now();
@@ -458,19 +487,39 @@ router.post('/fitting-orders', async (req, res) => {
       [orderId, session.FTS_ID, targetSku, '68070056', 'pending', now]
     );
 
-    res.json({
+    // Retrieve rich details for newly created order
+    const created = await get(`
+      SELECT o.FTR_ORD_ID as id,
+             LOWER(TRIM(o.FTR_ORD_Status)) as status,
+             o.FTR_ORD_DateTime as createdAt,
+             s.FTR_NUM as roomId,
+             s.FTS_ID as sessionId,
+             o.ITV_SKUID as sku,
+             COALESCE(v.ITV_Size, ?) as size,
+             COALESCE(v.ITV_Color, ?) as color,
+             COALESCE(i.ITM_Name, ?) as productName,
+             COALESCE(i.ITM_Image, '') as image,
+             COALESCE(i.ITM_Price, 0) as price
+       FROM FITTING_ROOM_ORDER o
+       JOIN FITTING_SESSION s ON o.FTS_ID = s.FTS_ID
+       LEFT JOIN ITEM_VARIANT v ON o.ITV_SKUID = v.ITV_SKUID
+       LEFT JOIN ITEM i ON v.ITM_ID = i.ITM_ID
+       WHERE o.FTR_ORD_ID = ?
+    `, [size || '-', color || '-', productName || 'เสื้อผ้าสำหรับลอง', orderId]);
+
+    res.json(created || {
       id: orderId,
       roomId: roomNum,
       sessionId: session.FTS_ID,
       sku: targetSku,
-      productName,
-      size,
-      color,
+      productName: productName || 'เสื้อผ้าสำหรับลอง',
+      size: size || '-',
+      color: color || '-',
       status: 'pending',
       createdAt: now
     });
   } catch (err) {
-    console.error(err);
+    console.error('Create fitting order error:', err);
     res.status(500).json({ error: 'Failed to create fitting order' });
   }
 });
@@ -482,14 +531,26 @@ router.patch('/fitting-orders/:id', async (req, res) => {
   const user = getCurrentUser(req);
   const staffId = empId || (user && user.role !== 'CUSTOMER' ? user.id : '68070056');
 
+  const cleanStatus = String(status || '').trim().toLowerCase();
+  if (!['pending', 'preparing', 'complete'].includes(cleanStatus)) {
+    return res.status(400).json({ error: 'สถานะไม่ถูกต้อง (Invalid status)' });
+  }
+
   try {
-    if (status === 'preparing') {
-      await run(`UPDATE FITTING_ROOM_ORDER SET FTR_ORD_Status = ?, EMP_ID = ? WHERE FTR_ORD_ID = ?`, [status, staffId, id]);
+    if (cleanStatus === 'preparing') {
+      await run(
+        `UPDATE FITTING_ROOM_ORDER SET FTR_ORD_Status = ?, EMP_ID = ? WHERE FTR_ORD_ID = ?`,
+        [cleanStatus, staffId, id]
+      );
     } else {
-      await run(`UPDATE FITTING_ROOM_ORDER SET FTR_ORD_Status = ? WHERE FTR_ORD_ID = ?`, [status, id]);
+      await run(
+        `UPDATE FITTING_ROOM_ORDER SET FTR_ORD_Status = ? WHERE FTR_ORD_ID = ?`,
+        [cleanStatus, id]
+      );
     }
-    res.json({ success: true, id, status });
+    res.json({ success: true, id, status: cleanStatus });
   } catch (err) {
+    console.error('Update fitting order error:', err);
     res.status(500).json({ error: 'Failed to update order status' });
   }
 });

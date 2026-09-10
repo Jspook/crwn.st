@@ -52,6 +52,11 @@ router.post('/register', async (req, res) => {
       [newId, cleanFName, cleanLName, cleanEmail, cleanPhone, cleanPass]
     );
 
+    // Ensure new customer cart is reset/empty
+    const newCartId = 'cart_' + newId;
+    await run(`DELETE FROM PAY_CART_ITEM WHERE PAY_CART_ID = ?`, [newCartId]).catch(() => {});
+    await run(`DELETE FROM PAY_CART_LINE WHERE PAY_CART_ID = ?`, [newCartId]).catch(() => {});
+
     const customer = {
       id: newId,
       name: `${cleanFName} ${cleanLName}`,
@@ -133,6 +138,11 @@ router.post('/login', async (req, res) => {
         return res.status(401).json({ error: 'รหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบและลองใหม่อีกครั้ง' });
       }
 
+      // Always reset and empty shopping cart on customer login so cart is fresh & empty
+      const cartId = 'cart_' + customer.id;
+      await run(`DELETE FROM PAY_CART_ITEM WHERE PAY_CART_ID = ?`, [cartId]).catch(() => {});
+      await run(`DELETE FROM PAY_CART_LINE WHERE PAY_CART_ID = ?`, [cartId]).catch(() => {});
+
       const customerUser = {
         id: customer.id,
         name: customer.name,
@@ -162,7 +172,17 @@ router.post('/login', async (req, res) => {
 });
 
 // POST /api/auth/logout
-router.post('/logout', (req, res) => {
+router.post('/logout', async (req, res) => {
+  try {
+    const user = getCurrentUser(req);
+    if (user && user.role === 'CUSTOMER') {
+      const cartId = 'cart_' + user.id;
+      await run(`DELETE FROM PAY_CART_ITEM WHERE PAY_CART_ID = ?`, [cartId]).catch(() => {});
+      await run(`DELETE FROM PAY_CART_LINE WHERE PAY_CART_ID = ?`, [cartId]).catch(() => {});
+    }
+  } catch (e) {
+    console.warn('Cart cleanup on logout failed:', e);
+  }
   res.clearCookie('crwn_auth', { path: '/' });
   res.json({ success: true });
 });

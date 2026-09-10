@@ -52,7 +52,7 @@ const Cart = {
   },
 
   async init() {
-    // 1. Immediately load cart keyed specifically to this user (empty if brand-new user)
+    // 1. Immediately load cart keyed specifically to this user
     this.loadFromStorage();
     this.updateUI();
 
@@ -62,14 +62,10 @@ const Cart = {
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data.items)) {
-          // If server has cart, use it; otherwise if user has local items for their key, sync them
-          if (data.items.length > 0) {
-            this.items = data.items;
-            this.saveToStorage();
-            this.updateUI();
-          } else if (this.items.length > 0) {
-            this.syncBackend();
-          }
+          // Server cart is authoritative: on fresh login or after checkout/reset, empty items take precedence
+          this.items = data.items;
+          this.saveToStorage();
+          this.updateUI();
         }
       }
     } catch (err) {
@@ -137,6 +133,14 @@ const Cart = {
     this.items = [];
     localStorage.removeItem(this.getStorageKey());
     localStorage.removeItem('crwn_cart');
+    try {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i);
+        if (k && (k.startsWith('crwn_cart') || k.startsWith('crwn_fitting'))) {
+          localStorage.removeItem(k);
+        }
+      }
+    } catch (e) {}
     this.updateUI();
     window.dispatchEvent(new CustomEvent('crwn:cart-updated', { detail: { items: [] } }));
     try {
