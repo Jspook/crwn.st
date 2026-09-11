@@ -5,6 +5,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const bcrypt = require('bcryptjs');
 
 async function seedDatabase() {
   const { run, query } = require('./db');
@@ -33,17 +34,19 @@ async function seedDatabase() {
         const parts = (u.name || 'Customer').split(' ');
         const fName = parts[0] || 'Customer';
         const lName = parts.slice(1).join(' ') || 'User';
+        const hashedPass = bcrypt.hashSync('123456', 10);
         await run(
           `INSERT OR IGNORE INTO CUSTOMER (CUS_ID, CUS_FName, CUS_LName, CUS_Email, CUS_Tel, CUS_Pass) VALUES (?, ?, ?, ?, ?, ?)`,
-          [u.id, fName, lName, `${u.id}@crwn.st`, u.phone || '0812345678', '123456']
+          [u.id, fName, lName, `${u.id}@crwn.st`, u.phone || '0812345678', hashedPass]
         );
       } else {
         const parts = (u.name || 'Employee').split(' ');
         const fName = parts[0] || 'Staff';
         const lName = parts.slice(1).join(' ') || 'Member';
+        const hashedPass = bcrypt.hashSync(u.password || 'password', 10);
         await run(
           `INSERT OR IGNORE INTO EMPLOYEE (EMP_ID, EMP_FName, EMP_LName, EMP_Tel, EMP_Email, EMP_Pass, EMP_Role) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-          [u.id, fName, lName, '0891234567', `${u.username || u.id}@crwn.st`, u.password || 'password', u.role]
+          [u.id, fName, lName, '0891234567', `${u.username || u.id}@crwn.st`, hashedPass, u.role]
         );
       }
     }

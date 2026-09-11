@@ -118,8 +118,14 @@
           </div>
         </div>
 
+        <!-- Inline Error Banner -->
+        <div id="checkout-error-banner" class="hidden mt-4 p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 flex items-start gap-2">
+          <i data-lucide="alert-circle" class="w-4 h-4 mt-0.5 flex-shrink-0 text-red-600"></i>
+          <span id="checkout-error-message"></span>
+        </div>
+
         <!-- Submit Button -->
-        <button onclick="processCheckout()" id="btn-submit-payment" class="w-full btn-primary py-4 text-sm mt-6 shadow-lg">
+        <button onclick="processCheckout()" id="btn-submit-payment" class="w-full btn-primary py-4 text-sm mt-6 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
           <span id="btn-submit-text">ยืนยันและชำระเงิน</span>
           <i data-lucide="arrow-right" class="w-4 h-4"></i>
         </button>
@@ -206,6 +212,12 @@
 
     const btn = document.getElementById('btn-submit-payment');
     const text = document.getElementById('btn-submit-text');
+    const errorBanner = document.getElementById('checkout-error-banner');
+    const errorMessage = document.getElementById('checkout-error-message');
+
+    if (errorBanner) errorBanner.classList.add('hidden');
+    if (btn.disabled) return;
+
     btn.disabled = true;
     text.textContent = 'กำลังประมวลผลการชำระเงิน...';
 
@@ -217,27 +229,27 @@
           paymentMethod: selectedMethod,
           items: Cart.items.map(i => ({
             sku: i.sku,
-            productId: i.productId,
-            name: i.name,
-            color: i.color,
-            size: i.size,
-            price: i.price,
             quantity: i.quantity
-          })),
-          total: Cart.getTotal()
+          }))
         })
       });
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'เกิดข้อผิดพลาดในการทำรายการ');
+      const data = await res.json();
+
+      if (!res.ok || data.success === false) {
+        const msg = (data.error && data.error.message) || data.error || 'เกิดข้อผิดพลาดในการทำรายการ';
+        throw new Error(msg);
       }
 
-      const orderReceipt = await res.json();
+      const receiptId = data.id || data.ORD_ID || (data.receipt && data.receipt.id);
       await Cart.clear();
-      window.location.href = `/customer/receipt/${orderReceipt.id}`;
+      window.location.href = `/customer/receipt/${receiptId}`;
     } catch (err) {
-      alert(err.message);
+      if (errorBanner && errorMessage) {
+        errorMessage.textContent = err.message || 'ไม่สามารถชำระเงินได้';
+        errorBanner.classList.remove('hidden');
+        if (window.lucide) window.lucide.createIcons();
+      }
       btn.disabled = false;
       text.textContent = 'ยืนยันและชำระเงิน';
     }

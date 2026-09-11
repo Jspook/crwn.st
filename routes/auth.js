@@ -4,6 +4,7 @@
 
 const express = require('express');
 const router = express.Router();
+const bcrypt = require('bcryptjs');
 const { query, get, run } = require('../database/db');
 
 // Helper to get current user from cookies
@@ -46,10 +47,11 @@ router.post('/register', async (req, res) => {
     }
 
     const newId = 'u_' + Date.now().toString().slice(-6);
+    const hashedPassword = bcrypt.hashSync(cleanPass, 10);
     await run(
       `INSERT INTO CUSTOMER (CUS_ID, CUS_FName, CUS_LName, CUS_Email, CUS_Tel, CUS_Pass) 
        VALUES (?, ?, ?, ?, ?, ?)`,
-      [newId, cleanFName, cleanLName, cleanEmail, cleanPhone, cleanPass]
+      [newId, cleanFName, cleanLName, cleanEmail, cleanPhone, hashedPassword]
     );
 
     // Ensure new customer cart is reset/empty
@@ -101,8 +103,21 @@ router.post('/login', async (req, res) => {
     );
 
     if (employee) {
-      // Validate employee password (matches EMP_Pass or EMP_ID)
-      if (employee.staffCode !== inputPass && employee.id !== inputPass) {
+      // Validate employee password (supports bcrypt hash or legacy match)
+      let isEmpMatch = false;
+      const storedPass = String(employee.staffCode || '');
+      if (storedPass.startsWith('$2a$') || storedPass.startsWith('$2b$')) {
+        isEmpMatch = bcrypt.compareSync(inputPass, storedPass);
+      } else {
+        isEmpMatch = (storedPass === inputPass || employee.id === inputPass);
+        if (isEmpMatch) {
+          // Auto upgrade legacy plain password to bcrypt hash
+          const newHash = bcrypt.hashSync(inputPass, 10);
+          await run(`UPDATE EMPLOYEE SET EMP_Pass = ? WHERE EMP_ID = ?`, [newHash, employee.id]).catch(() => {});
+        }
+      }
+
+      if (!isEmpMatch) {
         return res.status(401).json({ error: 'รหัสผ่านพนักงานไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง' });
       }
 
@@ -133,8 +148,21 @@ router.post('/login', async (req, res) => {
     );
 
     if (customer) {
-      // Validate customer password
-      if (customer.password && customer.password !== inputPass) {
+      // Validate customer password (supports bcrypt hash or legacy match)
+      let isCusMatch = false;
+      const storedCusPass = String(customer.password || '');
+      if (storedCusPass.startsWith('$2a$') || storedCusPass.startsWith('$2b$')) {
+        isCusMatch = bcrypt.compareSync(inputPass, storedCusPass);
+      } else {
+        isCusMatch = (storedCusPass === inputPass);
+        if (isCusMatch) {
+          // Auto upgrade legacy plain password to bcrypt hash
+          const newHash = bcrypt.hashSync(inputPass, 10);
+          await run(`UPDATE CUSTOMER SET CUS_Pass = ? WHERE CUS_ID = ?`, [newHash, customer.id]).catch(() => {});
+        }
+      }
+
+      if (!isCusMatch) {
         return res.status(401).json({ error: 'รหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบและลองใหม่อีกครั้ง' });
       }
 

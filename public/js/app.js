@@ -420,11 +420,21 @@ async function submitItemRequest(roomId) {
         setTimeout(refreshOrdersStatus, 300);
       }
     } else {
-      alert('ไม่สามารถส่งคำขอได้ กรุณาลองใหม่อีกครั้ง');
+      const errData = await res.json().catch(() => ({}));
+      const msg = (errData.error && errData.error.message) || errData.error || 'ไม่สามารถส่งคำขอได้ กรุณาลองใหม่อีกครั้ง';
+      if (typeof Cart !== 'undefined' && Cart.showToast) {
+        Cart.showToast(msg);
+      } else {
+        alert(msg);
+      }
     }
   } catch (err) {
     console.error('Submit item request error:', err);
-    alert('เกิดข้อผิดพลาดในการส่งคำขอ');
+    if (typeof Cart !== 'undefined' && Cart.showToast) {
+      Cart.showToast('เกิดข้อผิดพลาดในการส่งคำขอ');
+    } else {
+      alert('เกิดข้อผิดพลาดในการส่งคำขอ');
+    }
   } finally {
     if (submitBtn) {
       submitBtn.disabled = false;

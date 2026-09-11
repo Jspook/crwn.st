@@ -359,7 +359,9 @@
 
   async function posSubmitOrder() {
     if (posCart.length === 0) return;
-    const total = posCart.reduce((s, i) => s + (i.price * i.quantity), 0);
+    const submitBtn = document.getElementById('pos-submit-btn');
+    if (submitBtn && submitBtn.disabled) return;
+    if (submitBtn) submitBtn.disabled = true;
 
     try {
       const res = await fetch('/api/receipts', {
@@ -369,16 +371,24 @@
           memberId: currentMember ? currentMember.id : null,
           paymentMethod: currentMethod,
           channel: 'pos_cashier',
-          items: posCart,
-          total
+          items: posCart.map(i => ({
+            sku: i.sku,
+            quantity: i.quantity
+          }))
         })
       });
 
-      if (!res.ok) throw new Error('ไม่สามารถทำรายการได้');
-      const order = await res.json();
-      window.location.href = `/customer/receipt/${order.id}`;
+      const data = await res.json();
+      if (!res.ok || data.success === false) {
+        const msg = (data.error && data.error.message) || data.error || 'ไม่สามารถทำรายการได้';
+        throw new Error(msg);
+      }
+
+      const receiptId = data.id || data.ORD_ID || (data.receipt && data.receipt.id);
+      window.location.href = `/customer/receipt/${receiptId}`;
     } catch (e) {
       alert(e.message);
+      if (submitBtn) submitBtn.disabled = false;
     }
   }
 

@@ -5,7 +5,7 @@
 
 const express = require('express');
 const router = express.Router();
-const { query, get, run } = require('../database/db');
+const { query, get, run, withTransaction } = require('../database/db');
 const { getCurrentUser } = require('./auth');
 
 // ==========================================================
@@ -458,7 +458,13 @@ router.post('/fitting-orders', async (req, res) => {
 
     // Verify SKU exists in ITEM_VARIANT; if not, find best variant for this product
     let targetSku = sku;
-    const variant = await get(`SELECT ITV_SKUID FROM ITEM_VARIANT WHERE ITV_SKUID = ?`, [targetSku]);
+    let variant = await get(
+      `SELECT v.ITV_SKUID, v.ITV_Stock, v.ITV_Color, v.ITV_Size, i.ITM_Name 
+       FROM ITEM_VARIANT v 
+       JOIN ITEM i ON v.ITM_ID = i.ITM_ID 
+       WHERE v.ITV_SKUID = ?`, 
+      [targetSku]
+    );
     if (!variant) {
       let prodFallback = null;
       if (sku && sku.includes('-')) {
@@ -476,6 +482,24 @@ router.post('/fitting-orders', async (req, res) => {
         prodFallback = await get(`SELECT ITV_SKUID FROM ITEM_VARIANT LIMIT 1`);
       }
       targetSku = prodFallback ? prodFallback.ITV_SKUID : 'p1-os-navy';
+      variant = await get(
+        `SELECT v.ITV_SKUID, v.ITV_Stock, v.ITV_Color, v.ITV_Size, i.ITM_Name 
+         FROM ITEM_VARIANT v 
+         JOIN ITEM i ON v.ITM_ID = i.ITM_ID 
+         WHERE v.ITV_SKUID = ?`,
+        [targetSku]
+      );
+    }
+
+    // BR-002: สินค้าที่ Stock = 0 ต้องไม่สามารถสั่งได้
+    if (variant && Number(variant.ITV_Stock) <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'OUT_OF_STOCK',
+          message: `สินค้า '${variant.ITM_Name}' (${variant.ITV_Color || ''} - ${variant.ITV_Size || ''}) สินค้าหมดสต็อกชั่วคราว ไม่สามารถสั่งลองได้ (Stock: 0)`
+        }
+      });
     }
 
     const orderId = 'fo_' + Date.now();
@@ -596,60 +620,165 @@ router.get('/receipts/:id', async (req, res) => {
 
 // POST /api/receipts
 router.post('/receipts', async (req, res) => {
-  const { paymentMethod, items, total, memberId, channel } = req.body;
+  const { paymentMethod, items, memberId, channel } = req.body;
   const user = getCurrentUser(req);
-  const cusId = memberId || (user && user.role === 'CUSTOMER' ? user.id : 'u1');
-  const empId = (user && user.role === 'CASHIER') ? user.id : 'c1';
+  const cusId = memberId || (user && user.role === 'CUSTOMER' ? user.id : null);
+  const empId = (user && user.role === 'CASHIER') ? user.id : '68070254';
   const orderChannel = channel || (user && user.role === 'CASHIER' ? 'pos_cashier' : 'customer_pay_and_go');
+
+  if (!Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({
+      success: false,
+      error: {
+        code: 'INVALID_CART',
+        message: 'ไม่มีรายการสินค้าในคำสั่งซื้อ กรุณาเลือกสินค้าก่อนชำระเงิน'
+      }
+    });
+  }
 
   const orderId = 'rcpt_' + Date.now();
   const now = new Date().toISOString();
 
   try {
-    // 1. Insert SALE_ORDER
-    await run(
-      `INSERT INTO SALE_ORDER (ORD_ID, CUS_ID, EMP_ID, ORD_Method, ORD_Channel, ORD_DateTime, ORD_Total)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [orderId, cusId, empId, paymentMethod || 'credit', orderChannel, now, total || 0]
-    );
+    const result = await withTransaction(async (tx) => {
+      let calculatedTotal = 0;
+      const verifiedLines = [];
 
-    // 2. Insert SALE_ORDER_LINE and update ITEM_VARIANT stock
-    if (Array.isArray(items)) {
+      // 1. Validate all items, check stock, calculate prices strictly from Database
       for (let idx = 0; idx < items.length; idx++) {
-        const item = items[idx];
-        const lineId = `line_${orderId}_${idx}`;
-        let sku = item.sku;
-        const exists = await get(`SELECT ITV_SKUID FROM ITEM_VARIANT WHERE ITV_SKUID = ?`, [sku]);
-        if (!exists) {
-          const first = await get(`SELECT ITV_SKUID FROM ITEM_VARIANT LIMIT 1`);
-          sku = first ? first.ITV_SKUID : 'p1-os-navy';
+        const rawItem = items[idx];
+        const sku = String(rawItem.sku || rawItem.id || '').trim();
+        const quantity = Math.max(1, Math.floor(Number(rawItem.quantity) || 1));
+
+        if (!sku) {
+          const err = new Error(`รายการสินค้าลำดับที่ ${idx + 1} ไม่มีรหัส SKU`);
+          err.code = 'INVALID_SKU';
+          throw err;
         }
 
-        await run(
+        // Fetch authoritative product and variant data from DB
+        const variant = await tx.get(
+          `SELECT v.ITV_SKUID, v.ITV_Stock, v.ITV_Color, v.ITV_Size, i.ITM_ID, i.ITM_Name, i.ITM_Price, i.ITM_Image
+           FROM ITEM_VARIANT v
+           JOIN ITEM i ON v.ITM_ID = i.ITM_ID
+           WHERE v.ITV_SKUID = ?`,
+          [sku]
+        );
+
+        if (!variant) {
+          const err = new Error(`ไม่พบสินค้ารหัส SKU '${sku}' ในฐานข้อมูล`);
+          err.code = 'PRODUCT_NOT_FOUND';
+          throw err;
+        }
+
+        // BR-002 / BR-003: Check stock before deducting
+        if (Number(variant.ITV_Stock) < quantity) {
+          const err = new Error(
+            `สินค้า '${variant.ITM_Name}' (${variant.ITV_Color || ''} - ${variant.ITV_Size || ''}) มีสต็อกไม่เพียงพอ (คงเหลือ ${variant.ITV_Stock} ชิ้น, ต้องการ ${quantity} ชิ้น)`
+          );
+          err.code = 'OUT_OF_STOCK';
+          err.details = { sku, available: variant.ITV_Stock, requested: quantity, name: variant.ITM_Name };
+          throw err;
+        }
+
+        // Atomic stock deduction: will only update if current stock >= quantity
+        const stockRes = await tx.run(
+          `UPDATE ITEM_VARIANT SET ITV_Stock = ITV_Stock - ? WHERE ITV_SKUID = ? AND ITV_Stock >= ?`,
+          [quantity, sku, quantity]
+        );
+
+        if (stockRes.changes === 0) {
+          const err = new Error(
+            `สินค้า '${variant.ITM_Name}' ถูกสั่งซื้อไปแล้ว สต็อกไม่เพียงพอ`
+          );
+          err.code = 'OUT_OF_STOCK';
+          err.details = { sku, available: 0, requested: quantity, name: variant.ITM_Name };
+          throw err;
+        }
+
+        const unitPrice = Number(variant.ITM_Price) || 0;
+        const lineSubtotal = unitPrice * quantity;
+        calculatedTotal += lineSubtotal;
+
+        verifiedLines.push({
+          sku,
+          name: variant.ITM_Name,
+          image: variant.ITM_Image,
+          color: variant.ITV_Color,
+          size: variant.ITV_Size,
+          price: unitPrice,
+          quantity,
+          subtotal: lineSubtotal
+        });
+      }
+
+      // 2. Insert SALE_ORDER with server-calculated total
+      await tx.run(
+        `INSERT INTO SALE_ORDER (ORD_ID, CUS_ID, EMP_ID, ORD_Method, ORD_Channel, ORD_DateTime, ORD_Total)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [orderId, cusId, empId, paymentMethod || 'credit', orderChannel, now, calculatedTotal]
+      );
+
+      // 3. Insert SALE_ORDER_LINE for each verified item
+      for (let idx = 0; idx < verifiedLines.length; idx++) {
+        const line = verifiedLines[idx];
+        const lineId = `line_${orderId}_${idx}`;
+        await tx.run(
           `INSERT INTO SALE_ORDER_LINE (ORD_LINE_ID, ORD_ID, ITV_SKUID, ORD_LINE_UPrice, ORD_LINE_Qty)
            VALUES (?, ?, ?, ?, ?)`,
-          [lineId, orderId, sku, item.price || 0, item.quantity || 1]
-        );
-
-        // Deduct inventory stock
-        await run(
-          `UPDATE ITEM_VARIANT SET ITV_Stock = MAX(0, ITV_Stock - ?) WHERE ITV_SKUID = ?`,
-          [item.quantity || 1, sku]
+          [lineId, orderId, line.sku, line.price, line.quantity]
         );
       }
-    }
 
-    res.json({
-      id: orderId,
-      ORD_ID: orderId,
-      total,
-      paymentMethod,
-      createdAt: now,
-      items
+      // 4. Clean up any stored cart in database for this customer
+      if (cusId) {
+        await tx.run(`DELETE FROM PAY_CART_ITEM WHERE PAY_CART_ID = ?`, ['cart_' + cusId]).catch(() => {});
+        await tx.run(`DELETE FROM PAY_CART_LINE WHERE PAY_CART_ID = ?`, ['cart_' + cusId]).catch(() => {});
+      }
+
+      return {
+        id: orderId,
+        ORD_ID: orderId,
+        total: calculatedTotal,
+        subtotal: calculatedTotal,
+        paymentMethod: paymentMethod || 'credit',
+        createdAt: now,
+        items: verifiedLines
+      };
+    });
+
+    return res.json({
+      success: true,
+      ...result
     });
   } catch (err) {
-    console.error('Order creation error:', err);
-    res.status(500).json({ error: 'Failed to create sale order' });
+    console.error('Order transaction error:', err);
+    if (err.code === 'OUT_OF_STOCK') {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'OUT_OF_STOCK',
+          message: err.message,
+          details: err.details || null
+        }
+      });
+    }
+    if (err.code === 'PRODUCT_NOT_FOUND' || err.code === 'INVALID_SKU') {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: err.code,
+          message: err.message
+        }
+      });
+    }
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: 'TRANSACTION_FAILED',
+        message: 'เกิดข้อผิดพลาดในการบันทึกคำสั่งซื้อ กรุณาลองใหม่อีกครั้ง'
+      }
+    });
   }
 });
 

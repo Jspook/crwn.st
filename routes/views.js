@@ -10,10 +10,13 @@ const { getCurrentUser } = require('./auth');
 // Middleware to ensure customer session
 function requireCustomer(req, res, next) {
   const user = getCurrentUser(req);
-  if (!user || user.role !== 'CUSTOMER') {
-    // Default fallback customer for frictionless preview
-    req.user = { id: 'u1', name: 'Alice Customer', role: 'CUSTOMER', phone: '0812345678' };
-    return next();
+  if (!user) {
+    return res.redirect(`/?redirect=${encodeURIComponent(req.originalUrl)}`);
+  }
+  if (user.role !== 'CUSTOMER') {
+    if (user.role === 'CASHIER') return res.redirect('/staff/cashier');
+    if (user.role === 'FITTING_STAFF') return res.redirect('/staff/fitting');
+    return res.redirect('/');
   }
   req.user = user;
   next();
@@ -22,10 +25,25 @@ function requireCustomer(req, res, next) {
 // Middleware to ensure staff session
 function requireStaff(req, res, next) {
   const user = getCurrentUser(req);
-  if (!user || (user.role !== 'CASHIER' && user.role !== 'FITTING_STAFF')) {
-    // Default fallback staff for frictionless preview
-    req.user = { id: 'c1', name: 'Jane Cashier', role: 'CASHIER' };
-    return next();
+  if (!user) {
+    return res.redirect(`/?redirect=${encodeURIComponent(req.originalUrl)}`);
+  }
+  if (user.role !== 'CASHIER' && user.role !== 'FITTING_STAFF') {
+    return res.redirect('/customer/dashboard');
+  }
+  req.user = user;
+  next();
+}
+
+// Middleware to ensure cashier session specifically
+function requireCashier(req, res, next) {
+  const user = getCurrentUser(req);
+  if (!user) {
+    return res.redirect(`/?redirect=${encodeURIComponent(req.originalUrl)}`);
+  }
+  if (user.role !== 'CASHIER') {
+    if (user.role === 'FITTING_STAFF') return res.redirect('/staff/fitting');
+    return res.redirect('/customer/dashboard');
   }
   req.user = user;
   next();
@@ -165,7 +183,7 @@ router.get('/staff', requireStaff, (req, res) => {
 });
 
 // GET /staff/cashier
-router.get('/staff/cashier', requireStaff, (req, res) => {
+router.get('/staff/cashier', requireCashier, (req, res) => {
   res.render('staff/cashier', {
     user: req.user
   });

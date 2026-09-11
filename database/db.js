@@ -117,6 +117,73 @@ async function run(sql, params = []) {
 }
 
 /**
+ * Execute a callback within a database transaction (supports both SQLite and MySQL)
+ * callback receives a tx object with { query, get, run } methods
+ */
+async function withTransaction(callback) {
+  if (DB_TYPE === 'mysql') {
+    const pool = getMysqlPool();
+    const connection = await pool.getConnection();
+    await connection.beginTransaction();
+    const tx = {
+      query: async (sql, params = []) => {
+        const [rows] = await connection.execute(sql, params);
+        return rows;
+      },
+      get: async (sql, params = []) => {
+        const [rows] = await connection.execute(sql, params);
+        return rows[0] || null;
+      },
+      run: async (sql, params = []) => {
+        const [result] = await connection.execute(sql, params);
+        return { changes: result.affectedRows, insertId: result.insertId };
+      }
+    };
+    try {
+      const result = await callback(tx);
+      await connection.commit();
+      return result;
+    } catch (err) {
+      await connection.rollback();
+      throw err;
+    } finally {
+      connection.release();
+    }
+  } else {
+    const db = getSqliteDb();
+    db.prepare('BEGIN IMMEDIATE').run();
+    const tx = {
+      query: async (sql, params = []) => {
+        const stmt = db.prepare(sql);
+        return stmt.all(...params);
+      },
+      get: async (sql, params = []) => {
+        const stmt = db.prepare(sql);
+        const row = stmt.get(...params);
+        return row || null;
+      },
+      run: async (sql, params = []) => {
+        const stmt = db.prepare(sql);
+        const result = stmt.run(...params);
+        return { changes: result.changes, lastInsertRowid: result.lastInsertRowid };
+      }
+    };
+    try {
+      const result = await callback(tx);
+      db.prepare('COMMIT').run();
+      return result;
+    } catch (err) {
+      try {
+        db.prepare('ROLLBACK').run();
+      } catch (rollbackErr) {
+        // Ignored if already rolled back
+      }
+      throw err;
+    }
+  }
+}
+
+/**
  * Execute raw DDL statements (e.g. table creation)
  */
 async function exec(sql) {
@@ -178,6 +245,7 @@ module.exports = {
   get,
   run,
   exec,
+  withTransaction,
   initDb,
   getSqliteDb,
 };
