@@ -264,12 +264,16 @@ router.get('/fitting-rooms', async (req, res) => {
     const user = getCurrentUser(req);
     const cusId = user && user.role === 'CUSTOMER' ? user.id : null;
 
+    // Only join session data when room is actually occupied — prevents stale occupant info
+    // after a room has been released but old sessions still exist in DB
     const roomsData = await query(`
       SELECT r.*, s.CUS_ID, c.CUS_FName, c.CUS_LName
       FROM FITTING_ROOM r
-      LEFT JOIN FITTING_SESSION s ON r.FTR_Num = s.FTR_NUM AND s.FTS_ID = (
-        SELECT FTS_ID FROM FITTING_SESSION WHERE FTR_NUM = r.FTR_Num ORDER BY FTS_DateTime DESC LIMIT 1
-      )
+      LEFT JOIN FITTING_SESSION s ON r.FTR_Num = s.FTR_NUM
+        AND r.FTR_Status = 'occupied'
+        AND s.FTS_ID = (
+          SELECT FTS_ID FROM FITTING_SESSION WHERE FTR_NUM = r.FTR_Num ORDER BY FTS_DateTime DESC LIMIT 1
+        )
       LEFT JOIN CUSTOMER c ON s.CUS_ID = c.CUS_ID
       ORDER BY r.FTR_Num ASC
     `);
@@ -306,39 +310,48 @@ router.post('/fitting-sessions', async (req, res) => {
   const num = String(roomNum || '1').trim();
 
   try {
-    // 1. Check if room exists
+    // 1. Check if room exists (outside transaction for fast 404)
     const room = await get(`SELECT * FROM FITTING_ROOM WHERE FTR_Num = ?`, [num]);
     if (!room) {
       return res.status(404).json({ error: `ไม่พบห้องลองหมายเลข ${num}` });
     }
 
-    // 2. Check if room is already occupied
-    if (room.FTR_Status === 'occupied') {
-      const lastSession = await get(
-        `SELECT * FROM FITTING_SESSION WHERE FTR_NUM = ? ORDER BY FTS_DateTime DESC LIMIT 1`,
-        [num]
-      );
-      // Strictly prevent entering an occupied/locked room!
-      if (!lastSession || lastSession.CUS_ID !== cusId) {
-        return res.status(409).json({ 
-          error: `ห้องลองหมายเลข ${num} ล็อกอยู่และกำลังมีผู้ใช้งานในขณะนี้ ไม่สามารถเข้าได้ กรุณาเลือกห้องที่ว่าง` 
-        });
+    // 2. Use transaction to atomically check status + update room + create session
+    //    This prevents race conditions when two customers try to enter the same room simultaneously
+    const result = await withTransaction(async (tx) => {
+      // Re-check room status inside transaction to prevent TOCTOU race
+      const roomInTx = await tx.get(`SELECT * FROM FITTING_ROOM WHERE FTR_Num = ?`, [num]);
+
+      if (roomInTx.FTR_Status === 'occupied') {
+        const lastSession = await tx.get(
+          `SELECT * FROM FITTING_SESSION WHERE FTR_NUM = ? ORDER BY FTS_DateTime DESC LIMIT 1`,
+          [num]
+        );
+        // Strictly prevent entering an occupied/locked room!
+        if (!lastSession || lastSession.CUS_ID !== cusId) {
+          return { conflict: true, error: `ห้องลองหมายเลข ${num} ล็อกอยู่และกำลังมีผู้ใช้งานในขณะนี้ ไม่สามารถเข้าได้ กรุณาเลือกห้องที่ว่าง` };
+        }
+        // If customer is returning to their own active session
+        return { reentered: true, sessionId: lastSession.FTS_ID, roomNum: num, status: 'occupied' };
       }
-      // If customer is returning to their own active session
-      return res.json({ sessionId: lastSession.FTS_ID, roomNum: num, status: 'occupied', reentered: true });
+
+      // 3. Mark room occupied and create session atomically
+      const sessionId = `fts_${num}_${Date.now()}`;
+      const now = new Date().toISOString();
+
+      await tx.run(`UPDATE FITTING_ROOM SET FTR_Status = 'occupied' WHERE FTR_Num = ?`, [num]);
+      await tx.run(
+        `INSERT INTO FITTING_SESSION (FTS_ID, FTR_NUM, CUS_ID, FTS_DateTime) VALUES (?, ?, ?, ?)`,
+        [sessionId, num, cusId, now]
+      );
+
+      return { sessionId, roomNum: num, status: 'occupied' };
+    });
+
+    if (result.conflict) {
+      return res.status(409).json({ error: result.error });
     }
-
-    // 3. Mark room occupied and create session
-    const sessionId = `fts_${num}_${Date.now()}`;
-    const now = new Date().toISOString();
-
-    await run(`UPDATE FITTING_ROOM SET FTR_Status = 'occupied' WHERE FTR_Num = ?`, [num]);
-    await run(
-      `INSERT INTO FITTING_SESSION (FTS_ID, FTR_NUM, CUS_ID, FTS_DateTime) VALUES (?, ?, ?, ?)`,
-      [sessionId, num, cusId, now]
-    );
-
-    res.json({ sessionId, roomNum: num, status: 'occupied' });
+    res.json(result);
   } catch (err) {
     console.error('Fitting session error:', err);
     res.status(500).json({ error: 'เกิดข้อผิดพลาดในการเข้าห้องลองเสื้อ' });

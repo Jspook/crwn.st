@@ -194,8 +194,12 @@
     `;
   }
 
-  // 0ms Optimistic UI update: moves the card immediately across columns without waiting for network!
+  // Mutex-guarded order status update:
+  // Sets isActionInProgress to pause polling, then performs PATCH, then refreshes from DB
   async function updateOrderStatus(id, newStatus, btnElement) {
+    if (isActionInProgress) return; // Prevent double-click
+    isActionInProgress = true;
+
     const orderIndex = currentKanbanOrders.findIndex(o => String(o.id) === String(id));
     let previousStatus = null;
 
@@ -218,7 +222,8 @@
         throw new Error('Server returned error status');
       }
 
-      // Quiet background refresh to keep state synchronized
+      // Refresh from DB AFTER server confirms — this is now safe because
+      // polling is paused (isActionInProgress=true) so no race condition
       await loadFittingOrders(true);
     } catch (e) {
       console.error('Failed to update status:', e);
@@ -228,6 +233,8 @@
         renderKanban(currentKanbanOrders, true);
       }
       alert('เกิดข้อผิดพลาดในการปรับสถานะ: ' + (e.message || 'กรุณาลองใหม่อีกครั้ง'));
+    } finally {
+      isActionInProgress = false;
     }
   }
 
@@ -297,8 +304,11 @@
     }
   }
 
+  // Mutex-guarded room release: pauses polling during the action
   async function releaseStaffRoom(roomNum) {
     if (!confirm(`ต้องการเคลียร์สถานะห้องลองหมายเลข ${roomNum} ให้กลับเป็น "ห้องว่าง" ใช่หรือไม่?`)) return;
+    if (isActionInProgress) return;
+    isActionInProgress = true;
 
     try {
       const res = await fetch(`/api/fitting-rooms/${roomNum}/release`, { method: 'POST' });
@@ -306,12 +316,14 @@
         lastRoomSignature = '';
         lastKanbanSignature = '';
         await loadStaffRooms();
-        await loadFittingOrders();
+        await loadFittingOrders(true);
       } else {
         alert('ไม่สามารถปล่อยห้องว่างได้');
       }
     } catch (e) {
       alert(e.message);
+    } finally {
+      isActionInProgress = false;
     }
   }
 
@@ -339,7 +351,13 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     refreshAllFittingData();
-    setInterval(() => refreshAllFittingData(), 4000);
+    // Polling interval: skip refresh when an action is in progress to prevent
+    // stale DB data from overwriting optimistic UI updates (race condition fix)
+    setInterval(() => {
+      if (!isActionInProgress) {
+        refreshAllFittingData();
+      }
+    }, 6000);
   });
 </script>
 

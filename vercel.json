@@ -1,6 +1,17 @@
 {
   "version": 2,
   "framework": null,
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(self)"
+        }
+      ]
+    }
+  ],
   "functions": {
     "api/index.js": {
       "includeFiles": "{views/**,database/**,data/**}"

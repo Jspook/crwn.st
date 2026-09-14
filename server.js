@@ -26,6 +26,12 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+// Permissions-Policy: Allow camera access for barcode scanning
+app.use((req, res, next) => {
+  res.setHeader('Permissions-Policy', 'camera=(self)');
+  next();
+});
+
 // Static assets
 app.use(express.static(path.join(__dirname, 'public')));
 
