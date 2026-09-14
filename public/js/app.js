@@ -389,6 +389,9 @@ async function submitItemRequest(roomId) {
       const newOrder = await res.json();
       if (newOrder && newOrder.sessionId) {
         window.currentSessionId = newOrder.sessionId;
+        if (typeof currentRoomId !== 'undefined') {
+          localStorage.setItem('crwn_active_session_' + currentRoomId, newOrder.sessionId);
+        }
       }
 
       // Record item as tried during this session

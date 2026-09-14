@@ -234,7 +234,7 @@
   // Handle room occupied alert from query params
   document.addEventListener('DOMContentLoaded', () => {
     const params = new URLSearchParams(window.location.search);
-    const roomOccupied = params.get('roomOccupied');
+    const roomOccupied = params.get('roomOccupied') ? params.get('roomOccupied').replace(/[<>\"'\`]/g, '') : null;
     if (roomOccupied) {
       const banner = document.getElementById('room-occupied-alert');
       const text = document.getElementById('room-occupied-text');

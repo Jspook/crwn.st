@@ -163,7 +163,27 @@
 <script>
   const catalogData = <%- JSON.stringify(products) %>;
   const currentRoomId = '<%= roomId %>';
-  const currentSessionId = '<%= typeof sessionId !== "undefined" ? sessionId : "" %>';
+  let serverSessionId = '<%= typeof sessionId !== "undefined" ? sessionId : "" %>';
+  let currentSessionId = serverSessionId;
+  const storageKey = 'crwn_active_session_' + currentRoomId;
+
+  if (serverSessionId) {
+    localStorage.setItem(storageKey, serverSessionId);
+  } else {
+    const stored = localStorage.getItem(storageKey);
+    if (stored) currentSessionId = stored;
+  }
+
+  window.currentSessionId = currentSessionId;
+
+  // Listen for session updates from other tabs
+  window.addEventListener('storage', (e) => {
+    if (e.key === storageKey && e.newValue) {
+      currentSessionId = e.newValue;
+      window.currentSessionId = currentSessionId;
+      if (typeof refreshOrdersStatus === 'function') refreshOrdersStatus();
+    }
+  });
   let sessionTriedItems = [];
 
   function filterCategory(cat) {
@@ -187,7 +207,8 @@
   }
 
   function searchCatalog(query) {
-    const q = query.toLowerCase().trim();
+    // Sanitize input to prevent basic XSS or script injection
+    const q = query.replace(/[<>`"']/g, '').toLowerCase().trim();
     const cards = document.querySelectorAll('.product-item-card');
     cards.forEach(card => {
       const name = card.getAttribute('data-name');
