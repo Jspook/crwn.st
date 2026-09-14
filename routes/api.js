@@ -261,38 +261,39 @@ router.delete('/cart', async (req, res) => {
 // GET /api/fitting-rooms
 router.get('/fitting-rooms', async (req, res) => {
   try {
-    const rooms = await query(`SELECT * FROM FITTING_ROOM ORDER BY FTR_Num ASC`);
     const user = getCurrentUser(req);
     const cusId = user && user.role === 'CUSTOMER' ? user.id : null;
 
-    const enhanced = await Promise.all(rooms.map(async (r) => {
+    const roomsData = await query(`
+      SELECT r.*, s.CUS_ID, c.CUS_FName, c.CUS_LName
+      FROM FITTING_ROOM r
+      LEFT JOIN FITTING_SESSION s ON r.FTR_Num = s.FTR_NUM AND s.FTS_ID = (
+        SELECT FTS_ID FROM FITTING_SESSION WHERE FTR_NUM = r.FTR_Num ORDER BY FTS_DateTime DESC LIMIT 1
+      )
+      LEFT JOIN CUSTOMER c ON s.CUS_ID = c.CUS_ID
+      ORDER BY r.FTR_Num ASC
+    `);
+
+    const enhanced = roomsData.map(r => {
       let isMySession = false;
       let occupantName = null;
       if (r.FTR_Status === 'occupied') {
-        const lastSession = await get(
-          `SELECT s.*, c.CUS_FName, c.CUS_LName 
-           FROM FITTING_SESSION s 
-           LEFT JOIN CUSTOMER c ON s.CUS_ID = c.CUS_ID 
-           WHERE s.FTR_NUM = ? 
-           ORDER BY s.FTS_DateTime DESC LIMIT 1`,
-          [r.FTR_Num]
-        );
-        if (lastSession) {
-          occupantName = lastSession.CUS_FName ? `${lastSession.CUS_FName} ${lastSession.CUS_LName || ''}`.trim() : 'ลูกค้า';
-          if (cusId && lastSession.CUS_ID === cusId) {
-            isMySession = true;
-          }
+        occupantName = r.CUS_FName ? `${r.CUS_FName} ${r.CUS_LName || ''}`.trim() : 'ลูกค้า';
+        if (cusId && r.CUS_ID === cusId) {
+          isMySession = true;
         }
       }
       return {
-        ...r,
+        FTR_Num: r.FTR_Num,
+        FTR_Status: r.FTR_Status,
         occupantName,
         isMySession
       };
-    }));
+    });
 
     res.json(enhanced);
   } catch (err) {
+    console.error('Failed to load fitting rooms', err);
     res.status(500).json({ error: 'Failed to load fitting rooms' });
   }
 });

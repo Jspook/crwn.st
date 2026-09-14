@@ -153,6 +153,12 @@
           </div>
         </div>
 
+        <!-- Error Banner -->
+        <div id="checkout-error-banner" class="hidden mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 flex items-start gap-2">
+          <i data-lucide="alert-circle" class="w-4 h-4 mt-0.5 flex-shrink-0 text-red-600"></i>
+          <span id="checkout-error-message"></span>
+        </div>
+
         <!-- Checkout Button -->
         <button onclick="posSubmitOrder()" id="pos-submit-btn" class="w-full btn-primary py-3.5 text-sm shadow-md" disabled>
           <span>ชำระเงินและออกใบเสร็จ</span>
@@ -387,7 +393,15 @@
       const receiptId = data.id || data.ORD_ID || (data.receipt && data.receipt.id);
       window.location.href = `/customer/receipt/${receiptId}`;
     } catch (e) {
-      alert(e.message);
+      // alert(e.message);
+      // Improve error message with better UI instead of standard alert
+      const oldAlertBox = document.getElementById('checkout-error-banner');
+      if (oldAlertBox) {
+        document.getElementById('checkout-error-message').textContent = e.message;
+        oldAlertBox.classList.remove('hidden');
+      } else {
+        alert("ข้อผิดพลาด: " + e.message);
+      }
       if (submitBtn) submitBtn.disabled = false;
     }
   }
