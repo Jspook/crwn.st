@@ -157,23 +157,10 @@ async function selectRoom(roomNum) {
   if (errBox) errBox.classList.add('hidden');
 
   try {
-    const res = await fetch('/api/fitting-sessions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ roomNum: cleanNum }),
-    });
-
-    const data = await res.json();
-
-    if (res.ok) {
-      stopRoomQrCamera();
-      document.body.classList.remove('overflow-hidden');
-      document.documentElement.classList.remove('overflow-hidden');
-      window.location.href = `/customer/fitting-room?roomId=${cleanNum}`;
-    } else {
-      // Room is occupied or error occurred — strictly DO NOT navigate
-      showRoomModalError(data.error || `ห้องลองหมายเลข ${cleanNum} ล็อกอยู่และมีผู้ใช้งาน ไม่สามารถเข้าได้`);
-    }
+    stopRoomQrCamera();
+    document.body.classList.remove('overflow-hidden');
+    document.documentElement.classList.remove('overflow-hidden');
+    window.location.href = `/customer/fitting-room?roomId=${cleanNum}`;
   } catch (e) {
     console.error('Error selecting room:', e);
     showRoomModalError('เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง');

@@ -1,6 +1,6 @@
 // ==========================================================
 // crwn.st REST Web Services & API Endpoints
-// Fully integrated with 14-table ER Diagram database
+// MySQL — 10-table schema
 // ==========================================================
 
 const express = require('express');
@@ -42,8 +42,6 @@ router.get('/products', async (req, res) => {
       category: item.ITM_Category,
       ITM_Category: item.ITM_Category,
       tag: item.ITM_Tag,
-      image: item.ITM_Image,
-      ITM_Image: item.ITM_Image,
       variants: variantMap[item.ITM_ID] || []
     }));
 
@@ -60,7 +58,7 @@ router.get('/products/barcode/:code', async (req, res) => {
   try {
     // 1. Try finding matching variant by SKU
     let variant = await get(
-      `SELECT v.*, i.ITM_Name, i.ITM_Price, i.ITM_Category, i.ITM_Image, i.ITM_Description
+      `SELECT v.*, i.ITM_Name, i.ITM_Price, i.ITM_Category, i.ITM_Description
        FROM ITEM_VARIANT v
        JOIN ITEM i ON v.ITM_ID = i.ITM_ID
        WHERE v.ITV_SKUID = ?`,
@@ -72,18 +70,11 @@ router.get('/products/barcode/:code', async (req, res) => {
       const item = await get(`SELECT * FROM ITEM WHERE ITM_ID = ?`, [code]);
       if (item) {
         const itemVariants = await query(`SELECT * FROM ITEM_VARIANT WHERE ITM_ID = ?`, [code]);
-        const v = itemVariants[0] || {
-          ITV_SKUID: `${item.ITM_ID}-std`,
-          ITV_Color: 'Standard',
-          ITV_Size: 'M',
-          ITV_Stock: 10
-        };
         return res.json({
           id: item.ITM_ID,
           name: item.ITM_Name,
           price: item.ITM_Price,
           category: item.ITM_Category,
-          image: item.ITM_Image,
           variants: itemVariants.map(iv => ({
             sku: iv.ITV_SKUID,
             color: iv.ITV_Color,
@@ -96,12 +87,12 @@ router.get('/products/barcode/:code', async (req, res) => {
 
     // 3. Fallback: Check if numeric barcode maps to any known products
     if (!variant) {
-      // Map demo sample barcodes
       const barcodeMap = {
         '8901234567891': 'p1',
         '8901234567892': 'p2',
         '8901234567893': 'p3',
         '8901234567894': 'p4',
+        '8901234567895': 'p5',
       };
       const mappedId = barcodeMap[code];
       if (mappedId) {
@@ -113,7 +104,6 @@ router.get('/products/barcode/:code', async (req, res) => {
             name: item.ITM_Name,
             price: item.ITM_Price,
             category: item.ITM_Category,
-            image: item.ITM_Image,
             variants: itemVariants.map(iv => ({
               sku: iv.ITV_SKUID,
               color: iv.ITV_Color,
@@ -134,7 +124,6 @@ router.get('/products/barcode/:code', async (req, res) => {
       name: variant.ITM_Name,
       price: variant.ITM_Price,
       category: variant.ITM_Category,
-      image: variant.ITM_Image,
       variants: [{
         sku: variant.ITV_SKUID,
         color: variant.ITV_Color,
@@ -149,7 +138,7 @@ router.get('/products/barcode/:code', async (req, res) => {
 });
 
 // ==========================================================
-// 2. CART (PAY_CART & PAY_CART_ITEM)
+// 2. CART (PAY_CART & PAY_CART_ITEM) — No QTY column
 // ==========================================================
 
 // GET /api/cart
@@ -161,16 +150,15 @@ router.get('/cart', async (req, res) => {
   const cusId = user.id;
 
   try {
-    // Check or create cart in PAY_CART table
     let cart = await get(`SELECT PAY_CART_ID FROM PAY_CART WHERE CUS_ID = ?`, [cusId]);
     if (!cart) {
       const cartId = 'cart_' + cusId;
-      await run(`INSERT OR IGNORE INTO PAY_CART (PAY_CART_ID, CUS_ID) VALUES (?, ?)`, [cartId, cusId]);
+      await run(`INSERT IGNORE INTO PAY_CART (PAY_CART_ID, CUS_ID) VALUES (?, ?)`, [cartId, cusId]);
       return res.json({ items: [] });
     }
 
     const lines = await query(
-      `SELECT l.*, i.ITM_Name, i.ITM_Price, i.ITM_Image, v.ITV_Color, v.ITV_Size
+      `SELECT l.PAY_ITEM_ID, l.ITV_SKUID, i.ITM_Name, i.ITM_Price, v.ITV_Color, v.ITV_Size
        FROM PAY_CART_ITEM l
        JOIN ITEM_VARIANT v ON l.ITV_SKUID = v.ITV_SKUID
        JOIN ITEM i ON v.ITM_ID = i.ITM_ID
@@ -178,17 +166,23 @@ router.get('/cart', async (req, res) => {
       [cart.PAY_CART_ID]
     );
 
-    const items = lines.map(l => ({
-      sku: l.ITV_SKUID,
-      name: l.ITM_Name,
-      price: l.ITM_Price,
-      image: l.ITM_Image,
-      color: l.ITV_Color,
-      size: l.ITV_Size,
-      quantity: l.QTY || 1
-    }));
+    // Group by SKU to compute quantities (since no QTY column, 1 row = 1 piece)
+    const grouped = {};
+    for (const l of lines) {
+      if (!grouped[l.ITV_SKUID]) {
+        grouped[l.ITV_SKUID] = {
+          sku: l.ITV_SKUID,
+          name: l.ITM_Name,
+          price: l.ITM_Price,
+          color: l.ITV_Color,
+          size: l.ITV_Size,
+          quantity: 0
+        };
+      }
+      grouped[l.ITV_SKUID].quantity += 1;
+    }
 
-    res.json({ items });
+    res.json({ items: Object.values(grouped) });
   } catch (err) {
     console.error(err);
     res.json({ items: [] });
@@ -206,28 +200,30 @@ router.post('/cart', async (req, res) => {
 
   try {
     const cartId = 'cart_' + cusId;
-    await run(`INSERT OR IGNORE INTO PAY_CART (PAY_CART_ID, CUS_ID) VALUES (?, ?)`, [cartId, cusId]);
+    await run(`INSERT IGNORE INTO PAY_CART (PAY_CART_ID, CUS_ID) VALUES (?, ?)`, [cartId, cusId]);
 
     // Clear old items
     await run(`DELETE FROM PAY_CART_ITEM WHERE PAY_CART_ID = ?`, [cartId]);
 
-    // Insert new items
+    // Insert new items (1 row per quantity unit since no QTY column)
     if (Array.isArray(items)) {
-      for (let i = 0; i < items.length; i++) {
-        const item = items[i];
-        const lineId = `pitem_${cartId}_${i}_${Date.now()}`;
-        // Ensure SKU exists
+      let rowIdx = 0;
+      for (const item of items) {
         let sku = item.sku;
         const v = await get(`SELECT ITV_SKUID FROM ITEM_VARIANT WHERE ITV_SKUID = ?`, [sku]);
         if (!v) {
           const firstV = await get(`SELECT ITV_SKUID FROM ITEM_VARIANT LIMIT 1`);
           sku = firstV ? firstV.ITV_SKUID : 'p1-os-navy';
         }
-        await run(
-          `INSERT OR IGNORE INTO PAY_CART_ITEM (PAY_ITEM_ID, PAY_CART_ID, ITV_SKUID, QTY) 
-           VALUES (?, ?, ?, ?)`,
-          [lineId, cartId, sku, item.quantity || 1]
-        );
+        const qty = item.quantity || 1;
+        for (let q = 0; q < qty; q++) {
+          const lineId = `pitem_${cartId}_${rowIdx}_${Date.now()}`;
+          await run(
+            `INSERT IGNORE INTO PAY_CART_ITEM (PAY_ITEM_ID, PAY_CART_ID, ITV_SKUID) VALUES (?, ?, ?)`,
+            [lineId, cartId, sku]
+          );
+          rowIdx++;
+        }
       }
     }
 
@@ -255,188 +251,54 @@ router.delete('/cart', async (req, res) => {
 });
 
 // ==========================================================
-// 3. FITTING ROOMS & SESSIONS
-// ==========================================================
-
-// GET /api/fitting-rooms
-router.get('/fitting-rooms', async (req, res) => {
-  try {
-    const user = getCurrentUser(req);
-    const cusId = user && user.role === 'CUSTOMER' ? user.id : null;
-
-    // Only join session data when room is actually occupied — prevents stale occupant info
-    // after a room has been released but old sessions still exist in DB
-    const roomsData = await query(`
-      SELECT r.*, s.CUS_ID, c.CUS_FName, c.CUS_LName
-      FROM FITTING_ROOM r
-      LEFT JOIN FITTING_SESSION s ON r.FTR_Num = s.FTR_NUM
-        AND r.FTR_Status = 'occupied'
-        AND s.FTS_ID = (
-          SELECT FTS_ID FROM FITTING_SESSION WHERE FTR_NUM = r.FTR_Num ORDER BY FTS_DateTime DESC LIMIT 1
-        )
-      LEFT JOIN CUSTOMER c ON s.CUS_ID = c.CUS_ID
-      ORDER BY r.FTR_Num ASC
-    `);
-
-    const enhanced = roomsData.map(r => {
-      let isMySession = false;
-      let occupantName = null;
-      if (r.FTR_Status === 'occupied') {
-        occupantName = r.CUS_FName ? `${r.CUS_FName} ${r.CUS_LName || ''}`.trim() : 'ลูกค้า';
-        if (cusId && r.CUS_ID === cusId) {
-          isMySession = true;
-        }
-      }
-      return {
-        FTR_Num: r.FTR_Num,
-        FTR_Status: r.FTR_Status,
-        occupantName,
-        isMySession
-      };
-    });
-
-    res.json(enhanced);
-  } catch (err) {
-    console.error('Failed to load fitting rooms', err);
-    res.status(500).json({ error: 'Failed to load fitting rooms' });
-  }
-});
-
-// POST /api/fitting-sessions
-router.post('/fitting-sessions', async (req, res) => {
-  const { roomNum } = req.body;
-  const user = getCurrentUser(req);
-  const cusId = user && user.role === 'CUSTOMER' ? user.id : 'u1';
-  const num = String(roomNum || '1').trim();
-
-  try {
-    // 1. Check if room exists (outside transaction for fast 404)
-    const room = await get(`SELECT * FROM FITTING_ROOM WHERE FTR_Num = ?`, [num]);
-    if (!room) {
-      return res.status(404).json({ error: `ไม่พบห้องลองหมายเลข ${num}` });
-    }
-
-    // 2. Use transaction to atomically check status + update room + create session
-    //    This prevents race conditions when two customers try to enter the same room simultaneously
-    const result = await withTransaction(async (tx) => {
-      // Re-check room status inside transaction to prevent TOCTOU race
-      const roomInTx = await tx.get(`SELECT * FROM FITTING_ROOM WHERE FTR_Num = ?`, [num]);
-
-      if (roomInTx.FTR_Status === 'occupied') {
-        const lastSession = await tx.get(
-          `SELECT * FROM FITTING_SESSION WHERE FTR_NUM = ? ORDER BY FTS_DateTime DESC LIMIT 1`,
-          [num]
-        );
-        // Strictly prevent entering an occupied/locked room!
-        if (!lastSession || lastSession.CUS_ID !== cusId) {
-          return { conflict: true, error: `ห้องลองหมายเลข ${num} ล็อกอยู่และกำลังมีผู้ใช้งานในขณะนี้ ไม่สามารถเข้าได้ กรุณาเลือกห้องที่ว่าง` };
-        }
-        // If customer is returning to their own active session
-        return { reentered: true, sessionId: lastSession.FTS_ID, roomNum: num, status: 'occupied' };
-      }
-
-      // 3. Mark room occupied and create session atomically
-      const sessionId = `fts_${num}_${Date.now()}`;
-      const now = new Date().toISOString();
-
-      await tx.run(`UPDATE FITTING_ROOM SET FTR_Status = 'occupied' WHERE FTR_Num = ?`, [num]);
-      await tx.run(
-        `INSERT INTO FITTING_SESSION (FTS_ID, FTR_NUM, CUS_ID, FTS_DateTime) VALUES (?, ?, ?, ?)`,
-        [sessionId, num, cusId, now]
-      );
-
-      return { sessionId, roomNum: num, status: 'occupied' };
-    });
-
-    if (result.conflict) {
-      return res.status(409).json({ error: result.error });
-    }
-    res.json(result);
-  } catch (err) {
-    console.error('Fitting session error:', err);
-    res.status(500).json({ error: 'เกิดข้อผิดพลาดในการเข้าห้องลองเสื้อ' });
-  }
-});
-
-// POST /api/fitting-rooms/:num/release (Exit/Release Room)
-router.post('/fitting-rooms/:num/release', async (req, res) => {
-  const num = String(req.params.num || '1').trim();
-  try {
-    await run(`UPDATE FITTING_ROOM SET FTR_Status = 'available' WHERE FTR_Num = ?`, [num]);
-    // Mark any active orders for this room's completed session as complete
-    const lastSession = await get(
-      `SELECT FTS_ID FROM FITTING_SESSION WHERE FTR_NUM = ? ORDER BY FTS_DateTime DESC LIMIT 1`,
-      [num]
-    );
-    if (lastSession) {
-      await run(
-        `UPDATE FITTING_ROOM_ORDER SET FTR_ORD_Status = 'complete' WHERE FTS_ID = ? AND FTR_ORD_Status != 'complete'`,
-        [lastSession.FTS_ID]
-      );
-    }
-    res.json({ success: true, roomNum: num, status: 'available' });
-  } catch (err) {
-    console.error('Release room error:', err);
-    res.status(500).json({ error: 'Failed to release fitting room' });
-  }
-});
-
-// ==========================================================
-// 4. FITTING ROOM ORDERS (Kanban & Requests)
+// 3. FITTING ROOM ORDERS (New schema: FITTING_ROOM table)
+//    FTR_OrderID, ITV_SKUID, EMP_ID, FTR_Number, FTR_OrderTime, FTR_FinishTime
+//    Status derived: 
+//      - FTR_FinishTime IS NULL AND EMP_ID IS NULL → pending
+//      - FTR_FinishTime IS NULL AND EMP_ID IS NOT NULL → preparing
+//      - FTR_FinishTime IS NOT NULL → complete
 // ==========================================================
 
 // GET /api/fitting-orders
 router.get('/fitting-orders', async (req, res) => {
-  const { roomId, sessionId } = req.query;
+  const { roomId } = req.query;
   try {
     let sql = `
-      SELECT o.FTR_ORD_ID as id,
-             LOWER(TRIM(o.FTR_ORD_Status)) as status,
-             o.FTR_ORD_DateTime as createdAt,
-             s.FTR_NUM as roomId,
-             s.CUS_ID as memberId,
-             s.FTS_ID as sessionId,
-             o.ITV_SKUID as sku,
+      SELECT f.FTR_OrderID as id,
+             CASE 
+               WHEN f.FTR_FinishTime IS NOT NULL THEN 'complete'
+               WHEN f.EMP_ID IS NOT NULL THEN 'preparing'
+               ELSE 'pending'
+             END as status,
+             f.FTR_OrderTime as createdAt,
+             f.FTR_Number as roomId,
+             f.ITV_SKUID as sku,
              COALESCE(v.ITV_Size, '-') as size,
              COALESCE(v.ITV_Color, '-') as color,
              COALESCE(i.ITM_Name, 'เสื้อผ้าสำหรับลอง') as productName,
-             COALESCE(i.ITM_Image, '') as image,
              COALESCE(i.ITM_Price, 0) as price,
              e.EMP_FName as staffName
-       FROM FITTING_ROOM_ORDER o
-       JOIN FITTING_SESSION s ON o.FTS_ID = s.FTS_ID
-       LEFT JOIN ITEM_VARIANT v ON o.ITV_SKUID = v.ITV_SKUID
+       FROM FITTING_ROOM f
+       LEFT JOIN ITEM_VARIANT v ON f.ITV_SKUID = v.ITV_SKUID
        LEFT JOIN ITEM i ON v.ITM_ID = i.ITM_ID
-       LEFT JOIN EMPLOYEE e ON o.EMP_ID = e.EMP_ID
+       LEFT JOIN EMPLOYEE e ON f.EMP_ID = e.EMP_ID
     `;
     const params = [];
 
-    if (sessionId && roomId) {
-      sql += ` WHERE (o.FTS_ID = ? OR s.FTR_NUM = ?) `;
-      params.push(sessionId, roomId);
-    } else if (sessionId) {
-      sql += ` WHERE o.FTS_ID = ? `;
-      params.push(sessionId);
-    } else if (roomId) {
-      sql += ` WHERE s.FTR_NUM = ? AND (
-        s.FTS_ID = (SELECT FTS_ID FROM FITTING_SESSION WHERE FTR_NUM = ? ORDER BY FTS_DateTime DESC LIMIT 1)
-        OR LOWER(TRIM(o.FTR_ORD_Status)) IN ('pending', 'preparing', 'complete')
-      ) `;
-      params.push(roomId, roomId);
+    if (roomId) {
+      sql += ` WHERE f.FTR_Number = ? `;
+      params.push(roomId);
     }
 
-    // Deterministic sorting: Pending first, Preparing second, Complete last
-    // Within each status, newest orders first
     sql += `
       ORDER BY 
-        CASE LOWER(TRIM(o.FTR_ORD_Status)) 
-          WHEN 'pending' THEN 1 
-          WHEN 'preparing' THEN 2 
-          WHEN 'complete' THEN 3 
-          ELSE 4 
+        CASE 
+          WHEN f.FTR_FinishTime IS NOT NULL THEN 3
+          WHEN f.EMP_ID IS NOT NULL THEN 2
+          ELSE 1
         END ASC,
-        o.FTR_ORD_DateTime DESC,
-        o.FTR_ORD_ID DESC
+        f.FTR_OrderTime DESC,
+        f.FTR_OrderID DESC
     `;
 
     const orders = await query(sql, params);
@@ -449,28 +311,12 @@ router.get('/fitting-orders', async (req, res) => {
 
 // POST /api/fitting-orders
 router.post('/fitting-orders', async (req, res) => {
-  const { roomId, sessionId: reqSessionId, sku, productName, size, color } = req.body;
-  const user = getCurrentUser(req);
-  const cusId = user && user.role === 'CUSTOMER' ? user.id : 'u1';
+  const { roomId, sku, productName, size, color } = req.body;
 
   try {
     const roomNum = String(roomId || '1');
-    // Ensure session exists
-    let session = null;
-    if (reqSessionId) {
-      session = await get(`SELECT FTS_ID FROM FITTING_SESSION WHERE FTS_ID = ?`, [reqSessionId]);
-    }
-    if (!session) {
-      session = await get(`SELECT FTS_ID FROM FITTING_SESSION WHERE FTR_NUM = ? ORDER BY FTS_DateTime DESC LIMIT 1`, [roomNum]);
-    }
-    if (!session) {
-      const newSessionId = `fts_${roomNum}_${Date.now()}`;
-      await run(`INSERT INTO FITTING_SESSION (FTS_ID, FTR_NUM, CUS_ID, FTS_DateTime) VALUES (?, ?, ?, ?)`,
-        [newSessionId, roomNum, cusId, new Date().toISOString()]);
-      session = { FTS_ID: newSessionId };
-    }
 
-    // Verify SKU exists in ITEM_VARIANT; if not, find best variant for this product
+    // Verify SKU exists in ITEM_VARIANT
     let targetSku = sku;
     let variant = await get(
       `SELECT v.ITV_SKUID, v.ITV_Stock, v.ITV_Color, v.ITV_Size, i.ITM_Name 
@@ -505,7 +351,7 @@ router.post('/fitting-orders', async (req, res) => {
       );
     }
 
-    // BR-002: สินค้าที่ Stock = 0 ต้องไม่สามารถสั่งได้
+    // Check stock
     if (variant && Number(variant.ITV_Stock) <= 0) {
       return res.status(400).json({
         success: false,
@@ -517,44 +363,38 @@ router.post('/fitting-orders', async (req, res) => {
     }
 
     const orderId = 'fo_' + Date.now();
-    const now = new Date().toISOString();
 
     await run(
-      `INSERT INTO FITTING_ROOM_ORDER (FTR_ORD_ID, FTS_ID, ITV_SKUID, EMP_ID, FTR_ORD_Status, FTR_ORD_DateTime)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [orderId, session.FTS_ID, targetSku, '68070056', 'pending', now]
+      `INSERT INTO FITTING_ROOM (FTR_OrderID, ITV_SKUID, EMP_ID, FTR_Number) VALUES (?, ?, NULL, ?)`,
+      [orderId, targetSku, roomNum]
     );
 
     // Retrieve rich details for newly created order
     const created = await get(`
-      SELECT o.FTR_ORD_ID as id,
-             LOWER(TRIM(o.FTR_ORD_Status)) as status,
-             o.FTR_ORD_DateTime as createdAt,
-             s.FTR_NUM as roomId,
-             s.FTS_ID as sessionId,
-             o.ITV_SKUID as sku,
+      SELECT f.FTR_OrderID as id,
+             'pending' as status,
+             f.FTR_OrderTime as createdAt,
+             f.FTR_Number as roomId,
+             f.ITV_SKUID as sku,
              COALESCE(v.ITV_Size, ?) as size,
              COALESCE(v.ITV_Color, ?) as color,
              COALESCE(i.ITM_Name, ?) as productName,
-             COALESCE(i.ITM_Image, '') as image,
              COALESCE(i.ITM_Price, 0) as price
-       FROM FITTING_ROOM_ORDER o
-       JOIN FITTING_SESSION s ON o.FTS_ID = s.FTS_ID
-       LEFT JOIN ITEM_VARIANT v ON o.ITV_SKUID = v.ITV_SKUID
+       FROM FITTING_ROOM f
+       LEFT JOIN ITEM_VARIANT v ON f.ITV_SKUID = v.ITV_SKUID
        LEFT JOIN ITEM i ON v.ITM_ID = i.ITM_ID
-       WHERE o.FTR_ORD_ID = ?
+       WHERE f.FTR_OrderID = ?
     `, [size || '-', color || '-', productName || 'เสื้อผ้าสำหรับลอง', orderId]);
 
     res.json(created || {
       id: orderId,
       roomId: roomNum,
-      sessionId: session.FTS_ID,
       sku: targetSku,
       productName: productName || 'เสื้อผ้าสำหรับลอง',
       size: size || '-',
       color: color || '-',
       status: 'pending',
-      createdAt: now
+      createdAt: new Date().toISOString()
     });
   } catch (err) {
     console.error('Create fitting order error:', err);
@@ -565,7 +405,7 @@ router.post('/fitting-orders', async (req, res) => {
 // PATCH /api/fitting-orders/:id
 router.patch('/fitting-orders/:id', async (req, res) => {
   const { id } = req.params;
-  const { status, empId } = req.body; // 'pending', 'preparing', 'complete'
+  const { status, empId } = req.body;
   const user = getCurrentUser(req);
   const staffId = empId || (user && user.role !== 'CUSTOMER' ? user.id : '68070056');
 
@@ -576,14 +416,22 @@ router.patch('/fitting-orders/:id', async (req, res) => {
 
   try {
     if (cleanStatus === 'preparing') {
+      // Set EMP_ID to mark as preparing
       await run(
-        `UPDATE FITTING_ROOM_ORDER SET FTR_ORD_Status = ?, EMP_ID = ? WHERE FTR_ORD_ID = ?`,
-        [cleanStatus, staffId, id]
+        `UPDATE FITTING_ROOM SET EMP_ID = ? WHERE FTR_OrderID = ?`,
+        [staffId, id]
       );
-    } else {
+    } else if (cleanStatus === 'complete') {
+      // Set FTR_FinishTime to mark as complete
       await run(
-        `UPDATE FITTING_ROOM_ORDER SET FTR_ORD_Status = ? WHERE FTR_ORD_ID = ?`,
-        [cleanStatus, id]
+        `UPDATE FITTING_ROOM SET FTR_FinishTime = NOW() WHERE FTR_OrderID = ?`,
+        [id]
+      );
+    } else if (cleanStatus === 'pending') {
+      // Reset to pending
+      await run(
+        `UPDATE FITTING_ROOM SET EMP_ID = NULL, FTR_FinishTime = NULL WHERE FTR_OrderID = ?`,
+        [id]
       );
     }
     res.json({ success: true, id, status: cleanStatus });
@@ -594,7 +442,7 @@ router.patch('/fitting-orders/:id', async (req, res) => {
 });
 
 // ==========================================================
-// 5. SALE ORDERS & RECEIPTS (SALE_ORDER & SALE_ORDER_LINE)
+// 4. SALE ORDERS & RECEIPTS (SALE_ORDER & SALE_ORDER_LINE)
 // ==========================================================
 
 // GET /api/receipts
@@ -617,7 +465,7 @@ router.get('/receipts/:id', async (req, res) => {
     }
 
     const lines = await query(
-      `SELECT l.*, v.ITV_Color, v.ITV_Size, i.ITM_Name, i.ITM_Image
+      `SELECT l.*, v.ITV_Color, v.ITV_Size, i.ITM_Name
        FROM SALE_ORDER_LINE l
        JOIN ITEM_VARIANT v ON l.ITV_SKUID = v.ITV_SKUID
        JOIN ITEM i ON v.ITM_ID = i.ITM_ID
@@ -651,7 +499,6 @@ router.post('/receipts', async (req, res) => {
   }
 
   const orderId = 'rcpt_' + Date.now();
-  const now = new Date().toISOString();
 
   try {
     const result = await withTransaction(async (tx) => {
@@ -672,7 +519,7 @@ router.post('/receipts', async (req, res) => {
 
         // Fetch authoritative product and variant data from DB
         const variant = await tx.get(
-          `SELECT v.ITV_SKUID, v.ITV_Stock, v.ITV_Color, v.ITV_Size, i.ITM_ID, i.ITM_Name, i.ITM_Price, i.ITM_Image
+          `SELECT v.ITV_SKUID, v.ITV_Stock, v.ITV_Color, v.ITV_Size, i.ITM_ID, i.ITM_Name, i.ITM_Price
            FROM ITEM_VARIANT v
            JOIN ITEM i ON v.ITM_ID = i.ITM_ID
            WHERE v.ITV_SKUID = ?`,
@@ -685,7 +532,7 @@ router.post('/receipts', async (req, res) => {
           throw err;
         }
 
-        // BR-002 / BR-003: Check stock before deducting
+        // Check stock before deducting
         if (Number(variant.ITV_Stock) < quantity) {
           const err = new Error(
             `สินค้า '${variant.ITM_Name}' (${variant.ITV_Color || ''} - ${variant.ITV_Size || ''}) มีสต็อกไม่เพียงพอ (คงเหลือ ${variant.ITV_Stock} ชิ้น, ต้องการ ${quantity} ชิ้น)`
@@ -695,7 +542,7 @@ router.post('/receipts', async (req, res) => {
           throw err;
         }
 
-        // Atomic stock deduction: will only update if current stock >= quantity
+        // Atomic stock deduction
         const stockRes = await tx.run(
           `UPDATE ITEM_VARIANT SET ITV_Stock = ITV_Stock - ? WHERE ITV_SKUID = ? AND ITV_Stock >= ?`,
           [quantity, sku, quantity]
@@ -717,7 +564,6 @@ router.post('/receipts', async (req, res) => {
         verifiedLines.push({
           sku,
           name: variant.ITM_Name,
-          image: variant.ITM_Image,
           color: variant.ITV_Color,
           size: variant.ITV_Size,
           price: unitPrice,
@@ -727,6 +573,7 @@ router.post('/receipts', async (req, res) => {
       }
 
       // 2. Insert SALE_ORDER with server-calculated total
+      const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
       await tx.run(
         `INSERT INTO SALE_ORDER (ORD_ID, CUS_ID, EMP_ID, ORD_Method, ORD_Channel, ORD_DateTime, ORD_Total)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -747,7 +594,6 @@ router.post('/receipts', async (req, res) => {
       // 4. Clean up any stored cart in database for this customer
       if (cusId) {
         await tx.run(`DELETE FROM PAY_CART_ITEM WHERE PAY_CART_ID = ?`, ['cart_' + cusId]).catch(() => {});
-        await tx.run(`DELETE FROM PAY_CART_LINE WHERE PAY_CART_ID = ?`, ['cart_' + cusId]).catch(() => {});
       }
 
       return {
@@ -797,14 +643,14 @@ router.post('/receipts', async (req, res) => {
 });
 
 // ==========================================================
-// 6. USERS (MEMBER SEARCH FOR POS)
+// 5. USERS (MEMBER SEARCH FOR POS)
 // ==========================================================
 
 // GET /api/users
 router.get('/users', async (req, res) => {
   try {
     const customers = await query(
-      `SELECT CUS_ID as id, (CUS_FName || ' ' || CUS_LName) as name, CUS_Tel as phone, 'CUSTOMER' as role 
+      `SELECT CUS_ID as id, CONCAT(CUS_FName, ' ', CUS_LName) as name, CUS_Tel as phone, 'CUSTOMER' as role 
        FROM CUSTOMER`
     );
     res.json(customers);

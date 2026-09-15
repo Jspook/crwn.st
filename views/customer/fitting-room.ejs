@@ -62,7 +62,7 @@
         
         <!-- Image -->
         <div class="aspect-square bg-[#E8DFD1]/40 relative overflow-hidden group">
-          <img src="<%= item.ITM_Image || ('https://picsum.photos/seed/' + item.ITM_ID + '/600/600') %>" alt="<%= item.ITM_Name %>" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+          <img src="https://picsum.photos/seed/<%= item.ITM_ID %>/600/600" alt="<%= item.ITM_Name %>" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
           <span class="absolute top-2.5 left-2.5 text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full bg-white/80 backdrop-blur-xs text-[#1F2421]">
             <%= item.ITM_Category || 'Atelier' %>
           </span>
@@ -227,7 +227,7 @@
     const productPayload = {
       id: item.ITM_ID,
       name: item.ITM_Name,
-      image: item.ITM_Image,
+      image: 'https://picsum.photos/seed/' + item.ITM_ID + '/200/200',
       price: item.ITM_Price,
       variants: item.variants || [
         { sku: item.ITM_ID + '-s', size: 'S', color: 'Black' },
@@ -267,7 +267,7 @@
               price: prod ? Number(prod.ITM_Price) : 2500,
               color: ro.color || 'Standard',
               size: ro.size || 'M',
-              image: ro.image || (prod ? prod.ITM_Image : ''),
+              image: ro.image || '',
               quantity: 1
             });
           }
@@ -297,11 +297,7 @@
   }
 
   async function releaseCurrentRoom() {
-    try {
-      await fetch(`/api/fitting-rooms/${currentRoomId}/release`, { method: 'POST' });
-    } catch (e) {
-      console.warn('Failed to release room:', e);
-    }
+    // No room status tracking in schema — just navigate away
   }
 
   function renderExitItemsList() {

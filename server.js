@@ -1,6 +1,6 @@
 // ==========================================================
 // crwn.st Express.js Application Server
-// Built with Node.JS, Express.JS, EJS & SQLite/MySQL DB
+// Built with Node.JS, Express.JS, EJS & MySQL DB
 // ==========================================================
 
 const express = require('express');

@@ -1,5 +1,5 @@
 // ==========================================================
-// crwn.st Authentication Routes (REST API)
+// crwn.st Authentication Routes (REST API) — MySQL
 // ==========================================================
 
 const express = require('express');
@@ -57,7 +57,6 @@ router.post('/register', async (req, res) => {
     // Ensure new customer cart is reset/empty
     const newCartId = 'cart_' + newId;
     await run(`DELETE FROM PAY_CART_ITEM WHERE PAY_CART_ID = ?`, [newCartId]).catch(() => {});
-    await run(`DELETE FROM PAY_CART_LINE WHERE PAY_CART_ID = ?`, [newCartId]).catch(() => {});
 
     const customer = {
       id: newId,
@@ -96,7 +95,7 @@ router.post('/login', async (req, res) => {
 
     // 1. First, check if input matches an EMPLOYEE (EMP_ID or EMP_Pass / Staff Code)
     const employee = await get(
-      `SELECT EMP_ID as id, (EMP_FName || ' ' || EMP_LName) as name, EMP_Role as role, EMP_Pass as staffCode 
+      `SELECT EMP_ID as id, CONCAT(EMP_FName, ' ', EMP_LName) as name, EMP_Role as role, EMP_Pass as staffCode 
        FROM EMPLOYEE 
        WHERE EMP_ID = ? OR EMP_Pass = ? OR EMP_Email = ?`,
       [input, input, input]
@@ -141,7 +140,7 @@ router.post('/login', async (req, res) => {
     // 2. If not an employee, check if input matches a CUSTOMER (CUS_Tel or CUS_ID)
     const cleanPhone = input.replace(/[-\s]/g, '');
     const customer = await get(
-      `SELECT CUS_ID as id, (CUS_FName || ' ' || CUS_LName) as name, CUS_Tel as phone, CUS_Pass as password, 'CUSTOMER' as role 
+      `SELECT CUS_ID as id, CONCAT(CUS_FName, ' ', CUS_LName) as name, CUS_Tel as phone, CUS_Pass as password, 'CUSTOMER' as role 
        FROM CUSTOMER 
        WHERE CUS_Tel = ? OR CUS_ID = ?`,
       [cleanPhone, input]
@@ -169,7 +168,6 @@ router.post('/login', async (req, res) => {
       // Always reset and empty shopping cart on customer login so cart is fresh & empty
       const cartId = 'cart_' + customer.id;
       await run(`DELETE FROM PAY_CART_ITEM WHERE PAY_CART_ID = ?`, [cartId]).catch(() => {});
-      await run(`DELETE FROM PAY_CART_LINE WHERE PAY_CART_ID = ?`, [cartId]).catch(() => {});
 
       const customerUser = {
         id: customer.id,
@@ -206,7 +204,6 @@ router.post('/logout', async (req, res) => {
     if (user && user.role === 'CUSTOMER') {
       const cartId = 'cart_' + user.id;
       await run(`DELETE FROM PAY_CART_ITEM WHERE PAY_CART_ID = ?`, [cartId]).catch(() => {});
-      await run(`DELETE FROM PAY_CART_LINE WHERE PAY_CART_ID = ?`, [cartId]).catch(() => {});
     }
   } catch (e) {
     console.warn('Cart cleanup on logout failed:', e);
