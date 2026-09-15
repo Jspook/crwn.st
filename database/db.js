@@ -5,13 +5,15 @@
 
 const mysql = require('mysql2/promise');
 
-// Create a connection pool for concurrent request handling
 const pool = mysql.createPool({
-  host: 'webdev.it.kmitl.ac.th',
-  user: 's68070186',
-  password: 'LPHV425SG215NE',
-  database: 's68070186',
-  port: 3306,
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  port: process.env.DB_PORT || 18385,
+  ssl: {
+    rejectUnauthorized: false // Required for Aiven connection without local CA certificate
+  },
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
