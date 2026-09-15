@@ -309,6 +309,57 @@ router.get('/fitting-orders', async (req, res) => {
   }
 });
 
+// GET /api/fitting-rooms
+router.get('/fitting-rooms', async (req, res) => {
+  try {
+    const totalRooms = 4;
+    const activeOrders = await query(`
+      SELECT FTR_Number as roomNum, ITV_SKUID, FTR_OrderTime
+      FROM FITTING_ROOM
+      WHERE FTR_FinishTime IS NULL
+      ORDER BY FTR_OrderTime DESC
+    `);
+
+    const occupiedMap = {};
+    for (const ord of activeOrders) {
+      if (!occupiedMap[ord.roomNum]) {
+        occupiedMap[ord.roomNum] = ord;
+      }
+    }
+
+    const rooms = [];
+    for (let i = 1; i <= totalRooms; i++) {
+      const roomNumStr = String(i);
+      const active = occupiedMap[roomNumStr];
+      rooms.push({
+        FTR_Num: i,
+        FTR_Status: active ? 'occupied' : 'available',
+        occupantName: active ? 'กำลังลองชุด' : null
+      });
+    }
+
+    res.json(rooms);
+  } catch (err) {
+    console.error('Error fetching fitting rooms:', err);
+    res.status(500).json({ error: 'Failed to fetch fitting rooms' });
+  }
+});
+
+// POST /api/fitting-rooms/:roomId/release
+router.post('/fitting-rooms/:roomId/release', async (req, res) => {
+  const { roomId } = req.params;
+  try {
+    await run(
+      `UPDATE FITTING_ROOM SET FTR_FinishTime = NOW() WHERE FTR_Number = ? AND FTR_FinishTime IS NULL`,
+      [roomId]
+    );
+    res.json({ success: true, roomId });
+  } catch (err) {
+    console.error('Error releasing room:', err);
+    res.status(500).json({ error: 'Failed to release fitting room' });
+  }
+});
+
 // POST /api/fitting-orders
 router.post('/fitting-orders', async (req, res) => {
   const { roomId, sku, productName, size, color } = req.body;
