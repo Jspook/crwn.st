@@ -62,6 +62,13 @@ const Cart = {
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data.items)) {
+          // Add fallback image if missing
+          data.items.forEach(item => {
+            if (!item.image) {
+              const pId = item.productId || item.sku.split('-')[0];
+              item.image = `https://picsum.photos/seed/${pId}/200/200`;
+            }
+          });
           // Server cart is authoritative: on fresh login or after checkout/reset, empty items take precedence
           this.items = data.items;
           this.saveToStorage();
@@ -107,7 +114,7 @@ const Cart = {
         quantity: 1,
       });
     }
-    await this.syncBackend();
+    this.syncBackend(); // Optimistic update, no await
     this.openDrawer();
     this.showToast(`เพิ่ม "${item.name}" ลงในตะกร้าแล้ว`);
   },
@@ -120,13 +127,13 @@ const Cart = {
     if (this.items[idx].quantity <= 0) {
       this.items.splice(idx, 1);
     }
-    await this.syncBackend();
+    this.syncBackend(); // Optimistic update, no await
   },
 
   async removeItem(sku) {
     this.loadFromStorage();
     this.items = this.items.filter(i => i.sku !== sku);
-    await this.syncBackend();
+    this.syncBackend(); // Optimistic update, no await
   },
 
   async clear() {

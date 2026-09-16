@@ -248,36 +248,8 @@
   // ==========================================================
 
   async function confirmExitFittingRoom() {
-    // Only check orders requested in THIS fitting session
-    let items = [];
-    try {
-      const url = currentSessionId 
-        ? `/api/fitting-orders?sessionId=${encodeURIComponent(currentSessionId)}` 
-        : `/api/fitting-orders?roomId=${encodeURIComponent(currentRoomId)}`;
-      const res = await fetch(url);
-      if (res.ok) {
-        const roomOrders = await res.json();
-        roomOrders.forEach(ro => {
-          if (!items.some(i => i.sku === ro.sku)) {
-            const prod = catalogData.find(p => p.name === ro.productName || p.ITM_ID === ro.sku.split('-')[0]);
-            items.push({
-              sku: ro.sku,
-              productId: prod ? prod.ITM_ID : ro.sku.split('-')[0],
-              name: ro.productName || (prod ? prod.ITM_Name : 'เสื้อผ้า'),
-              price: prod ? Number(prod.ITM_Price) : 2500,
-              color: ro.color || 'Standard',
-              size: ro.size || 'M',
-              image: ro.image || '',
-              quantity: 1
-            });
-          }
-        });
-      }
-    } catch (e) {
-      console.warn(e);
-    }
-
-    sessionTriedItems = items;
+    // Option B: Retrieve items ONLY from localStorage to prevent cart contamination (Bug #6)
+    sessionTriedItems = getTriedFittingItems(currentRoomId);
 
     // If no items were requested to try in this session, exit directly without showing modal
     // Pay & Go cart items remain isolated in Pay & Go cart
@@ -297,7 +269,11 @@
   }
 
   async function releaseCurrentRoom() {
-    // No room status tracking in schema — just navigate away
+    try {
+      await fetch(`/api/fitting-rooms/${currentRoomId}/release`, { method: 'POST' });
+    } catch (e) {
+      console.warn('Failed to release room:', e);
+    }
   }
 
   function renderExitItemsList() {

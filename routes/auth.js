@@ -43,7 +43,7 @@ router.post('/register', async (req, res) => {
     // Check if phone already registered
     const existing = await get(`SELECT CUS_ID FROM CUSTOMER WHERE CUS_Tel = ?`, [cleanPhone]);
     if (existing) {
-      return res.status(400).json({ error: 'เบอร์โทรศัพท์นี้ลงทะเบียนสมาชิกไว้แล้ว กรุณาเข้าสู่ระบบ' });
+      return res.status(400).json({ error: 'เบอร์โทรศัพท์นี้ลงทะเบียนสมาชิกไว้แล้ว กรุณาเข้าสู่ระบบ', alreadyRegistered: true });
     }
 
     const newId = 'u_' + Date.now().toString().slice(-6);

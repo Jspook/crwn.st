@@ -326,7 +326,14 @@
       const data = await res.json();
 
       if (!res.ok) {
-        showError(data.error || 'ไม่สามารถสมัครสมาชิกได้');
+        if (data.alreadyRegistered) {
+          showError(data.error || 'เบอร์โทรศัพท์นี้ลงทะเบียนสมาชิกไว้แล้ว กรุณาเข้าสู่ระบบ', '👉 กดที่นี่เพื่อเข้าสู่ระบบ', () => {
+            document.getElementById('login-identifier').value = phone;
+            switchAuthMode('login');
+          });
+        } else {
+          showError(data.error || 'ไม่สามารถสมัครสมาชิกได้');
+        }
         btn.disabled = false;
         return;
       }

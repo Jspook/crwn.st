@@ -60,7 +60,7 @@
               <span class="block text-sm font-semibold text-[#1F2421]">บัตรเครดิต / เดบิต</span>
               <span class="block text-xs text-[#8A8177]">Visa, Mastercard, JCB</span>
             </div>
-            <i data-lucide="check-circle" class="w-5 h-5 text-[#1F2421]"></i>
+            <i id="icon-credit" data-lucide="check-circle" class="w-5 h-5 text-[#1F2421]"></i>
           </label>
 
           <label class="payment-option-card flex items-center gap-3 p-4 rounded-2xl border border-[#A3907C]/25 bg-white/70 hover:bg-white cursor-pointer transition shadow-xs">
@@ -72,7 +72,7 @@
               <span class="block text-sm font-semibold text-[#1F2421]">Thai QR PromptPay</span>
               <span class="block text-xs text-[#8A8177]">สแกนจ่ายผ่าน Mobile Banking</span>
             </div>
-            <i data-lucide="circle" class="w-5 h-5 text-[#8A8177]"></i>
+            <i id="icon-qr" data-lucide="circle" class="w-5 h-5 text-[#8A8177]"></i>
           </label>
         </div>
 
@@ -193,18 +193,25 @@
     const creditView = document.getElementById('payment-view-credit');
     const qrView = document.getElementById('payment-view-qr');
     const cards = document.querySelectorAll('.payment-option-card');
+    const iconCredit = document.getElementById('icon-credit');
+    const iconQr = document.getElementById('icon-qr');
 
     if (method === 'credit') {
       creditView.classList.remove('hidden');
       qrView.classList.add('hidden');
       cards[0].className = 'payment-option-card flex items-center gap-3 p-4 rounded-2xl border-2 border-[#1F2421] bg-white cursor-pointer transition shadow-xs';
       cards[1].className = 'payment-option-card flex items-center gap-3 p-4 rounded-2xl border border-[#A3907C]/25 bg-white/70 hover:bg-white cursor-pointer transition shadow-xs';
+      if (iconCredit) { iconCredit.setAttribute('data-lucide', 'check-circle'); iconCredit.className = 'w-5 h-5 text-[#1F2421]'; }
+      if (iconQr) { iconQr.setAttribute('data-lucide', 'circle'); iconQr.className = 'w-5 h-5 text-[#8A8177]'; }
     } else {
       creditView.classList.add('hidden');
       qrView.classList.remove('hidden');
       cards[0].className = 'payment-option-card flex items-center gap-3 p-4 rounded-2xl border border-[#A3907C]/25 bg-white/70 hover:bg-white cursor-pointer transition shadow-xs';
       cards[1].className = 'payment-option-card flex items-center gap-3 p-4 rounded-2xl border-2 border-[#1F2421] bg-white cursor-pointer transition shadow-xs';
+      if (iconCredit) { iconCredit.setAttribute('data-lucide', 'circle'); iconCredit.className = 'w-5 h-5 text-[#8A8177]'; }
+      if (iconQr) { iconQr.setAttribute('data-lucide', 'check-circle'); iconQr.className = 'w-5 h-5 text-[#1F2421]'; }
     }
+    if (window.lucide) window.lucide.createIcons();
   }
 
   async function processCheckout() {

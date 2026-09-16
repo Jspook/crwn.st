@@ -39,7 +39,7 @@
         </div>
         <div class="flex justify-between">
           <span>DATE/TIME:</span>
-          <span><%= new Date(receipt.ORD_DateTime || receipt.createdAt || Date.now()).toLocaleString('th-TH') %></span>
+          <span><%= new Date(receipt.ORD_DateTime || receipt.createdAt || Date.now()).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }) %></span>
         </div>
         <div class="flex justify-between">
           <span>CHANNEL:</span>

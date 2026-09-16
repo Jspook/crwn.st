@@ -58,22 +58,9 @@
       <!-- Simulation Buttons for testing QR codes -->
       <div class="pt-3 border-t border-[#A3907C]/15">
         <span class="text-[10px] font-bold text-[#8A8177] uppercase tracking-wider block mb-1.5 text-center">จำลองการสแกน QR Code หน้าห้อง (สำหรับทดสอบ):</span>
-        <div class="grid grid-cols-3 gap-1.5 text-xs">
-          <button type="button" onclick="simulateRoomQrScan('1')" class="py-2.5 px-1 rounded-xl bg-white border border-[#A3907C]/30 hover:border-[#1F2421] text-[#1F2421] text-center font-medium transition shadow-2xs hover:bg-[#F5F2EB] active:scale-95 cursor-pointer">
-            <span class="block text-[10px] text-[#8A8177]">สแกน QR</span>
-            <span class="font-bold text-xs">ห้อง 01</span>
-            <span class="block text-[9px] text-emerald-700 font-semibold">ห้องว่าง</span>
-          </button>
-          <button type="button" onclick="simulateRoomQrScan('2')" class="py-2.5 px-1 rounded-xl bg-rose-50 border border-rose-200 hover:border-rose-400 text-rose-900 text-center font-medium transition shadow-2xs hover:bg-rose-100/70 active:scale-95 cursor-pointer">
-            <span class="block text-[10px] text-rose-700">สแกน QR</span>
-            <span class="font-bold text-xs">ห้อง 02</span>
-            <span class="block text-[9px] text-rose-700 font-semibold">ล็อก/มีคนใช้</span>
-          </button>
-          <button type="button" onclick="simulateRoomQrScan('3')" class="py-2.5 px-1 rounded-xl bg-white border border-[#A3907C]/30 hover:border-[#1F2421] text-[#1F2421] text-center font-medium transition shadow-2xs hover:bg-[#F5F2EB] active:scale-95 cursor-pointer">
-            <span class="block text-[10px] text-[#8A8177]">สแกน QR</span>
-            <span class="font-bold text-xs">ห้อง 03</span>
-            <span class="block text-[9px] text-emerald-700 font-semibold">ห้องว่าง</span>
-          </button>
+        <div id="room-simulation-grid" class="grid grid-cols-4 gap-1.5 text-xs">
+          <!-- Populated dynamically by JS -->
+          <div class="col-span-4 text-center py-2 text-[#8A8177]">กำลังโหลดสถานะห้องลอง...</div>
         </div>
         <p class="text-[10px] text-center text-[#8A8177] mt-2">หมายเหตุ: ระบบจะไม่อนุญาตให้เข้าห้องที่ล็อกอยู่หรือกำลังมีผู้ใช้งาน</p>
       </div>

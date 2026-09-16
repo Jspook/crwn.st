@@ -624,7 +624,7 @@ router.post('/receipts', async (req, res) => {
       }
 
       // 2. Insert SALE_ORDER with server-calculated total
-      const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
+      const now = new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Bangkok' }).replace('T', ' ');
       await tx.run(
         `INSERT INTO SALE_ORDER (ORD_ID, CUS_ID, EMP_ID, ORD_Method, ORD_Channel, ORD_DateTime, ORD_Total)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,

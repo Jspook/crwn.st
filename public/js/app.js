@@ -33,6 +33,41 @@ function openRoomModal() {
     document.documentElement.classList.add('overflow-hidden');
     // Attempt auto-start camera for convenience
     toggleRoomQrCamera(true);
+    
+    // Fetch and render room status dynamically
+    fetchFittingRoomsStatus();
+  }
+}
+
+async function fetchFittingRoomsStatus() {
+  const grid = document.getElementById('room-simulation-grid');
+  if (!grid) return;
+  try {
+    const res = await fetch('/api/fitting-rooms');
+    const rooms = await res.json();
+    grid.innerHTML = rooms.map(room => {
+      const isOccupied = room.FTR_Status === 'occupied';
+      if (isOccupied) {
+        return `
+          <button type="button" onclick="simulateRoomQrScan('${room.FTR_Num}')" class="py-2.5 px-1 rounded-xl bg-rose-50 border border-rose-200 hover:border-rose-400 text-rose-900 text-center font-medium transition shadow-2xs hover:bg-rose-100/70 active:scale-95 cursor-pointer">
+            <span class="block text-[10px] text-rose-700">สแกน QR</span>
+            <span class="font-bold text-xs">ห้อง 0${room.FTR_Num}</span>
+            <span class="block text-[9px] text-rose-700 font-semibold">ล็อก/มีคนใช้</span>
+          </button>
+        `;
+      } else {
+        return `
+          <button type="button" onclick="simulateRoomQrScan('${room.FTR_Num}')" class="py-2.5 px-1 rounded-xl bg-white border border-[#A3907C]/30 hover:border-[#1F2421] text-[#1F2421] text-center font-medium transition shadow-2xs hover:bg-[#F5F2EB] active:scale-95 cursor-pointer">
+            <span class="block text-[10px] text-[#8A8177]">สแกน QR</span>
+            <span class="font-bold text-xs">ห้อง 0${room.FTR_Num}</span>
+            <span class="block text-[9px] text-emerald-700 font-semibold">ห้องว่าง</span>
+          </button>
+        `;
+      }
+    }).join('');
+  } catch (err) {
+    console.error('Failed to load room status', err);
+    grid.innerHTML = '<div class="col-span-4 text-center py-2 text-rose-500">โหลดสถานะห้องลองไม่สำเร็จ</div>';
   }
 }
 
