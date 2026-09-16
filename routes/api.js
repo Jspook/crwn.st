@@ -556,17 +556,25 @@ router.post('/receipts', async (req, res) => {
       let calculatedTotal = 0;
       const verifiedLines = [];
 
-      // 1. Validate all items, check stock, calculate prices strictly from Database
-      for (let idx = 0; idx < items.length; idx++) {
-        const rawItem = items[idx];
+      // 1. Aggregate items by SKU to prevent duplicate processing
+      const aggregatedItems = {};
+      for (const rawItem of items) {
         const sku = String(rawItem.sku || rawItem.id || '').trim();
-        const quantity = Math.max(1, Math.floor(Number(rawItem.quantity) || 1));
-
+        const qty = Math.max(1, Math.floor(Number(rawItem.quantity) || 1));
         if (!sku) {
-          const err = new Error(`รายการสินค้าลำดับที่ ${idx + 1} ไม่มีรหัส SKU`);
+          const err = new Error(`พบรายการสินค้าที่ไม่มีรหัส SKU`);
           err.code = 'INVALID_SKU';
           throw err;
         }
+        aggregatedItems[sku] = (aggregatedItems[sku] || 0) + qty;
+      }
+
+      const uniqueSkus = Object.keys(aggregatedItems);
+
+      // 2. Validate all items, check stock, calculate prices strictly from Database
+      for (let idx = 0; idx < uniqueSkus.length; idx++) {
+        const sku = uniqueSkus[idx];
+        const quantity = aggregatedItems[sku];
 
         // Fetch authoritative product and variant data from DB
         const variant = await tx.get(
