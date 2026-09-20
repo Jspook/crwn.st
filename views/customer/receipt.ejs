@@ -86,7 +86,7 @@
       </div>
       <div class="flex justify-between">
         <span>VAT 7% (INCLUDED):</span>
-        <span>฿<%= (Number(receipt.ORD_Total || receipt.total || 0) * 7 / 107).toLocaleString(undefined, { minimumFractionDigits: 2 }) %></span>
+        <span>฿<%= (Number(receipt.ORD_Total || receipt.total || 0) * 7 / 107).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></span>
       </div>
       
       <!-- Total Bar -->

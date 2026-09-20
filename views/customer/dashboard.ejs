@@ -206,7 +206,7 @@
             </div>
           </div>
         </div>
-        <button onclick="addScannedProduct('${p.id}', '${p.name.replace(/'/g, "\\'")}', ${p.price}, '${v.sku}', '${v.color}', '${v.size}', '${p.image}')" class="w-full btn-primary py-2.5 text-xs mt-3 flex items-center justify-center gap-1.5 shadow-xs">
+        <button onclick="addScannedProduct('${p.id}', '${p.name.replace(/'/g, "\\'")}', ${p.price}, '${v.sku}', '${v.color}', '${v.size}', '${p.image || 'https://picsum.photos/seed/' + p.id + '/200/200'}')" class="w-full btn-primary py-2.5 text-xs mt-3 flex items-center justify-center gap-1.5 shadow-xs">
           <i data-lucide="shopping-bag" class="w-3.5 h-3.5"></i>
           <span>เพิ่มลงในตะกร้า</span>
         </button>
