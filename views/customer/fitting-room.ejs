@@ -47,10 +47,10 @@
       <% }); %>
     </div>
 
-    <!-- Quick Search Input -->
+    <!-- Quick Search Input (Debounced) -->
     <div class="relative w-full sm:w-64">
       <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#A3907C]"></i>
-      <input type="text" id="catalog-search" oninput="searchCatalog(this.value)" placeholder="ค้นหาสินค้าที่ต้องการลอง..." class="w-full pl-10 pr-4 py-2 rounded-full bg-white/80 border border-[#A3907C]/25 text-xs focus:outline-none focus:border-[#1F2421]">
+      <input type="text" id="catalog-search" oninput="debouncedSearchCatalog(this.value)" placeholder="ค้นหาสินค้าที่ต้องการลอง..." class="w-full pl-10 pr-4 py-2 rounded-full bg-white/80 border border-[#A3907C]/25 text-xs focus:outline-none focus:border-[#1F2421]">
     </div>
 
   </div>
@@ -62,7 +62,7 @@
         
         <!-- Image -->
         <div class="aspect-square bg-[#E8DFD1]/40 relative overflow-hidden group">
-          <img src="https://picsum.photos/seed/<%= item.ITM_ID %>/600/600" alt="<%= item.ITM_Name %>" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+          <img src="https://picsum.photos/seed/<%= item.ITM_ID %>/400/400" alt="<%= item.ITM_Name %>" loading="lazy" decoding="async" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
           <span class="absolute top-2.5 left-2.5 text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full bg-white/80 backdrop-blur-xs text-[#1F2421]">
             <%= item.ITM_Category || 'Atelier' %>
           </span>
@@ -220,6 +220,11 @@
     });
   }
 
+  // Debounced search (300ms) to avoid lagging during fast typing
+  const debouncedSearchCatalog = typeof debounce === 'function' 
+    ? debounce((val) => searchCatalog(val), 300) 
+    : (val) => searchCatalog(val);
+
   function openItemRequest(itemId) {
     const item = catalogData.find(p => p.ITM_ID === itemId);
     if (!item) return;
@@ -283,7 +288,7 @@
     container.innerHTML = sessionTriedItems.map((item, idx) => `
       <label class="flex items-center gap-3 p-3 rounded-2xl bg-white border border-[#A3907C]/25 shadow-2xs cursor-pointer hover:border-[#1F2421] transition">
         <input type="checkbox" name="exit-item-check" value="${item.sku}" checked class="w-4 h-4 rounded text-[#1F2421] accent-[#1F2421]">
-        <img src="${item.image || 'https://picsum.photos/seed/' + item.sku + '/200/200'}" class="w-12 h-12 rounded-xl object-cover bg-[#E8DFD1] flex-shrink-0">
+        <img src="${item.image || 'https://picsum.photos/seed/' + item.sku + '/200/200'}" alt="${item.name || 'Item'}" loading="lazy" decoding="async" class="w-12 h-12 rounded-xl object-cover bg-[#E8DFD1] flex-shrink-0">
         <div class="flex-1 min-w-0">
           <span class="block text-xs font-semibold text-[#1F2421] truncate">${item.name}</span>
           <span class="block text-[11px] text-[#8A8177]">ไซส์: ${item.size} · สี: ${item.color}</span>

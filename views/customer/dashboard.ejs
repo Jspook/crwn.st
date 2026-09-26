@@ -229,7 +229,7 @@
     resultBox.innerHTML = `
       <div class="p-3.5 rounded-2xl bg-white border border-[#A3907C]/25 shadow-xs">
         <div class="flex gap-3">
-          <img src="${p.image || 'https://picsum.photos/seed/' + p.id + '/200/200'}" alt="${p.name}" class="w-16 h-16 rounded-xl object-cover bg-[#E8DFD1] flex-shrink-0">
+          <img src="${p.image || 'https://picsum.photos/seed/' + p.id + '/200/200'}" alt="${p.name}" loading="lazy" decoding="async" class="w-16 h-16 rounded-xl object-cover bg-[#E8DFD1] flex-shrink-0">
           <div class="flex-1 min-w-0">
             <span class="text-[10px] uppercase font-bold tracking-wider text-[#A3907C]">${p.category || 'Atelier'}</span>
             <h4 class="font-medium text-xs sm:text-sm text-[#1F2421] truncate">${p.name}</h4>

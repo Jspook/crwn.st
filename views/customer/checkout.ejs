@@ -97,7 +97,7 @@
         <div id="payment-view-qr" class="p-5 rounded-2xl bg-white/80 border border-[#A3907C]/20 mb-6 text-center hidden">
           <p class="text-xs text-[#8A8177] mb-3">สแกน QR ผ่านแอปธนาคารใดก็ได้</p>
           <div class="w-40 h-40 mx-auto bg-white p-2 rounded-2xl border border-[#A3907C]/30 shadow-xs flex items-center justify-center">
-            <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=CRWN_ST_PROMPTPAY_PAYMENT" alt="PromptPay QR" class="w-full h-full object-contain">
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=CRWN_ST_PROMPTPAY_PAYMENT" alt="PromptPay QR" loading="lazy" decoding="async" class="w-full h-full object-contain">
           </div>
           <p class="text-[11px] text-[#A3907C] font-mono mt-2">Biller ID: 0105558000001</p>
         </div>
@@ -172,7 +172,7 @@
     list.innerHTML = Cart.items.map(item => `
       <div class="flex items-center gap-4 py-3 first:pt-0">
         <div class="w-16 h-16 rounded-xl bg-[#E8DFD1]/50 overflow-hidden flex-shrink-0">
-          <img src="${item.image || 'https://picsum.photos/seed/' + item.sku + '/200/200'}" alt="${item.name}" class="w-full h-full object-cover">
+          <img src="${item.image || 'https://picsum.photos/seed/' + item.sku + '/200/200'}" alt="${item.name}" loading="lazy" decoding="async" class="w-full h-full object-cover">
         </div>
         <div class="flex-1 min-w-0">
           <h4 class="font-medium text-sm text-[#1F2421] truncate">${item.name}</h4>

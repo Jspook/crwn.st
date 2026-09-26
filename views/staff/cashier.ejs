@@ -87,7 +87,7 @@
         <div class="flex gap-2">
           <div class="relative flex-1">
             <i data-lucide="phone" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#A3907C]"></i>
-            <input type="tel" id="pos-member-phone" placeholder="เบอร์โทรศัพท์ (เช่น 0812345678)" class="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white border border-[#A3907C]/30 text-xs font-mono focus:outline-none focus:border-[#1F2421]">
+            <input type="tel" id="pos-member-phone" oninput="debouncedPosLookupMember(this.value)" placeholder="เบอร์โทรศัพท์ (เช่น 0812345678)" class="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white border border-[#A3907C]/30 text-xs font-mono focus:outline-none focus:border-[#1F2421]">
           </div>
           <button onclick="posLookupMember()" class="btn-secondary text-xs px-3.5 py-2.5">
             ค้นหา
@@ -337,6 +337,8 @@
     changeEl.textContent = '฿' + change.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
+  const debouncedPosCalcChange = typeof debounce === 'function' ? debounce(posCalcChange, 200) : posCalcChange;
+
   async function posLookupMember() {
     const phone = document.getElementById('pos-member-phone').value.trim();
     if (!phone) return;
@@ -356,6 +358,15 @@
       alert('เกิดข้อผิดพลาดในการค้นหาสมาชิก');
     }
   }
+
+  // Debounced member lookup when user types 10 digits
+  const debouncedPosLookupMember = typeof debounce === 'function' ? debounce(async (val) => {
+    if (val && val.trim().length >= 10) {
+      await posLookupMember();
+    }
+  }, 400) : (val) => {
+    if (val && val.trim().length >= 10) posLookupMember();
+  };
 
   function posRemoveMember() {
     currentMember = null;

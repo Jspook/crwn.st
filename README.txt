@@ -36,13 +36,13 @@ URL สำหรับเข้าใช้งานระบบ:
 2. รหัสบาร์โค้ดสินค้าสำหรับทดสอบ (Test Barcodes)
 ---------------------------------------------------
 
-สามารถพิมพ์หรือนำเลขบาร์โค้ด (SKU) ด้านล่างไปสแกนในระบบ (ทั้งหน้าลูกค้าและหน้าแคชเชียร์ POS):
+สามารถพิมพ์หรือนำเลขบาร์โค้ด (SKU เป็นตัวเลข) ด้านล่างไปสแกนในระบบ (ทั้งหน้าลูกค้าและหน้าแคชเชียร์ POS):
 
-- p1-os-navy : Oversized Cashmere Scarf (฿2,490) - OS (Navy, Camel, Grey)
-- p2-m-grey : Chunky Knit Wool Sweater (฿3,890) - S, M, L (Grey, Cream, Black)
-- p3-m-navy : Tailored Double-Breasted Coat (฿8,900) - S, M, L (Black, Navy, Camel)
-- p4-m-beige : Wide-Leg Pleated Trousers (฿3,290) - S, M, L (Black, Beige, Charcoal)
-- p5-s-ivory : Silk Crepe Midi Skirt (฿4,190) - S, M (Ivory, Champagne)
+- 8850010001011 : Oversized Cashmere Scarf (฿2,490) - OS (Navy) [Camel: 8850010001028, Grey: 8850010001035]
+- 8850020001025 : Chunky Knit Wool Sweater (฿3,890) - M (Grey) [S Grey: 8850020001018, L Cream: 8850020001032, M Black: 8850020001049]
+- 8850030001022 : Tailored Double-Breasted Coat (฿8,900) - M (Navy) [S Black: 8850030001015, L Camel: 8850030001039]
+- 8850040001029 : Wide-Leg Pleated Trousers (฿3,290) - M (Beige) [S Black: 8850040001012, L Charcoal: 8850040001036]
+- 8850050001019 : Silk Crepe Midi Skirt (฿4,190) - S (Ivory) [M Champagne: 8850050001026]
 
 ---------------------------------------------------
 3. ภาพรวมโปรเจกต์ (Overview)

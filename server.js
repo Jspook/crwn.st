@@ -7,6 +7,7 @@ const express = require('express');
 const path = require('path');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
+const compression = require('compression');
 const { initDb } = require('./database/db');
 
 const authRoutes = require('./routes/auth');
@@ -21,6 +22,7 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
 // Middlewares
+app.use(compression()); // Compress all HTTP responses (Gzip/Deflate)
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -32,8 +34,11 @@ app.use((req, res, next) => {
   next();
 });
 
-// Static assets
-app.use(express.static(path.join(__dirname, 'public')));
+// Static assets with cache control
+app.use(express.static(path.join(__dirname, 'public'), {
+  maxAge: '1d',
+  etag: true
+}));
 
 // Mount routes
 app.use('/api/auth', authRoutes);

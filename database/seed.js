@@ -62,28 +62,28 @@ async function seedDatabase() {
     );
   }
 
-  // 5. Product Variants
+  // 5. Product Variants (Numeric Barcodes / EAN-13 style)
   const variants = [
     // p1 - Scarf (OS = One Size)
-    { sku: 'p1-os-navy', itemId: 'p1', color: 'Navy', size: 'OS', stock: 10, loc: 'LOC-01' },
-    { sku: 'p1-os-camel', itemId: 'p1', color: 'Camel', size: 'OS', stock: 8, loc: 'LOC-01' },
-    { sku: 'p1-os-grey', itemId: 'p1', color: 'Grey', size: 'OS', stock: 5, loc: 'LOC-01' },
+    { sku: '8850010001011', itemId: 'p1', color: 'Navy', size: 'OS', stock: 10, loc: 'LOC-01' },
+    { sku: '8850010001028', itemId: 'p1', color: 'Camel', size: 'OS', stock: 8, loc: 'LOC-01' },
+    { sku: '8850010001035', itemId: 'p1', color: 'Grey', size: 'OS', stock: 5, loc: 'LOC-01' },
     // p2 - Sweater
-    { sku: 'p2-s-grey', itemId: 'p2', color: 'Grey', size: 'S', stock: 6, loc: 'LOC-02' },
-    { sku: 'p2-m-grey', itemId: 'p2', color: 'Grey', size: 'M', stock: 10, loc: 'LOC-02' },
-    { sku: 'p2-l-cream', itemId: 'p2', color: 'Cream', size: 'L', stock: 4, loc: 'LOC-02' },
-    { sku: 'p2-m-black', itemId: 'p2', color: 'Black', size: 'M', stock: 7, loc: 'LOC-02' },
+    { sku: '8850020001018', itemId: 'p2', color: 'Grey', size: 'S', stock: 6, loc: 'LOC-02' },
+    { sku: '8850020001025', itemId: 'p2', color: 'Grey', size: 'M', stock: 10, loc: 'LOC-02' },
+    { sku: '8850020001032', itemId: 'p2', color: 'Cream', size: 'L', stock: 4, loc: 'LOC-02' },
+    { sku: '8850020001049', itemId: 'p2', color: 'Black', size: 'M', stock: 7, loc: 'LOC-02' },
     // p3 - Coat
-    { sku: 'p3-s-black', itemId: 'p3', color: 'Black', size: 'S', stock: 3, loc: 'LOC-04' },
-    { sku: 'p3-m-navy', itemId: 'p3', color: 'Navy', size: 'M', stock: 5, loc: 'LOC-04' },
-    { sku: 'p3-l-camel', itemId: 'p3', color: 'Camel', size: 'L', stock: 2, loc: 'LOC-04' },
+    { sku: '8850030001015', itemId: 'p3', color: 'Black', size: 'S', stock: 3, loc: 'LOC-04' },
+    { sku: '8850030001022', itemId: 'p3', color: 'Navy', size: 'M', stock: 5, loc: 'LOC-04' },
+    { sku: '8850030001039', itemId: 'p3', color: 'Camel', size: 'L', stock: 2, loc: 'LOC-04' },
     // p4 - Trousers
-    { sku: 'p4-s-black', itemId: 'p4', color: 'Black', size: 'S', stock: 8, loc: 'LOC-03' },
-    { sku: 'p4-m-beige', itemId: 'p4', color: 'Beige', size: 'M', stock: 6, loc: 'LOC-03' },
-    { sku: 'p4-l-charcoal', itemId: 'p4', color: 'Charcoal', size: 'L', stock: 4, loc: 'LOC-03' },
+    { sku: '8850040001012', itemId: 'p4', color: 'Black', size: 'S', stock: 8, loc: 'LOC-03' },
+    { sku: '8850040001029', itemId: 'p4', color: 'Beige', size: 'M', stock: 6, loc: 'LOC-03' },
+    { sku: '8850040001036', itemId: 'p4', color: 'Charcoal', size: 'L', stock: 4, loc: 'LOC-03' },
     // p5 - Skirt
-    { sku: 'p5-s-ivory', itemId: 'p5', color: 'Ivory', size: 'S', stock: 5, loc: 'LOC-03' },
-    { sku: 'p5-m-champagne', itemId: 'p5', color: 'Champagne', size: 'M', stock: 3, loc: 'LOC-03' },
+    { sku: '8850050001019', itemId: 'p5', color: 'Ivory', size: 'S', stock: 5, loc: 'LOC-03' },
+    { sku: '8850050001026', itemId: 'p5', color: 'Champagne', size: 'M', stock: 3, loc: 'LOC-03' },
   ];
 
   for (const v of variants) {

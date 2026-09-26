@@ -12,10 +12,88 @@ const { getCurrentUser } = require('./auth');
 // 1. PRODUCTS & BARCODE LOOKUP
 // ==========================================================
 
-// GET /api/products
+// GET /api/products (supports pagination with ?page=1&limit=12)
 router.get('/products', async (req, res) => {
   try {
-    const items = await query(`SELECT * FROM ITEM`);
+    const page = parseInt(req.query.page);
+    const limit = parseInt(req.query.limit) || 12;
+    const category = req.query.category;
+    const search = req.query.search ? req.query.search.trim() : null;
+
+    let itemsQuery = `SELECT * FROM ITEM`;
+    let countQuery = `SELECT COUNT(*) as total FROM ITEM`;
+    const params = [];
+    const countParams = [];
+
+    const conditions = [];
+    if (category && category !== 'ALL') {
+      conditions.push(`ITM_Category = ?`);
+      params.push(category);
+      countParams.push(category);
+    }
+    if (search) {
+      conditions.push(`(ITM_Name LIKE ? OR ITM_Tag LIKE ?)`);
+      params.push(`%${search}%`, `%${search}%`);
+      countParams.push(`%${search}%`, `%${search}%`);
+    }
+
+    if (conditions.length > 0) {
+      const whereClause = ` WHERE ` + conditions.join(' AND ');
+      itemsQuery += whereClause;
+      countQuery += whereClause;
+    }
+
+    itemsQuery += ` ORDER BY ITM_ID ASC`;
+
+    if (!isNaN(page) && page > 0) {
+      const totalResult = await get(countQuery, countParams);
+      const total = totalResult ? totalResult.total : 0;
+      const offset = (page - 1) * limit;
+      itemsQuery += ` LIMIT ? OFFSET ?`;
+      params.push(limit, offset);
+
+      const items = await query(itemsQuery, params);
+      const variants = await query(`SELECT * FROM ITEM_VARIANT`);
+
+      const variantMap = {};
+      for (const v of variants) {
+        if (!variantMap[v.ITM_ID]) variantMap[v.ITM_ID] = [];
+        variantMap[v.ITM_ID].push({
+          sku: v.ITV_SKUID,
+          color: v.ITV_Color,
+          size: v.ITV_Size,
+          stock: v.ITV_Stock,
+          locationId: v.LOC_ID
+        });
+      }
+
+      const result = items.map(item => ({
+        id: item.ITM_ID,
+        ITM_ID: item.ITM_ID,
+        name: item.ITM_Name,
+        ITM_Name: item.ITM_Name,
+        description: item.ITM_Description,
+        price: item.ITM_Price,
+        ITM_Price: item.ITM_Price,
+        category: item.ITM_Category,
+        ITM_Category: item.ITM_Category,
+        tag: item.ITM_Tag,
+        variants: variantMap[item.ITM_ID] || []
+      }));
+
+      return res.json({
+        data: result,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit) || 1
+        }
+      });
+    }
+
+    // Default without page param: return full array
+    const items = await query(itemsQuery, params);
     const variants = await query(`SELECT * FROM ITEM_VARIANT`);
 
     // Group variants by item
@@ -213,7 +291,7 @@ router.post('/cart', async (req, res) => {
         const v = await get(`SELECT ITV_SKUID FROM ITEM_VARIANT WHERE ITV_SKUID = ?`, [sku]);
         if (!v) {
           const firstV = await get(`SELECT ITV_SKUID FROM ITEM_VARIANT LIMIT 1`);
-          sku = firstV ? firstV.ITV_SKUID : 'p1-os-navy';
+          sku = firstV ? firstV.ITV_SKUID : '8850010001011';
         }
         const qty = item.quantity || 1;
         for (let q = 0; q < qty; q++) {
@@ -392,7 +470,7 @@ router.post('/fitting-orders', async (req, res) => {
       if (!prodFallback) {
         prodFallback = await get(`SELECT ITV_SKUID FROM ITEM_VARIANT LIMIT 1`);
       }
-      targetSku = prodFallback ? prodFallback.ITV_SKUID : 'p1-os-navy';
+      targetSku = prodFallback ? prodFallback.ITV_SKUID : '8850010001011';
       variant = await get(
         `SELECT v.ITV_SKUID, v.ITV_Stock, v.ITV_Color, v.ITV_Size, i.ITM_Name 
          FROM ITEM_VARIANT v 

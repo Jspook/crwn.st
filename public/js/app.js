@@ -2,6 +2,16 @@
 // crwn.st Global Client Application Utilities
 // ==========================================================
 
+// Debounce helper to prevent excessive function/API calls
+function debounce(fn, delay = 300) {
+  let timer = null;
+  return function(...args) {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), delay);
+  };
+}
+window.debounce = debounce;
+
 async function handleLogout() {
   try {
     if (window.Cart && typeof window.Cart.clear === 'function') {
