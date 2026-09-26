@@ -104,6 +104,9 @@ async function toggleRoomQrCamera() {
     if (video) {
       video.srcObject = stream;
       video.classList.remove('hidden');
+      
+      // Explicit play is required on iOS Safari
+      video.play().catch(e => console.warn('iOS Play Warning:', e));
     }
     if (offState) offState.classList.add('hidden');
     if (beam) beam.classList.remove('hidden');

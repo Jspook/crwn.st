@@ -150,6 +150,10 @@
       cameraStream = stream;
       video.srcObject = stream;
       video.classList.remove('hidden');
+      
+      // Explicit play is required on iOS Safari
+      video.play().catch(e => console.warn('iOS Play Warning:', e));
+
       offState.classList.add('hidden');
       laser.classList.remove('hidden');
       btnText.textContent = 'ปิดกล้องสแกน';
