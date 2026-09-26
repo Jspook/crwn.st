@@ -43,6 +43,30 @@
 </head>
 <body class="bg-[#F5F2EB] text-[#1F2421] min-h-screen flex flex-col relative selection:bg-[#C9A598]/30 selection:text-[#1F2421]">
 
+  <!-- Global Loading Spinner -->
+  <div id="global-loader" class="fixed inset-0 bg-[#F5F2EB]/80 backdrop-blur-sm z-[9999] flex items-center justify-center transition-opacity duration-300">
+    <div class="flex flex-col items-center">
+      <i data-lucide="loader-2" class="w-10 h-10 text-[#A3907C] animate-spin"></i>
+      <p class="mt-4 text-[#A3907C] font-serif text-lg tracking-widest uppercase">Loading...</p>
+    </div>
+  </div>
+  <script>
+    window.addEventListener('load', () => {
+      const loader = document.getElementById('global-loader');
+      if(loader) {
+        loader.style.opacity = '0';
+        setTimeout(() => loader.style.display = 'none', 300);
+      }
+    });
+    window.addEventListener('beforeunload', () => {
+      const loader = document.getElementById('global-loader');
+      if(loader) {
+        loader.style.display = 'flex';
+        loader.style.opacity = '1';
+      }
+    });
+  </script>
+
   <!-- Ambient Quiet Luxury Aurora Backdrop -->
   <div class="fixed inset-0 overflow-hidden pointer-events-none z-0">
     <div class="absolute -top-[15%] -left-[10%] w-[55vw] h-[55vw] rounded-full bg-[#E8DFD1] blur-[120px] opacity-40 animate-drift-1"></div>

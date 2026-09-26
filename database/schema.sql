@@ -110,3 +110,11 @@ CREATE TABLE IF NOT EXISTS FITTING_ROOM (
     FOREIGN KEY (ITV_SKUID) REFERENCES ITEM_VARIANT(ITV_SKUID),
     FOREIGN KEY (EMP_ID) REFERENCES EMPLOYEE(EMP_ID)
 );
+
+-- ==========================================================
+-- 7. Performance Optimization: Database Indexes
+-- ==========================================================
+CREATE INDEX idx_cus_tel ON CUSTOMER(CUS_Tel);
+CREATE INDEX idx_item_variant_itm ON ITEM_VARIANT(ITM_ID);
+CREATE INDEX idx_sale_order_cus ON SALE_ORDER(CUS_ID);
+CREATE INDEX idx_sale_order_line_ord ON SALE_ORDER_LINE(ORD_ID);
