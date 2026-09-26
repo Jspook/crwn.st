@@ -115,6 +115,8 @@
 <script>
   let cameraStream = null;
 
+  let dashScanInterval = null;
+
   async function toggleCamera() {
     const video = document.getElementById('camera-feed');
     const offState = document.getElementById('camera-off-state');
@@ -129,6 +131,10 @@
       offState.classList.remove('hidden');
       laser.classList.add('hidden');
       btnText.textContent = 'กดเพื่อเปิดกล้องสแกน';
+      if (dashScanInterval) {
+        clearInterval(dashScanInterval);
+        dashScanInterval = null;
+      }
       return;
     }
 
@@ -148,8 +154,24 @@
       laser.classList.remove('hidden');
       btnText.textContent = 'ปิดกล้องสแกน';
 
-      // Start simulated scanning interval if barcode detector not native
-      simulateBarcodeDetection();
+      // Start scanning barcodes if supported
+      if ('BarcodeDetector' in window) {
+        const barcodeDetector = new BarcodeDetector({ formats: ['qr_code', 'code_128', 'ean_13'] });
+        dashScanInterval = setInterval(async () => {
+          if (!cameraStream || !video || video.readyState < 2) return;
+          try {
+            const codes = await barcodeDetector.detect(video);
+            if (codes && codes.length > 0) {
+              const rawVal = codes[0].rawValue;
+              triggerLookupWithCode(rawVal);
+              // Auto-stop camera on success (optional, but good UX)
+              toggleCamera();
+            }
+          } catch (e) {}
+        }, 500);
+      } else {
+        console.warn('BarcodeDetector API not supported in this browser.');
+      }
     } catch (err) {
       console.warn('Camera access denied or unavailable:', err);
       let errMsg = 'ไม่สามารถเข้าถึงกล้องได้ กรุณาอนุญาตการเข้าถึงกล้อง หรือใช้รหัสบาร์โค้ดตัวอย่างด้านล่าง';
