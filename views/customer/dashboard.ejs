@@ -135,6 +135,9 @@
     // Start camera
     try {
       btnText.textContent = 'กำลังเปิดกล้อง...';
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("BrowserDoesNotSupport");
+      }
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment' }
       });
@@ -149,7 +152,11 @@
       simulateBarcodeDetection();
     } catch (err) {
       console.warn('Camera access denied or unavailable:', err);
-      alert('ไม่สามารถเข้าถึงกล้องได้ กรุณาอนุญาตการเข้าถึงกล้อง หรือใช้รหัสบาร์โค้ดตัวอย่างด้านล่าง');
+      let errMsg = 'ไม่สามารถเข้าถึงกล้องได้ กรุณาอนุญาตการเข้าถึงกล้อง หรือใช้รหัสบาร์โค้ดตัวอย่างด้านล่าง';
+      if (err.message === "BrowserDoesNotSupport" || err.name === "NotAllowedError" || err.name === "TypeError") {
+        errMsg = 'อุปกรณ์หรือเบราว์เซอร์นี้ไม่รองรับ (แนะนำให้เปิดผ่านเบราว์เซอร์หลัก Safari/Chrome แทนแอปแชท) หรือคุณยังไม่ได้อนุญาตการเข้าถึงกล้อง';
+      }
+      alert(errMsg + '\n\n(รายละเอียด: ' + err.message + ')');
       btnText.textContent = 'กดเพื่อเปิดกล้องสแกน';
     }
   }

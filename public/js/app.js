@@ -94,6 +94,9 @@ async function toggleRoomQrCamera() {
   }
 
   try {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error("BrowserDoesNotSupport");
+    }
     const stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: 'environment' }
     });
@@ -122,7 +125,11 @@ async function toggleRoomQrCamera() {
     }
   } catch (err) {
     console.warn('Cannot open room QR camera:', err);
-    showRoomModalError('ไม่สามารถเข้าถึงกล้องได้ กรุณาอนุญาตการใช้งานกล้อง หรือใช้ปุ่มจำลองการสแกน');
+    let errMsg = 'ไม่สามารถเข้าถึงกล้องได้ กรุณาอนุญาตการใช้งานกล้อง หรือใช้ปุ่มจำลองการสแกน';
+    if (err.message === "BrowserDoesNotSupport" || err.name === "NotAllowedError" || err.name === "TypeError") {
+      errMsg = 'อุปกรณ์หรือเบราว์เซอร์นี้ไม่รองรับ (แนะนำให้เปิดผ่านเบราว์เซอร์หลัก Safari/Chrome แทนแอปแชท) หรือคุณยังไม่ได้อนุญาตการเข้าถึงกล้อง';
+    }
+    showRoomModalError(errMsg + ' (' + err.message + ')');
   }
 }
 

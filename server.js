@@ -28,7 +28,7 @@ app.use(cookieParser());
 
 // Permissions-Policy: Allow camera access for barcode scanning
 app.use((req, res, next) => {
-  res.setHeader('Permissions-Policy', 'camera=(self)');
+  res.setHeader('Permissions-Policy', 'camera=*');
   next();
 });
 

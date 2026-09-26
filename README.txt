@@ -1,5 +1,5 @@
 ===================================================
-crwn.st (surreal-fit) - E-commerce & Fitting Room System
+crwn.st - E-commerce & Fitting Room System
 ===================================================
 
 ระบบ Point-of-Sale (POS) และระบบจัดการห้องลองชุดอัจฉริยะ (Seamless O2O Retail Experience) สำหรับธุรกิจแฟชั่นและเสื้อผ้าระดับลักชัวรี
