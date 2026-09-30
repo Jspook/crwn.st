@@ -65,8 +65,10 @@ const Cart = {
           // Add fallback image if missing
           data.items.forEach(item => {
             if (!item.image) {
-              const pId = item.productId || item.sku.split('-')[0];
-              item.image = `https://picsum.photos/seed/${pId}/200/200`;
+              const pId = item.productId || (item.sku ? item.sku.split('-')[0] : 'p1');
+              const num = parseInt(String(pId).replace(/[^0-9]/g, ''), 10) || 1;
+              const vIdx = (num % 2) + 1;
+              item.image = `/images/products/top-${vIdx}.jpg`;
             }
           });
           // Server cart is authoritative: on fresh login or after checkout/reset, empty items take precedence

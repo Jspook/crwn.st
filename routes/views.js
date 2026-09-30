@@ -6,6 +6,7 @@ const express = require('express');
 const router = express.Router();
 const { query, get, run } = require('../database/db');
 const { getCurrentUser } = require('./auth');
+const { getProductMockImage } = require('../utils/productImages');
 
 // Middleware to ensure customer session
 function requireCustomer(req, res, next) {
@@ -64,6 +65,9 @@ router.get('/', (req, res) => {
 router.get('/customer/dashboard', requireCustomer, async (req, res) => {
   try {
     const products = await query(`SELECT * FROM ITEM ORDER BY ITM_ID ASC`);
+    products.forEach(p => {
+      p.image = getProductMockImage(p.ITM_Tag, p.ITM_ID);
+    });
     res.render('customer/dashboard', {
       user: req.user,
       products
@@ -95,6 +99,7 @@ router.get('/customer/fitting-room', requireCustomer, async (req, res) => {
 
     products.forEach(p => {
       p.variants = map[p.ITM_ID] || [];
+      p.image = getProductMockImage(p.ITM_Tag, p.ITM_ID);
     });
 
     res.render('customer/fitting-room', {

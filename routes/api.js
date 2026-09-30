@@ -7,6 +7,7 @@ const express = require('express');
 const router = express.Router();
 const { query, get, run, withTransaction } = require('../database/db');
 const { getCurrentUser } = require('./auth');
+const { getProductMockImage } = require('../utils/productImages');
 
 // ==========================================================
 // 1. PRODUCTS & BARCODE LOOKUP
@@ -78,6 +79,7 @@ router.get('/products', async (req, res) => {
         category: item.ITM_Category,
         ITM_Category: item.ITM_Category,
         tag: item.ITM_Tag,
+        image: getProductMockImage(item.ITM_Tag, item.ITM_ID),
         variants: variantMap[item.ITM_ID] || []
       }));
 
@@ -120,6 +122,7 @@ router.get('/products', async (req, res) => {
       category: item.ITM_Category,
       ITM_Category: item.ITM_Category,
       tag: item.ITM_Tag,
+      image: getProductMockImage(item.ITM_Tag, item.ITM_ID),
       variants: variantMap[item.ITM_ID] || []
     }));
 
@@ -136,7 +139,7 @@ router.get('/products/barcode/:code', async (req, res) => {
   try {
     // 1. Try finding matching variant by SKU
     let variant = await get(
-      `SELECT v.*, i.ITM_Name, i.ITM_Price, i.ITM_Category, i.ITM_Description
+      `SELECT v.*, i.ITM_Name, i.ITM_Price, i.ITM_Category, i.ITM_Description, i.ITM_Tag
        FROM ITEM_VARIANT v
        JOIN ITEM i ON v.ITM_ID = i.ITM_ID
        WHERE v.ITV_SKUID = ?`,
@@ -153,6 +156,8 @@ router.get('/products/barcode/:code', async (req, res) => {
           name: item.ITM_Name,
           price: item.ITM_Price,
           category: item.ITM_Category,
+          tag: item.ITM_Tag,
+          image: getProductMockImage(item.ITM_Tag, item.ITM_ID),
           variants: itemVariants.map(iv => ({
             sku: iv.ITV_SKUID,
             color: iv.ITV_Color,
@@ -182,6 +187,8 @@ router.get('/products/barcode/:code', async (req, res) => {
             name: item.ITM_Name,
             price: item.ITM_Price,
             category: item.ITM_Category,
+            tag: item.ITM_Tag,
+            image: getProductMockImage(item.ITM_Tag, item.ITM_ID),
             variants: itemVariants.map(iv => ({
               sku: iv.ITV_SKUID,
               color: iv.ITV_Color,
@@ -202,6 +209,8 @@ router.get('/products/barcode/:code', async (req, res) => {
       name: variant.ITM_Name,
       price: variant.ITM_Price,
       category: variant.ITM_Category,
+      tag: variant.ITM_Tag,
+      image: getProductMockImage(variant.ITM_Tag, variant.ITM_ID),
       variants: [{
         sku: variant.ITV_SKUID,
         color: variant.ITV_Color,

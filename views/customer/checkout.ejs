@@ -172,7 +172,7 @@
     list.innerHTML = Cart.items.map(item => `
       <div class="flex items-center gap-4 py-3 first:pt-0">
         <div class="w-16 h-16 rounded-xl bg-[#E8DFD1]/50 overflow-hidden flex-shrink-0">
-          <img src="${item.image || 'https://picsum.photos/seed/' + item.sku + '/200/200'}" alt="${item.name}" loading="lazy" decoding="async" class="w-full h-full object-cover">
+          <img src="${item.image || '/images/products/top-1.jpg'}" alt="${item.name}" loading="lazy" decoding="async" class="w-full h-full object-cover">
         </div>
         <div class="flex-1 min-w-0">
           <h4 class="font-medium text-sm text-[#1F2421] truncate">${item.name}</h4>

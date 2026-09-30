@@ -279,7 +279,7 @@ function displayScannedProduct(product) {
   resultContainer.innerHTML = `
     <div class="p-4 rounded-2xl bg-white/80 border border-[#A3907C]/30 shadow-sm mt-3 animate-fade-in">
       <div class="flex gap-4">
-        <img src="${product.image || 'https://picsum.photos/seed/' + product.id + '/200/200'}" alt="${product.name}" class="w-20 h-20 rounded-xl object-cover bg-[#E8DFD1]">
+        <img src="${product.image || '/images/products/top-1.jpg'}" alt="${product.name}" class="w-20 h-20 rounded-xl object-cover bg-[#E8DFD1]">
         <div class="flex-1">
           <span class="text-[10px] uppercase tracking-wider text-[#A3907C] font-semibold">${product.category || 'Luxury Item'}</span>
           <h4 class="font-serif font-medium text-base text-[#1F2421]">${product.name}</h4>
