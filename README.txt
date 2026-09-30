@@ -151,19 +151,16 @@ DB_NAME=s68070186
 1. ติดตั้ง Dependencies และ Library ทั้งหมด:
    $ npm install
 
-2. สร้าง Schema และลงข้อมูลเริ่มต้นในฐานข้อมูล (Full Database Setup & Seed):
-   $ node setup-db.js
-   (คำสั่งนี้จะรัน database/schema.sql เพื่อสร้าง 10 ตาราง และรัน database/seed.js ใส่ข้อมูลสินค้า 67 รายการ 96 SKU, พนักงาน, ลูกค้า)
-
-3. เริ่มต้นรันเซิร์ฟเวอร์:
+2. เริ่มต้นรันเซิร์ฟเวอร์:
    - โหมด Development:
      $ npm run dev
    - โหมด Production:
      $ npm start
 
-4. เปิดเว็บเบราว์เซอร์เข้าใช้งานระบบ:
+3. เปิดเว็บเบราว์เซอร์เข้าใช้งานระบบ:
    - หน้าหลักสำหรับลูกค้า (Storefront): http://localhost:3000
    - หน้าเข้าสู่ระบบ (Login Portal): http://localhost:3000/login
+
 
 [คำสั่งจัดการและรีเซ็ตฐานข้อมูล (Database Commands)]
 - node setup-db.js : ล้าง/สร้าง Table Schema ใหม่ทั้งหมด และใส่ข้อมูล Seed เริ่มต้น (Full DB Setup)
