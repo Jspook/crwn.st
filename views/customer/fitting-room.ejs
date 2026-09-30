@@ -76,6 +76,7 @@
           </div>
 
           <!-- Action Button: Only Request to Try (Order one to try) -->
+          <!-- Defect-1 fix: pass ITM_ID (product level) — openItemRequest handles variant picking -->
           <div class="mt-3 pt-3 border-t border-[#A3907C]/15">
             <button onclick="openItemRequest('<%= item.ITM_ID %>')" class="w-full btn-primary text-xs py-2.5 flex items-center justify-center gap-1.5 shadow-xs">
               <i data-lucide="sparkles" class="w-3.5 h-3.5 text-[#C9A598]"></i>
@@ -225,21 +226,27 @@
     ? debounce((val) => searchCatalog(val), 300) 
     : (val) => searchCatalog(val);
 
+  // Defect-1 fix: openItemRequest now builds payload using real ITV_SKUID from variants
+  // (variants are already populated from the server with { sku: ITV_SKUID, ... })
   function openItemRequest(itemId) {
     const item = catalogData.find(p => p.ITM_ID === itemId);
     if (!item) return;
+
+    // Use real DB variants (with ITV_SKUID). Fallback only when server returned none.
+    const realVariants = (item.variants && item.variants.length > 0)
+      ? item.variants
+      : [
+          { sku: item.ITM_ID + '-s', size: 'S', color: 'Black' },
+          { sku: item.ITM_ID + '-m', size: 'M', color: 'Black' },
+          { sku: item.ITM_ID + '-l', size: 'L', color: 'Black' },
+        ];
 
     const productPayload = {
       id: item.ITM_ID,
       name: item.ITM_Name,
       image: item.image || '/images/products/top-1.jpg',
       price: item.ITM_Price,
-      variants: item.variants || [
-        { sku: item.ITM_ID + '-s', size: 'S', color: 'Black' },
-        { sku: item.ITM_ID + '-m', size: 'M', color: 'Black' },
-        { sku: item.ITM_ID + '-l', size: 'L', color: 'Black' },
-        { sku: item.ITM_ID + '-m-cream', size: 'M', color: 'Cream' },
-      ]
+      variants: realVariants  // Each variant.sku is ITV_SKUID (not ITM_ID)
     };
     openRequestModal(productPayload);
   }

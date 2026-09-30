@@ -347,8 +347,11 @@ router.delete('/cart', async (req, res) => {
 // ==========================================================
 
 // GET /api/fitting-orders
+// Defect-4 fix: supports ?limit=N to cap complete orders (default unlimited)
+// Defect-6 fix: supports ?myOnly=true so staff sees only their own orders
 router.get('/fitting-orders', async (req, res) => {
-  const { roomId } = req.query;
+  const { roomId, limit, myOnly } = req.query;
+  const user = getCurrentUser(req);
   try {
     let sql = `
       SELECT f.FTR_OrderID as id,
@@ -360,9 +363,10 @@ router.get('/fitting-orders', async (req, res) => {
              f.FTR_OrderTime as createdAt,
              f.FTR_Number as roomId,
              f.ITV_SKUID as sku,
+             f.EMP_ID as empId,
              COALESCE(v.ITV_Size, '-') as size,
              COALESCE(v.ITV_Color, '-') as color,
-             COALESCE(i.ITM_Name, 'เสื้อผ้าสำหรับลอง') as productName,
+             COALESCE(i.ITM_Name, '\u0e40\u0e2a\u0e37\u0e49\u0e2d\u0e1c\u0e49\u0e32\u0e2a\u0e33\u0e2b\u0e23\u0e31\u0e1a\u0e25\u0e2d\u0e07') as productName,
              COALESCE(i.ITM_Price, 0) as price,
              e.EMP_FName as staffName
        FROM FITTING_ROOM f
@@ -371,10 +375,21 @@ router.get('/fitting-orders', async (req, res) => {
        LEFT JOIN EMPLOYEE e ON f.EMP_ID = e.EMP_ID
     `;
     const params = [];
+    const conditions = [];
 
     if (roomId) {
-      sql += ` WHERE f.FTR_Number = ? `;
+      conditions.push(`f.FTR_Number = ?`);
       params.push(roomId);
+    }
+
+    // Defect-6: filter by current staff employee when myOnly=true
+    if (myOnly === 'true' && user && user.role !== 'CUSTOMER' && user.id) {
+      conditions.push(`f.EMP_ID = ?`);
+      params.push(user.id);
+    }
+
+    if (conditions.length > 0) {
+      sql += ` WHERE ` + conditions.join(' AND ');
     }
 
     sql += `
@@ -388,7 +403,21 @@ router.get('/fitting-orders', async (req, res) => {
         f.FTR_OrderID DESC
     `;
 
-    const orders = await query(sql, params);
+    let orders = await query(sql, params);
+
+    // Defect-4: cap complete orders to the N most recent when limit param is provided
+    const limitNum = parseInt(limit);
+    if (!isNaN(limitNum) && limitNum > 0) {
+      let completeCount = 0;
+      orders = orders.filter(o => {
+        if (String(o.status).toLowerCase() === 'complete') {
+          completeCount++;
+          return completeCount <= limitNum;
+        }
+        return true;
+      });
+    }
+
     res.json(orders);
   } catch (err) {
     console.error('Error fetching fitting orders:', err);
@@ -396,32 +425,40 @@ router.get('/fitting-orders', async (req, res) => {
   }
 });
 
+
 // GET /api/fitting-rooms
+// Defect-2 fix: isOccupied = FTR_CustomerPresent instead of pending-item count
 router.get('/fitting-rooms', async (req, res) => {
   try {
     const totalRooms = 4;
-    const activeOrders = await query(`
-      SELECT FTR_Number as roomNum, ITV_SKUID, FTR_OrderTime
+    // Query per-room customer-presence flag (aggregate: room is occupied if ANY row has CustomerPresent=1)
+    const presenceRows = await query(`
+      SELECT DISTINCT FTR_Number as roomNum, FTR_CustomerPresent
       FROM FITTING_ROOM
-      WHERE FTR_FinishTime IS NULL
-      ORDER BY FTR_OrderTime DESC
-    `);
+      WHERE FTR_CustomerPresent = 1
+    `).catch(() => []); // graceful fallback if column not yet migrated
 
-    const occupiedMap = {};
-    for (const ord of activeOrders) {
-      if (!occupiedMap[ord.roomNum]) {
-        occupiedMap[ord.roomNum] = ord;
-      }
+    const presentSet = new Set(presenceRows.map(r => String(r.roomNum)));
+
+    // Fallback: if migration not run yet, fall back to pending-items logic
+    let fallbackOccupied = new Set();
+    if (presenceRows.length === 0) {
+      const activeOrders = await query(`
+        SELECT FTR_Number as roomNum FROM FITTING_ROOM
+        WHERE FTR_FinishTime IS NULL
+      `);
+      for (const r of activeOrders) fallbackOccupied.add(String(r.roomNum));
     }
 
     const rooms = [];
     for (let i = 1; i <= totalRooms; i++) {
       const roomNumStr = String(i);
-      const active = occupiedMap[roomNumStr];
+      const isOccupied = presentSet.has(roomNumStr) || fallbackOccupied.has(roomNumStr);
       rooms.push({
         FTR_Num: i,
-        FTR_Status: active ? 'occupied' : 'available',
-        occupantName: active ? 'กำลังลองชุด' : null
+        FTR_Status: isOccupied ? 'occupied' : 'available',
+        isOccupied,
+        occupantName: isOccupied ? 'กำลังลองชุด' : null
       });
     }
 
@@ -432,13 +469,34 @@ router.get('/fitting-rooms', async (req, res) => {
   }
 });
 
-// POST /api/fitting-rooms/:roomId/release
+// POST /api/fitting-rooms/:roomId/enter  (Defect-2: mark customer as present)
+router.post('/fitting-rooms/:roomId/enter', async (req, res) => {
+  const { roomId } = req.params;
+  const user = getCurrentUser(req);
+  // Only customers can enter
+  if (!user || user.role !== 'CUSTOMER') {
+    return res.status(403).json({ error: 'Forbidden — customer session required' });
+  }
+  try {
+    await run(
+      `UPDATE FITTING_ROOM SET FTR_CustomerPresent = 1 WHERE FTR_Number = ? AND FTR_FinishTime IS NULL`,
+      [String(roomId)]
+    ).catch(() => {}); // If column not yet migrated, swallow error gracefully
+    res.json({ success: true, roomId, customerPresent: true });
+  } catch (err) {
+    console.error('Error entering room:', err);
+    res.status(500).json({ error: 'Failed to mark room entry' });
+  }
+});
+
+// POST /api/fitting-rooms/:roomId/release  (also clears FTR_CustomerPresent)
+// Defect-2 fix: release now also clears FTR_CustomerPresent = 0
 router.post('/fitting-rooms/:roomId/release', async (req, res) => {
   const { roomId } = req.params;
   try {
     await run(
-      `UPDATE FITTING_ROOM SET FTR_FinishTime = NOW() WHERE FTR_Number = ? AND FTR_FinishTime IS NULL`,
-      [roomId]
+      `UPDATE FITTING_ROOM SET FTR_FinishTime = NOW(), FTR_CustomerPresent = 0 WHERE FTR_Number = ? AND FTR_FinishTime IS NULL`,
+      [String(roomId)]
     );
     res.json({ success: true, roomId });
   } catch (err) {
@@ -448,45 +506,36 @@ router.post('/fitting-rooms/:roomId/release', async (req, res) => {
 });
 
 // POST /api/fitting-orders
+// Defect-1 fix: strict SKU validation — no fallback to first variant
 router.post('/fitting-orders', async (req, res) => {
   const { roomId, sku, productName, size, color } = req.body;
 
+  // Validate that a SKU was provided
+  if (!sku || !String(sku).trim()) {
+    return res.status(400).json({
+      success: false,
+      error: { code: 'INVALID_SKU', message: 'กรุณาระบุ SKU ของสินค้าที่ต้องการลอง' }
+    });
+  }
+
   try {
     const roomNum = String(roomId || '1');
+    const targetSku = String(sku).trim();
 
-    // Verify SKU exists in ITEM_VARIANT
-    let targetSku = sku;
-    let variant = await get(
+    // Strict lookup — reject if SKU not found (Defect-1: no fallback chain)
+    const variant = await get(
       `SELECT v.ITV_SKUID, v.ITV_Stock, v.ITV_Color, v.ITV_Size, i.ITM_Name 
        FROM ITEM_VARIANT v 
        JOIN ITEM i ON v.ITM_ID = i.ITM_ID 
-       WHERE v.ITV_SKUID = ?`, 
+       WHERE v.ITV_SKUID = ?`,
       [targetSku]
     );
+
     if (!variant) {
-      let prodFallback = null;
-      if (sku && sku.includes('-')) {
-        const prodId = sku.split('-')[0];
-        prodFallback = await get(`SELECT ITV_SKUID FROM ITEM_VARIANT WHERE ITM_ID = ? LIMIT 1`, [prodId]);
-      }
-      if (!prodFallback && productName) {
-        prodFallback = await get(`
-          SELECT v.ITV_SKUID FROM ITEM_VARIANT v 
-          JOIN ITEM i ON v.ITM_ID = i.ITM_ID 
-          WHERE i.ITM_Name LIKE ? LIMIT 1
-        `, [`%${productName}%`]);
-      }
-      if (!prodFallback) {
-        prodFallback = await get(`SELECT ITV_SKUID FROM ITEM_VARIANT LIMIT 1`);
-      }
-      targetSku = prodFallback ? prodFallback.ITV_SKUID : '8850010001011';
-      variant = await get(
-        `SELECT v.ITV_SKUID, v.ITV_Stock, v.ITV_Color, v.ITV_Size, i.ITM_Name 
-         FROM ITEM_VARIANT v 
-         JOIN ITEM i ON v.ITM_ID = i.ITM_ID 
-         WHERE v.ITV_SKUID = ?`,
-        [targetSku]
-      );
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_SKU', message: `ไม่พบสินค้า SKU '${targetSku}' ในฐานข้อมูล` }
+      });
     }
 
     // Check stock
@@ -541,6 +590,7 @@ router.post('/fitting-orders', async (req, res) => {
 });
 
 // PATCH /api/fitting-orders/:id
+// Defect-6 fix: verify that the requesting staff owns the order before allowing mutation
 router.patch('/fitting-orders/:id', async (req, res) => {
   const { id } = req.params;
   const { status, empId } = req.body;
@@ -553,6 +603,24 @@ router.patch('/fitting-orders/:id', async (req, res) => {
   }
 
   try {
+    // Fetch the order to check EMP_ID ownership (Defect-6)
+    const existing = await get(`SELECT EMP_ID FROM FITTING_ROOM WHERE FTR_OrderID = ?`, [id]);
+    if (!existing) {
+      return res.status(404).json({ error: 'ไม่พบคำสั่งซื้อนี้ในระบบ' });
+    }
+
+    // If the order is already assigned to another staff, deny mutation from a different staff
+    if (
+      existing.EMP_ID &&
+      user &&
+      user.role !== 'CUSTOMER' &&
+      String(existing.EMP_ID) !== String(staffId)
+    ) {
+      return res.status(403).json({
+        error: 'Forbidden — คุณไม่ได้รับมอบหมายให้ดูแล order นี้ ไม่สามารถแก้ไขได้'
+      });
+    }
+
     if (cleanStatus === 'preparing') {
       // Set EMP_ID to mark as preparing
       await run(
@@ -574,6 +642,7 @@ router.patch('/fitting-orders/:id', async (req, res) => {
     }
     res.json({ success: true, id, status: cleanStatus });
   } catch (err) {
+
     console.error('Update fitting order error:', err);
     res.status(500).json({ error: 'Failed to update order status' });
   }

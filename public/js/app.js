@@ -56,11 +56,13 @@ async function fetchFittingRoomsStatus() {
     const res = await fetch('/api/fitting-rooms');
     const rooms = await res.json();
     grid.innerHTML = rooms.map(room => {
-      const isOccupied = room.FTR_Status === 'occupied';
+      // Defect-5 fix: use isOccupied from API response (FTR_CustomerPresent based)
+      const isOccupied = room.isOccupied || room.FTR_Status === 'occupied';
       if (isOccupied) {
+        // Disabled — cannot enter an occupied room
         return `
-          <button type="button" onclick="simulateRoomQrScan('${room.FTR_Num}')" class="py-2.5 px-1 rounded-xl bg-rose-50 border border-rose-200 hover:border-rose-400 text-rose-900 text-center font-medium transition shadow-2xs hover:bg-rose-100/70 active:scale-95 cursor-pointer">
-            <span class="block text-[10px] text-rose-700">สแกน QR</span>
+          <button type="button" disabled title="ห้องนี้มีลูกค้าใช้งานอยู่ กรุณารอ" class="py-2.5 px-1 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-center font-medium shadow-2xs opacity-60 cursor-not-allowed select-none">
+            <span class="block text-[10px] text-rose-700">ไม่ว่าง</span>
             <span class="font-bold text-xs">ห้อง 0${room.FTR_Num}</span>
             <span class="block text-[9px] text-rose-700 font-semibold">ล็อก/มีคนใช้</span>
           </button>
@@ -80,6 +82,7 @@ async function fetchFittingRoomsStatus() {
     grid.innerHTML = '<div class="col-span-4 text-center py-2 text-rose-500">โหลดสถานะห้องลองไม่สำเร็จ</div>';
   }
 }
+
 
 function closeRoomModal() {
   const modal = document.getElementById('room-modal');
@@ -213,6 +216,23 @@ async function selectRoom(roomNum) {
 
   try {
     stopRoomQrCamera();
+
+    // Defect-5 + Defect-2: Double-check server-side occupancy before navigating
+    const statusRes = await fetch('/api/fitting-rooms');
+    if (statusRes.ok) {
+      const rooms = await statusRes.json();
+      const targetRoom = rooms.find(r => String(r.FTR_Num) === cleanNum);
+      if (targetRoom && (targetRoom.isOccupied || targetRoom.FTR_Status === 'occupied')) {
+        showRoomModalError(`ห้องลองเสื้อหมายเลข ${cleanNum} มีลูกค้าใช้งานอยู่แล้ว กรุณารอสักครู่`);
+        // Re-render buttons to reflect current state
+        fetchFittingRoomsStatus();
+        return;
+      }
+    }
+
+    // Mark customer as present in this room (Defect-2)
+    await fetch(`/api/fitting-rooms/${cleanNum}/enter`, { method: 'POST' }).catch(() => {});
+
     document.body.classList.remove('overflow-hidden');
     document.documentElement.classList.remove('overflow-hidden');
     window.location.href = `/customer/fitting-room?roomId=${cleanNum}`;
@@ -221,6 +241,7 @@ async function selectRoom(roomNum) {
     showRoomModalError('เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง');
   }
 }
+
 
 // Barcode Scanner Modal
 function openBarcodeModal() {

@@ -88,9 +88,11 @@
   let isActionInProgress = false;
   let currentKanbanOrders = [];
 
+  // Defect-4 fix: fetch with limit=5 to cap complete orders at 5 most recent
+  // Defect-6 fix: add myOnly=true so staff sees only their own orders
   async function loadFittingOrders(forceRender = false) {
     try {
-      const res = await fetch('/api/fitting-orders');
+      const res = await fetch('/api/fitting-orders?limit=5&myOnly=true');
       if (!res.ok) return;
       const orders = await res.json();
       currentKanbanOrders = orders;
@@ -99,6 +101,7 @@
       console.warn('loadFittingOrders error:', e);
     }
   }
+
 
   function renderKanban(orders, forceRender = false) {
     if (!Array.isArray(orders)) return;
