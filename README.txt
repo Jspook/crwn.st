@@ -138,22 +138,36 @@ crwn.st พัฒนาขึ้นเพื่อเชื่อมต่อป
 ---------------------------------------------------
 8. เริ่มต้นใช้งานและจัดการฐานข้อมูล (Local Setup & Database Commands)
 ---------------------------------------------------
-[การติดตั้งและเริ่มเซิร์ฟเวอร์]
-1. npm install
-2. npm run dev (หรือ npm start)
-* เปิดเว็บเบราว์เซอร์ไปที่: http://localhost:3000
 
-[การ Reset และลงข้อมูลเริ่มต้นในฐานข้อมูล (Seed Database)]
-หากต้องการล้างข้อมูลและลงข้อมูลสินค้า/บาร์โค้ด 67 รายการใหม่ทั้งหมด ให้รันคำสั่ง:
-$ node database/seed.js
-
-[การตั้งค่าฐานข้อมูล (.env)]
-กำหนดค่าการเชื่อมต่อ MySQL ในไฟล์ .env ดังนี้:
+[การเตรียมการและตั้งค่า Environment Variables (.env)]
+สร้างหรือตรวจสอบไฟล์ .env ที่โฟลเดอร์หลักของโปรเจกต์:
 DB_HOST=webdev.it.kmitl.ac.th
 DB_PORT=3306
 DB_USER=s68070186
 DB_PASSWORD=LPHV425SG215NE
 DB_NAME=s68070186
+
+[ขั้นตอนการติดตั้งและเริ่มเซิร์ฟเวอร์ (Step-by-Step Setup)]
+1. ติดตั้ง Dependencies และ Library ทั้งหมด:
+   $ npm install
+
+2. สร้าง Schema และลงข้อมูลเริ่มต้นในฐานข้อมูล (Full Database Setup & Seed):
+   $ node setup-db.js
+   (คำสั่งนี้จะรัน database/schema.sql เพื่อสร้าง 10 ตาราง และรัน database/seed.js ใส่ข้อมูลสินค้า 67 รายการ 96 SKU, พนักงาน, ลูกค้า)
+
+3. เริ่มต้นรันเซิร์ฟเวอร์:
+   - โหมด Development:
+     $ npm run dev
+   - โหมด Production:
+     $ npm start
+
+4. เปิดเว็บเบราว์เซอร์เข้าใช้งานระบบ:
+   - หน้าหลักสำหรับลูกค้า (Storefront): http://localhost:3000
+   - หน้าเข้าสู่ระบบ (Login Portal): http://localhost:3000/login
+
+[คำสั่งจัดการและรีเซ็ตฐานข้อมูล (Database Commands)]
+- node setup-db.js : ล้าง/สร้าง Table Schema ใหม่ทั้งหมด และใส่ข้อมูล Seed เริ่มต้น (Full DB Setup)
+- node database/seed.js : รีเซ็ตและใส่ข้อมูลจำลองใหม่อย่างเดียวโดยไม่รันสคริปต์สร้างตารางใหม่ (Re-Seed Data Only)
 
 ---------------------------------------------------
 9. การเปิดใช้งานภายนอกด้วย Cloudflare Tunnel (Online / Mobile Testing)
