@@ -81,6 +81,18 @@ router.get('/customer/dashboard', requireCustomer, async (req, res) => {
 // GET /customer/fitting-room
 router.get('/customer/fitting-room', requireCustomer, async (req, res) => {
   const roomId = String(req.query.roomId || '1').trim();
+  const ROOM_MAP = {
+    '5684848452325': '1',
+    '5684848452326': '2',
+    '5684848452327': '3',
+    '5684848452328': '4',
+    '1': '1',
+    '2': '2',
+    '3': '3',
+    '4': '4'
+  };
+  const roomDisplay = ROOM_MAP[roomId] || roomId.replace(/^568484845232/, '') || roomId;
+
   try {
     const products = await query(`SELECT * FROM ITEM ORDER BY ITM_ID ASC`);
     const variants = await query(`SELECT * FROM ITEM_VARIANT`);
@@ -105,12 +117,13 @@ router.get('/customer/fitting-room', requireCustomer, async (req, res) => {
     res.render('customer/fitting-room', {
       user: req.user,
       roomId,
+      roomDisplay,
       sessionId: '',
       products
     });
   } catch (err) {
     console.error(err);
-    res.render('customer/fitting-room', { user: req.user, roomId, sessionId: '', products: [] });
+    res.render('customer/fitting-room', { user: req.user, roomId, roomDisplay, sessionId: '', products: [] });
   }
 });
 

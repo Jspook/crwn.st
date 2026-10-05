@@ -1,4 +1,4 @@
-<%- include('../partials/header', { title: 'ห้องลองเสื้อ Room ' + roomId + ' — crwn.st' }) %>
+<%- include('../partials/header', { title: 'ห้องลองเสื้อ ห้อง ' + (typeof roomDisplay !== 'undefined' ? roomDisplay : roomId) + ' — crwn.st' }) %>
 <%- include('../partials/navbar', { user, backAction: 'confirmExitFittingRoom()', showCart: true }) %>
 
 <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-4 sm:py-6 pb-28">
@@ -7,16 +7,16 @@
   <div class="glass-heavy rounded-3xl p-4 sm:p-6 mb-6 border border-white/80 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
     <div class="flex items-center gap-3.5">
       <div class="w-12 h-12 rounded-2xl bg-[#1F2421] text-[#F5F2EB] flex items-center justify-center font-serif text-xl font-bold shadow-xs flex-shrink-0">
-        <%= roomId %>
+        <%= typeof roomDisplay !== 'undefined' ? roomDisplay : roomId %>
       </div>
       <div>
-        <h1 class="font-serif text-2xl sm:text-3xl font-bold text-[#1F2421]">ห้องลองเสื้อ <%= roomId %></h1>
+        <h1 class="font-serif text-2xl sm:text-3xl font-bold text-[#1F2421]">ห้องลองเสื้อ <%= typeof roomDisplay !== 'undefined' ? roomDisplay : roomId %></h1>
       </div>
     </div>
 
     <!-- Right Header Action: Exit Button -->
     <div class="flex items-center gap-2">
-      <button onclick="confirmExitFittingRoom()" class="btn-secondary text-xs py-2 px-4 flex items-center gap-1.5 shadow-2xs">
+      <button onclick="confirmExitFittingRoom()" class="btn-secondary text-xs py-2 px-4 flex items-center gap-1.5 shadow-2xs cursor-pointer">
         <i data-lucide="log-out" class="w-4 h-4"></i>
         <span>ออกจากห้องลอง</span>
       </button>
@@ -76,9 +76,8 @@
           </div>
 
           <!-- Action Button: Only Request to Try (Order one to try) -->
-          <!-- Defect-1 fix: pass ITM_ID (product level) — openItemRequest handles variant picking -->
           <div class="mt-3 pt-3 border-t border-[#A3907C]/15">
-            <button onclick="openItemRequest('<%= item.ITM_ID %>')" class="w-full btn-primary text-xs py-2.5 flex items-center justify-center gap-1.5 shadow-xs">
+            <button onclick="openItemRequest('<%= item.ITM_ID %>')" class="w-full btn-primary text-xs py-2.5 flex items-center justify-center gap-1.5 shadow-xs cursor-pointer">
               <i data-lucide="sparkles" class="w-3.5 h-3.5 text-[#C9A598]"></i>
               <span>สั่งมาลอง</span>
             </button>
@@ -92,10 +91,10 @@
 
   <!-- Sticky Bottom Bar for Mobile: Prompt Exit Fitting Room Button -->
   <div class="fixed bottom-4 left-0 right-0 max-w-lg mx-auto px-4 z-20 pointer-events-auto">
-    <button onclick="confirmExitFittingRoom()" class="w-full py-3.5 px-5 rounded-2xl bg-[#1F2421] text-[#F5F2EB] font-serif font-bold text-xs sm:text-sm shadow-xl flex items-center justify-between active:scale-[0.98] transition border border-white/20">
+    <button onclick="confirmExitFittingRoom()" class="w-full py-3.5 px-5 rounded-2xl bg-[#1F2421] text-[#F5F2EB] font-serif font-bold text-xs sm:text-sm shadow-xl flex items-center justify-between active:scale-[0.98] transition border border-white/20 cursor-pointer">
       <div class="flex items-center gap-2">
         <i data-lucide="door-closed" class="w-4 h-4 text-[#C9A598]"></i>
-        <span>ออกจากห้องลองเสื้อ (Room <%= roomId %>)</span>
+        <span>ออกจากห้องลองเสื้อ (ห้อง <%= typeof roomDisplay !== 'undefined' ? roomDisplay : roomId %>)</span>
       </div>
       <span class="text-[11px] font-sans font-normal text-[#F5F2EB]/80 bg-white/10 px-2 py-0.5 rounded-full">
         เสร็จสิ้น
@@ -105,12 +104,12 @@
 
 </main>
 
-<!-- Exit Confirmation Modal Dialog (Alert asking if customer wants to add tried items to cart) -->
+<!-- Exit Confirmation Modal Dialog -->
 <div id="exit-fitting-modal" class="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
   <div class="w-full max-w-md glass-heavy rounded-3xl p-5 sm:p-6 shadow-2xl border border-white/80 relative animate-fade-in max-h-[90vh] flex flex-col">
     
     <!-- Modal Close X -->
-    <button onclick="closeExitModal()" class="absolute top-4 right-4 p-2 rounded-full hover:bg-white/80 text-[#8A8177] hover:text-[#1F2421] transition">
+    <button onclick="closeExitModal()" class="absolute top-4 right-4 p-2 rounded-full hover:bg-white/80 text-[#8A8177] hover:text-[#1F2421] transition cursor-pointer">
       <i data-lucide="x" class="w-5 h-5"></i>
     </button>
 
@@ -121,36 +120,36 @@
       </div>
       <h3 class="font-serif text-xl font-bold text-[#1F2421]">ออกจากห้องลองเสื้อ</h3>
       <p class="text-xs text-[#8A8177] mt-1" id="exit-modal-subtitle">
-        สินค้าที่คุณสั่งมาลอง จะนำใส่ตะกร้าสินค้าหรือไม่?
+        สินค้าที่คุณสั่งมาลองและได้รับแล้ว จะนำใส่ตะกร้าสินค้าหรือไม่?
       </p>
     </div>
 
     <!-- Items Tried List Container -->
-    <div id="exit-items-container" class="flex-1 overflow-y-auto space-y-2 mb-4 pr-1 min-h-[120px]">
+    <div id="exit-items-container" class="flex-1 overflow-y-auto space-y-2 mb-4 pr-1 min-h-[100px]">
       <!-- Populated via JS -->
     </div>
 
     <!-- Action Buttons -->
-    <div class="space-y-2 pt-2 border-t border-[#A3907C]/20">
+    <div class="space-y-2 pt-2 border-t border-[#A3907C]/20" id="exit-modal-actions">
       <!-- Add all & go to Checkout -->
-      <button id="btn-add-and-checkout" onclick="exitAndAddToCart(true)" class="w-full btn-primary py-3 text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md">
+      <button id="btn-add-and-checkout" onclick="exitAndAddToCart(true)" class="w-full btn-primary py-3 text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md cursor-pointer">
         <i data-lucide="credit-card" class="w-4 h-4"></i>
         <span>นำใส่ตะกร้า และไปชำระเงิน</span>
       </button>
 
       <!-- Add to Cart & return to scanner dashboard -->
-      <button id="btn-add-and-return" onclick="exitAndAddToCart(false)" class="w-full btn-secondary py-2.5 text-xs flex items-center justify-center gap-2">
+      <button id="btn-add-and-return" onclick="exitAndAddToCart(false)" class="w-full btn-secondary py-2.5 text-xs flex items-center justify-center gap-2 cursor-pointer">
         <i data-lucide="plus" class="w-4 h-4"></i>
         <span>นำใส่ตะกร้า และเลือกซื้อต่อ</span>
       </button>
 
       <!-- Leave without adding -->
-      <button onclick="exitWithoutCart()" class="w-full py-2 text-xs text-[#8A8177] hover:text-red-500 transition">
+      <button onclick="exitWithoutCart()" class="w-full py-2 text-xs text-[#8A8177] hover:text-red-500 transition cursor-pointer">
         ไม่นำใส่ตะกร้า (ออกจากห้องลองเลย)
       </button>
 
       <!-- Stay in room -->
-      <button onclick="closeExitModal()" class="w-full py-1 text-[11px] text-[#A3907C] hover:underline transition">
+      <button onclick="closeExitModal()" class="w-full py-1 text-[11px] text-[#A3907C] hover:underline transition cursor-pointer">
         ลองชุดต่อ
       </button>
     </div>
@@ -164,6 +163,7 @@
 <script>
   const catalogData = <%- JSON.stringify(products) %>;
   const currentRoomId = '<%= roomId %>';
+  const currentRoomDisplay = '<%= typeof roomDisplay !== "undefined" ? roomDisplay : roomId %>';
   let serverSessionId = '<%= typeof sessionId !== "undefined" ? sessionId : "" %>';
   let currentSessionId = serverSessionId;
   const storageKey = 'crwn_active_session_' + currentRoomId;
@@ -185,7 +185,8 @@
       if (typeof refreshOrdersStatus === 'function') refreshOrdersStatus();
     }
   });
-  let sessionTriedItems = [];
+
+  let validCompletedOrders = [];
 
   function filterCategory(cat) {
     const buttons = document.querySelectorAll('.category-btn');
@@ -208,7 +209,6 @@
   }
 
   function searchCatalog(query) {
-    // Sanitize input to prevent basic XSS or script injection
     const q = query.replace(/[<>`"']/g, '').toLowerCase().trim();
     const cards = document.querySelectorAll('.product-item-card');
     cards.forEach(card => {
@@ -221,18 +221,14 @@
     });
   }
 
-  // Debounced search (300ms) to avoid lagging during fast typing
   const debouncedSearchCatalog = typeof debounce === 'function' 
     ? debounce((val) => searchCatalog(val), 300) 
     : (val) => searchCatalog(val);
 
-  // Defect-1 fix: openItemRequest now builds payload using real ITV_SKUID from variants
-  // (variants are already populated from the server with { sku: ITV_SKUID, ... })
   function openItemRequest(itemId) {
     const item = catalogData.find(p => p.ITM_ID === itemId);
     if (!item) return;
 
-    // Use real DB variants (with ITV_SKUID). Fallback only when server returned none.
     const realVariants = (item.variants && item.variants.length > 0)
       ? item.variants
       : [
@@ -246,35 +242,45 @@
       name: item.ITM_Name,
       image: item.image || '/images/products/top-1.jpg',
       price: item.ITM_Price,
-      variants: realVariants  // Each variant.sku is ITV_SKUID (not ITM_ID)
+      variants: realVariants
     };
     openRequestModal(productPayload);
   }
 
-  // In-memory list of customer requests in this fitting session
   window.addOptimisticFittingOrder = function(order) {};
   function refreshOrdersStatus() {}
 
   // ==========================================================
-  // Exit Fitting Room Confirmation Logic
+  // Exit Fitting Room Confirmation Logic (Authoritative Server-Driven)
   // ==========================================================
 
   async function confirmExitFittingRoom() {
-    // Option B: Retrieve items ONLY from localStorage to prevent cart contamination (Bug #6)
-    sessionTriedItems = getTriedFittingItems(currentRoomId);
+    let roomOrders = [];
+    try {
+      const res = await fetch(`/api/fitting-orders?roomId=${encodeURIComponent(currentRoomId)}`);
+      if (res.ok) {
+        roomOrders = await res.json();
+      }
+    } catch (e) {
+      console.warn('Failed to fetch room orders:', e);
+    }
 
-    // If no items were requested to try in this session, exit directly without showing modal
-    // Pay & Go cart items remain isolated in Pay & Go cart
-    if (sessionTriedItems.length === 0) {
-      if (confirm('คุณต้องการออกจากห้องลองเสื้อ Room ' + currentRoomId + ' ใช่หรือไม่?')) {
+    // Filter real orders
+    const completedOrders = roomOrders.filter(o => String(o.status || '').toLowerCase() === 'complete');
+    const undeliveredOrders = roomOrders.filter(o => String(o.status || '').toLowerCase() !== 'complete');
+    validCompletedOrders = completedOrders;
+
+    // If no orders were ever requested in this room, exit directly
+    if (roomOrders.length === 0) {
+      if (confirm(`คุณต้องการออกจากห้องลองเสื้อ ห้อง ${currentRoomDisplay} ใช่หรือไม่?`)) {
         await releaseCurrentRoom();
         window.location.href = '/customer/dashboard';
       }
       return;
     }
 
-    // Show Exit Modal with items requested in this session
-    renderExitItemsList();
+    // Render modal based on delivery status
+    renderExitItemsList(completedOrders, undeliveredOrders);
     const modal = document.getElementById('exit-fitting-modal');
     modal.classList.remove('hidden');
     if (window.lucide) window.lucide.createIcons();
@@ -288,21 +294,65 @@
     }
   }
 
-  function renderExitItemsList() {
+  function renderExitItemsList(completedOrders, undeliveredOrders) {
     const container = document.getElementById('exit-items-container');
+    const subtitle = document.getElementById('exit-modal-subtitle');
+    const btnCheckout = document.getElementById('btn-add-and-checkout');
+    const btnReturn = document.getElementById('btn-add-and-return');
     if (!container) return;
 
-    container.innerHTML = sessionTriedItems.map((item, idx) => `
-      <label class="flex items-center gap-3 p-3 rounded-2xl bg-white border border-[#A3907C]/25 shadow-2xs cursor-pointer hover:border-[#1F2421] transition">
-        <input type="checkbox" name="exit-item-check" value="${item.sku}" checked class="w-4 h-4 rounded text-[#1F2421] accent-[#1F2421]">
-        <img src="${item.image || '/images/products/top-1.jpg'}" alt="${item.name || 'Item'}" loading="lazy" decoding="async" class="w-12 h-12 rounded-xl object-cover bg-[#E8DFD1] flex-shrink-0">
-        <div class="flex-1 min-w-0">
-          <span class="block text-xs font-semibold text-[#1F2421] truncate">${item.name}</span>
-          <span class="block text-[11px] text-[#8A8177]">ไซส์: ${item.size} · สี: ${item.color}</span>
+    let html = '';
+
+    // If there are delivered items
+    if (completedOrders.length > 0) {
+      if (subtitle) subtitle.textContent = 'สินค้าที่พนักงานนำส่งให้แล้ว คุณต้องการนำใส่ตะกร้าสินค้าหรือไม่?';
+      if (btnCheckout) btnCheckout.style.display = 'flex';
+      if (btnReturn) btnReturn.style.display = 'flex';
+
+      html += completedOrders.map(item => `
+        <label class="flex items-center gap-3 p-3 rounded-2xl bg-white border border-[#A3907C]/25 shadow-2xs cursor-pointer hover:border-[#1F2421] transition">
+          <input type="checkbox" name="exit-item-check" value="${item.sku}" checked class="w-4 h-4 rounded text-[#1F2421] accent-[#1F2421]">
+          <img src="${item.image || '/images/products/top-1.jpg'}" alt="${item.productName || 'Item'}" loading="lazy" decoding="async" class="w-12 h-12 rounded-xl object-cover bg-[#E8DFD1] flex-shrink-0">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-1.5">
+              <span class="block text-xs font-semibold text-[#1F2421] truncate">${item.productName}</span>
+              <span class="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-emerald-100 text-emerald-800">ส่งมอบแล้ว</span>
+            </div>
+            <span class="block text-[11px] text-[#8A8177]">ไซส์: ${item.size} · สี: ${item.color}</span>
+          </div>
+          <span class="text-xs font-bold text-[#1F2421] flex-shrink-0 font-mono">฿${Number(item.price).toLocaleString()}</span>
+        </label>
+      `).join('');
+    } else {
+      if (subtitle) subtitle.textContent = 'ยังไม่มีสินค้าที่พนักงานนำส่งให้ ไม่สามารถนำใส่ตะกร้าได้';
+      if (btnCheckout) btnCheckout.style.display = 'none';
+      if (btnReturn) btnReturn.style.display = 'none';
+    }
+
+    // If there are undelivered items (pending/preparing), display them as disabled / alert (Item 5 fix)
+    if (undeliveredOrders.length > 0) {
+      html += `
+        <div class="p-3 rounded-2xl bg-amber-50 border border-amber-200/80 text-xs text-amber-900 space-y-2 mt-2">
+          <div class="flex items-center gap-2 font-semibold">
+            <i data-lucide="clock" class="w-4 h-4 text-amber-600"></i>
+            <span>สินค้าที่พนักงานยังไม่ได้นำส่ง (${undeliveredOrders.length} รายการ):</span>
+          </div>
+          <p class="text-[11px] text-amber-800">พนักงานยังไม่ได้นำส่งสินค้าเหล่านี้มาที่ตู้เสื้อผ้า จึงไม่สามารถนำใส่ตะกร้าเพื่อนำออกนอกห้องลองได้</p>
+          <div class="space-y-1.5 pt-1">
+            ${undeliveredOrders.map(u => `
+              <div class="flex items-center justify-between text-[11px] bg-white/70 p-2 rounded-xl border border-amber-200/60">
+                <span class="truncate font-medium">${u.productName} (${u.size}/${u.color})</span>
+                <span class="text-[10px] px-2 py-0.5 rounded-full ${u.status === 'preparing' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'} font-semibold">
+                  ${u.status === 'preparing' ? 'กำลังจัดเตรียม' : 'รอดำเนินการ'}
+                </span>
+              </div>
+            `).join('')}
+          </div>
         </div>
-        <span class="text-xs font-bold text-[#1F2421] flex-shrink-0 font-mono">฿${Number(item.price).toLocaleString()}</span>
-      </label>
-    `).join('');
+      `;
+    }
+
+    container.innerHTML = html;
   }
 
   function closeExitModal() {
@@ -313,23 +363,23 @@
     const checkedCheckboxes = document.querySelectorAll('input[name="exit-item-check"]:checked');
     const checkedSkus = Array.from(checkedCheckboxes).map(cb => cb.value);
 
-    // Add selected items to cart locally without syncing each time (Defect 3, 4, 7)
-    for (const item of sessionTriedItems) {
+    // Add only completed & checked items to cart
+    for (const item of validCompletedOrders) {
       if (checkedSkus.includes(item.sku)) {
         await Cart.addItem({
           sku: item.sku,
           productId: item.productId,
-          name: item.name,
+          name: item.productName,
           price: item.price,
           color: item.color,
           size: item.size,
           image: item.image,
-          quantity: item.quantity || 1
+          quantity: 1
         }, true); // skipSync = true
       }
     }
     
-    // Sync to backend once to prevent Race Condition
+    // Sync authoritative cart to backend once
     if (checkedSkus.length > 0) {
       await Cart.syncBackend();
     }

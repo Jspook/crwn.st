@@ -56,14 +56,14 @@ async function fetchFittingRoomsStatus() {
     const res = await fetch('/api/fitting-rooms');
     const rooms = await res.json();
     grid.innerHTML = rooms.map(room => {
-      // Defect-5 fix: use isOccupied from API response (FTR_CustomerPresent based)
       const isOccupied = room.isOccupied || room.FTR_Status === 'occupied';
+      const displayNum = room.roomDisplay || room.roomNumber || room.FTR_Num;
       if (isOccupied) {
         // Disabled — cannot enter an occupied room
         return `
           <button type="button" disabled title="ห้องนี้มีลูกค้าใช้งานอยู่ กรุณารอ" class="py-2.5 px-1 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-center font-medium shadow-2xs opacity-60 cursor-not-allowed select-none">
             <span class="block text-[10px] text-rose-700">ไม่ว่าง</span>
-            <span class="font-bold text-xs">ห้อง 0${room.FTR_Num}</span>
+            <span class="font-bold text-xs">ห้อง 0${displayNum}</span>
             <span class="block text-[9px] text-rose-700 font-semibold">ล็อก/มีคนใช้</span>
           </button>
         `;
@@ -71,7 +71,7 @@ async function fetchFittingRoomsStatus() {
         return `
           <button type="button" onclick="simulateRoomQrScan('${room.FTR_Num}')" class="py-2.5 px-1 rounded-xl bg-white border border-[#A3907C]/30 hover:border-[#1F2421] text-[#1F2421] text-center font-medium transition shadow-2xs hover:bg-[#F5F2EB] active:scale-95 cursor-pointer">
             <span class="block text-[10px] text-[#8A8177]">สแกน QR</span>
-            <span class="font-bold text-xs">ห้อง 0${room.FTR_Num}</span>
+            <span class="font-bold text-xs">ห้อง 0${displayNum}</span>
             <span class="block text-[9px] text-emerald-700 font-semibold">ห้องว่าง</span>
           </button>
         `;
@@ -175,7 +175,6 @@ function stopRoomQrCamera() {
 function handleRoomQrScannedValue(raw) {
   if (!raw) return;
   stopRoomQrCamera();
-  // Parse room number from URL e.g. /customer/fitting-room?roomId=2, or "ROOM_2", or "2"
   let num = '1';
   if (raw.includes('roomId=')) {
     const m = raw.match(/roomId=([0-9]+)/);
@@ -217,25 +216,27 @@ async function selectRoom(roomNum) {
   try {
     stopRoomQrCamera();
 
-    // Defect-5 + Defect-2: Double-check server-side occupancy before navigating
+    // Double-check server-side occupancy before navigating
     const statusRes = await fetch('/api/fitting-rooms');
+    let targetRoom = null;
     if (statusRes.ok) {
       const rooms = await statusRes.json();
-      const targetRoom = rooms.find(r => String(r.FTR_Num) === cleanNum);
+      targetRoom = rooms.find(r => String(r.FTR_Num) === cleanNum || String(r.roomNumber) === cleanNum || String(r.roomDisplay) === cleanNum);
       if (targetRoom && (targetRoom.isOccupied || targetRoom.FTR_Status === 'occupied')) {
-        showRoomModalError(`ห้องลองเสื้อหมายเลข ${cleanNum} มีลูกค้าใช้งานอยู่แล้ว กรุณารอสักครู่`);
-        // Re-render buttons to reflect current state
+        showRoomModalError(`ห้องลองเสื้อหมายเลข ${targetRoom.roomDisplay || targetRoom.roomNumber || cleanNum} มีลูกค้าใช้งานอยู่แล้ว กรุณารอสักครู่`);
         fetchFittingRoomsStatus();
         return;
       }
     }
 
-    // Mark customer as present in this room (Defect-2)
-    await fetch(`/api/fitting-rooms/${cleanNum}/enter`, { method: 'POST' }).catch(() => {});
+    const finalRoomId = targetRoom ? targetRoom.FTR_Num : cleanNum;
+
+    // Mark customer as present in this room
+    await fetch(`/api/fitting-rooms/${finalRoomId}/enter`, { method: 'POST' }).catch(() => {});
 
     document.body.classList.remove('overflow-hidden');
     document.documentElement.classList.remove('overflow-hidden');
-    window.location.href = `/customer/fitting-room?roomId=${cleanNum}`;
+    window.location.href = `/customer/fitting-room?roomId=${finalRoomId}`;
   } catch (e) {
     console.error('Error selecting room:', e);
     showRoomModalError('เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง');

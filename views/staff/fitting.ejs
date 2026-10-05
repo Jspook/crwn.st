@@ -175,7 +175,7 @@
       <div id="card-order-${o.id}" class="p-4 rounded-2xl bg-white border border-[#A3907C]/20 shadow-xs space-y-3 transition-all duration-200">
         <div class="flex items-center justify-between">
           <span class="px-2.5 py-1 rounded-lg bg-[#1F2421] text-[#F5F2EB] font-serif font-bold text-xs">
-            ห้อง ${o.roomId || '1'}
+            ห้อง ${o.roomDisplay || o.roomId || '1'}
           </span>
           <span class="text-[11px] text-[#8A8177] font-mono">${timeStr}</span>
         </div>
@@ -258,7 +258,7 @@
 
       grid.innerHTML = rooms.map(r => {
         const isOccupied = r.FTR_Status === 'occupied';
-        const numDisplay = String(r.FTR_Num).padStart(2, '0');
+        const numDisplay = String(r.roomDisplay || r.roomNumber || r.FTR_Num).padStart(2, '0');
 
         if (isOccupied) {
           return `
@@ -275,7 +275,7 @@
                   <p class="text-[11px] text-[#8A8177] truncate max-w-[130px]">${r.occupantName || 'กำลังลองชุด'}</p>
                 </div>
               </div>
-              <button onclick="releaseStaffRoom('${r.FTR_Num}')" class="text-xs py-1.5 px-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 transition font-medium cursor-pointer">
+              <button onclick="releaseStaffRoom('${r.FTR_Num}', '${numDisplay}')" class="text-xs py-1.5 px-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 transition font-medium cursor-pointer">
                 ปล่อยห้องว่าง
               </button>
             </div>
@@ -308,8 +308,8 @@
   }
 
   // Mutex-guarded room release: pauses polling during the action
-  async function releaseStaffRoom(roomNum) {
-    if (!confirm(`ต้องการเคลียร์สถานะห้องลองหมายเลข ${roomNum} ให้กลับเป็น "ห้องว่าง" ใช่หรือไม่?`)) return;
+  async function releaseStaffRoom(roomNum, displayNum) {
+    if (!confirm(`ต้องการเคลียร์สถานะห้องลองหมายเลข ${displayNum || roomNum} ให้กลับเป็น "ห้องว่าง" ใช่หรือไม่?`)) return;
     if (isActionInProgress) return;
     isActionInProgress = true;
 

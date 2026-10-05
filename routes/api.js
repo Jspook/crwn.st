@@ -314,9 +314,36 @@ router.delete('/cart', async (req, res) => {
 //      - FTR_FinishTime IS NOT NULL → complete
 // ==========================================================
 
+const ROOM_BARCODES = ['5684848452325', '5684848452326', '5684848452327', '5684848452328'];
+const ROOM_MAP = {
+  '5684848452325': '1',
+  '5684848452326': '2',
+  '5684848452327': '3',
+  '5684848452328': '4',
+  '1': '1',
+  '2': '2',
+  '3': '3',
+  '4': '4'
+};
+
+function normalizeRoomId(id) {
+  const s = String(id || '1').trim();
+  if (s === '1') return '5684848452325';
+  if (s === '2') return '5684848452326';
+  if (s === '3') return '5684848452327';
+  if (s === '4') return '5684848452328';
+  return s;
+}
+
+function getRoomDisplayNumber(id) {
+  const s = String(id || '1').trim();
+  return ROOM_MAP[s] || s.replace(/^568484845232/, '') || s;
+}
+
 // GET /api/fitting-orders
 // Defect-4 fix: supports ?limit=N to cap complete orders (default unlimited)
 // Defect-6 fix: supports ?myOnly=true so staff sees only their own orders
+// Item 3 fix: exclude dummy occupancy rows (ITV_SKUID IS NOT NULL)
 router.get('/fitting-orders', async (req, res) => {
   const { roomId, limit, myOnly } = req.query;
   const user = getCurrentUser(req);
@@ -336,6 +363,8 @@ router.get('/fitting-orders', async (req, res) => {
              COALESCE(v.ITV_Color, '-') as color,
              COALESCE(i.ITM_Name, '\u0e40\u0e2a\u0e37\u0e49\u0e2d\u0e1c\u0e49\u0e32\u0e2a\u0e33\u0e2b\u0e23\u0e31\u0e1a\u0e25\u0e2d\u0e07') as productName,
              COALESCE(i.ITM_Price, 0) as price,
+             i.ITM_Tag as tag,
+             i.ITM_ID as productId,
              e.EMP_FName as staffName
        FROM FITTING_ROOM f
        LEFT JOIN ITEM_VARIANT v ON f.ITV_SKUID = v.ITV_SKUID
@@ -345,9 +374,13 @@ router.get('/fitting-orders', async (req, res) => {
     const params = [];
     const conditions = [];
 
+    // Filter out dummy occupancy records so they never show as pending orders
+    conditions.push(`f.ITV_SKUID IS NOT NULL AND f.ITV_SKUID != ''`);
+
     if (roomId) {
-      conditions.push(`f.FTR_Number = ?`);
-      params.push(roomId);
+      const normRoom = normalizeRoomId(roomId);
+      conditions.push(`(f.FTR_Number = ? OR f.FTR_Number = ?)`);
+      params.push(normRoom, String(roomId));
     }
 
     // Defect-6 & Defect-1: filter by current staff employee AND unassigned orders when myOnly=true
@@ -373,6 +406,12 @@ router.get('/fitting-orders', async (req, res) => {
 
     let orders = await query(sql, params);
 
+    // Decorate with roomDisplay and image
+    orders.forEach(o => {
+      o.roomDisplay = getRoomDisplayNumber(o.roomId);
+      o.image = getProductMockImage(o.tag, o.productId);
+    });
+
     // Defect-4: cap complete orders to the N most recent when limit param is provided
     const limitNum = parseInt(limit);
     if (!isNaN(limitNum) && limitNum > 0) {
@@ -395,20 +434,17 @@ router.get('/fitting-orders', async (req, res) => {
 
 
 // GET /api/fitting-rooms
-// Defect-2 fix: isOccupied = FTR_CustomerPresent instead of pending-item count
+// Returns room list with 13-digit barcode and clean 1-4 room numbers
 router.get('/fitting-rooms', async (req, res) => {
   try {
-    const totalRooms = 4;
-    // Query per-room customer-presence flag (aggregate: room is occupied if ANY row has CustomerPresent=1)
     const presenceRows = await query(`
       SELECT DISTINCT FTR_Number as roomNum, FTR_CustomerPresent
       FROM FITTING_ROOM
       WHERE FTR_CustomerPresent = 1
-    `).catch(() => []); // graceful fallback if column not yet migrated
+    `).catch(() => []);
 
     const presentSet = new Set(presenceRows.map(r => String(r.roomNum)));
 
-    // Fallback: if migration not run yet, fall back to pending-items logic
     let fallbackOccupied = new Set();
     if (presenceRows.length === 0) {
       const activeOrders = await query(`
@@ -418,14 +454,15 @@ router.get('/fitting-rooms', async (req, res) => {
       for (const r of activeOrders) fallbackOccupied.add(String(r.roomNum));
     }
 
-    // Defect-10: Use 13-digit room IDs
-    const roomIds = ['5684848452325', '5684848452326', '5684848452327', '5684848452328'];
     const rooms = [];
-    for (let i = 0; i < roomIds.length; i++) {
-      const roomNumStr = roomIds[i];
-      const isOccupied = presentSet.has(roomNumStr) || fallbackOccupied.has(roomNumStr);
+    for (let i = 0; i < ROOM_BARCODES.length; i++) {
+      const roomNumStr = ROOM_BARCODES[i];
+      const shortNum = String(i + 1);
+      const isOccupied = presentSet.has(roomNumStr) || presentSet.has(shortNum) || fallbackOccupied.has(roomNumStr) || fallbackOccupied.has(shortNum);
       rooms.push({
         FTR_Num: roomNumStr,
+        roomNumber: shortNum,
+        roomDisplay: shortNum,
         FTR_Status: isOccupied ? 'occupied' : 'available',
         isOccupied,
         occupantName: isOccupied ? 'กำลังลองชุด' : null
@@ -439,26 +476,25 @@ router.get('/fitting-rooms', async (req, res) => {
   }
 });
 
-// POST /api/fitting-rooms/:roomId/enter  (Defect-2: mark customer as present)
+// POST /api/fitting-rooms/:roomId/enter
 router.post('/fitting-rooms/:roomId/enter', async (req, res) => {
-  const { roomId } = req.params;
+  const rawRoomId = req.params.roomId;
+  const roomId = normalizeRoomId(rawRoomId);
   const user = getCurrentUser(req);
-  // Only customers can enter
   if (!user || user.role !== 'CUSTOMER') {
     return res.status(403).json({ error: 'Forbidden — customer session required' });
   }
   try {
-    // Defect-2: Insert a dummy row to mark the room as occupied if no row exists
     const updateRes = await run(
-      `UPDATE FITTING_ROOM SET FTR_CustomerPresent = 1 WHERE FTR_Number = ? AND FTR_FinishTime IS NULL`,
-      [String(roomId)]
+      `UPDATE FITTING_ROOM SET FTR_CustomerPresent = 1 WHERE (FTR_Number = ? OR FTR_Number = ?) AND FTR_FinishTime IS NULL`,
+      [roomId, rawRoomId]
     ).catch(() => ({ changes: 0 }));
 
     if (!updateRes || updateRes.changes === 0) {
       const dummyId = 'occ_' + Date.now();
       await run(
-        `INSERT INTO FITTING_ROOM (FTR_OrderID, ITV_SKUID, EMP_ID, FTR_Number, FTR_FinishTime) VALUES (?, NULL, NULL, ?, NULL)`,
-        [dummyId, String(roomId)]
+        `INSERT INTO FITTING_ROOM (FTR_OrderID, ITV_SKUID, EMP_ID, FTR_Number, FTR_FinishTime, FTR_CustomerPresent) VALUES (?, NULL, NULL, ?, NULL, 1)`,
+        [dummyId, roomId]
       ).catch(() => {});
     }
 
@@ -469,15 +505,17 @@ router.post('/fitting-rooms/:roomId/enter', async (req, res) => {
   }
 });
 
-// POST /api/fitting-rooms/:roomId/release  (also clears FTR_CustomerPresent)
-// Defect-2 fix: release now also clears FTR_CustomerPresent = 0
+// POST /api/fitting-rooms/:roomId/release
 router.post('/fitting-rooms/:roomId/release', async (req, res) => {
-  const { roomId } = req.params;
+  const rawRoomId = req.params.roomId;
+  const roomId = normalizeRoomId(rawRoomId);
   try {
     await run(
-      `UPDATE FITTING_ROOM SET FTR_FinishTime = NOW(), FTR_CustomerPresent = 0 WHERE FTR_Number = ? AND FTR_FinishTime IS NULL`,
-      [String(roomId)]
+      `UPDATE FITTING_ROOM SET FTR_FinishTime = NOW(), FTR_CustomerPresent = 0 WHERE (FTR_Number = ? OR FTR_Number = ?) AND FTR_FinishTime IS NULL`,
+      [roomId, rawRoomId]
     );
+    // Delete any dummy rows that were released
+    await run(`DELETE FROM FITTING_ROOM WHERE (FTR_Number = ? OR FTR_Number = ?) AND ITV_SKUID IS NULL`, [roomId, rawRoomId]).catch(() => {});
     res.json({ success: true, roomId });
   } catch (err) {
     console.error('Error releasing room:', err);
