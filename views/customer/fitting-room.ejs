@@ -1,4 +1,17 @@
-<%- include('../partials/header', { title: 'ห้องลองเสื้อ ห้อง ' + (typeof roomDisplay !== 'undefined' ? roomDisplay : roomId) + ' — crwn.st' }) %>
+<%
+  const ROOM_DISPLAY_MAP = {
+    '5684848452325': '1',
+    '5684848452326': '2',
+    '5684848452327': '3',
+    '5684848452328': '4',
+    '1': '1',
+    '2': '2',
+    '3': '3',
+    '4': '4'
+  };
+  const activeRoomDisplay = (typeof roomDisplay !== 'undefined' && roomDisplay) ? roomDisplay : (ROOM_DISPLAY_MAP[roomId] || String(roomId).replace(/^568484845232/, '') || roomId);
+%>
+<%- include('../partials/header', { title: 'ห้องลองเสื้อ ห้อง ' + activeRoomDisplay + ' — crwn.st' }) %>
 <%- include('../partials/navbar', { user, backAction: 'confirmExitFittingRoom()', showCart: true }) %>
 
 <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-4 sm:py-6 pb-28">
@@ -7,10 +20,10 @@
   <div class="glass-heavy rounded-3xl p-4 sm:p-6 mb-6 border border-white/80 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
     <div class="flex items-center gap-3.5">
       <div class="w-12 h-12 rounded-2xl bg-[#1F2421] text-[#F5F2EB] flex items-center justify-center font-serif text-xl font-bold shadow-xs flex-shrink-0">
-        <%= typeof roomDisplay !== 'undefined' ? roomDisplay : roomId %>
+        <%= activeRoomDisplay %>
       </div>
       <div>
-        <h1 class="font-serif text-2xl sm:text-3xl font-bold text-[#1F2421]">ห้องลองเสื้อ <%= typeof roomDisplay !== 'undefined' ? roomDisplay : roomId %></h1>
+        <h1 class="font-serif text-2xl sm:text-3xl font-bold text-[#1F2421]">ห้องลองเสื้อ <%= activeRoomDisplay %></h1>
       </div>
     </div>
 

@@ -49,6 +49,27 @@ function openRoomModal() {
   }
 }
 
+function getCleanRoomDisplay(room) {
+  if (room && room.roomDisplay && String(room.roomDisplay).length <= 2) return String(room.roomDisplay);
+  if (room && room.roomNumber && String(room.roomNumber).length <= 2) return String(room.roomNumber);
+  const raw = String(room?.FTR_Num || room || '1').trim();
+  const MAP = {
+    '5684848452325': '1',
+    '5684848452326': '2',
+    '5684848452327': '3',
+    '5684848452328': '4',
+    '05684848452325': '1',
+    '05684848452326': '2',
+    '05684848452327': '3',
+    '05684848452328': '4',
+    '1': '1',
+    '2': '2',
+    '3': '3',
+    '4': '4'
+  };
+  return MAP[raw] || raw.replace(/^0?568484845232/, '') || '1';
+}
+
 async function fetchFittingRoomsStatus() {
   const grid = document.getElementById('room-simulation-grid');
   if (!grid) return;
@@ -57,13 +78,13 @@ async function fetchFittingRoomsStatus() {
     const rooms = await res.json();
     grid.innerHTML = rooms.map(room => {
       const isOccupied = room.isOccupied || room.FTR_Status === 'occupied';
-      const displayNum = room.roomDisplay || room.roomNumber || room.FTR_Num;
+      const displayNum = getCleanRoomDisplay(room);
       if (isOccupied) {
         // Disabled — cannot enter an occupied room
         return `
           <button type="button" disabled title="ห้องนี้มีลูกค้าใช้งานอยู่ กรุณารอ" class="py-2.5 px-1 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-center font-medium shadow-2xs opacity-60 cursor-not-allowed select-none">
             <span class="block text-[10px] text-rose-700">ไม่ว่าง</span>
-            <span class="font-bold text-xs">ห้อง 0${displayNum}</span>
+            <span class="font-bold text-xs">ห้อง ${displayNum}</span>
             <span class="block text-[9px] text-rose-700 font-semibold">ล็อก/มีคนใช้</span>
           </button>
         `;
@@ -71,7 +92,7 @@ async function fetchFittingRoomsStatus() {
         return `
           <button type="button" onclick="simulateRoomQrScan('${room.FTR_Num}')" class="py-2.5 px-1 rounded-xl bg-white border border-[#A3907C]/30 hover:border-[#1F2421] text-[#1F2421] text-center font-medium transition shadow-2xs hover:bg-[#F5F2EB] active:scale-95 cursor-pointer">
             <span class="block text-[10px] text-[#8A8177]">สแกน QR</span>
-            <span class="font-bold text-xs">ห้อง 0${displayNum}</span>
+            <span class="font-bold text-xs">ห้อง ${displayNum}</span>
             <span class="block text-[9px] text-emerald-700 font-semibold">ห้องว่าง</span>
           </button>
         `;
