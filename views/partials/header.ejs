@@ -40,6 +40,21 @@
 
   <!-- Custom Quiet Luxury Stylesheet -->
   <link rel="stylesheet" href="/css/styles.css">
+
+  <!-- BarcodeDetector Polyfill (Defect 9) -->
+  <script src="https://cdn.jsdelivr.net/npm/@undecaf/zbar-wasm@0.9.15/dist/index.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@undecaf/barcode-detector-polyfill@0.9.21/dist/index.js"></script>
+  <script>
+    window.addEventListener('load', () => {
+      if (typeof barcodeDetectorPolyfill !== 'undefined') {
+        try {
+          window.BarcodeDetector = barcodeDetectorPolyfill.BarcodeDetectorPolyfill;
+        } catch (e) {
+          console.warn('Barcode polyfill error', e);
+        }
+      }
+    });
+  </script>
 </head>
 <body class="bg-[#F5F2EB] text-[#1F2421] min-h-screen flex flex-col relative selection:bg-[#C9A598]/30 selection:text-[#1F2421]">
 

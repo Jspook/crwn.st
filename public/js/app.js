@@ -127,7 +127,7 @@ async function toggleRoomQrCamera() {
 
     // Start scanning barcodes if supported
     if ('BarcodeDetector' in window) {
-      const barcodeDetector = new BarcodeDetector({ formats: ['qr_code', 'code_128', 'ean_13'] });
+      const barcodeDetector = new BarcodeDetector({ formats: ['qr_code', 'code_128', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_39'] });
       roomQrScanInterval = setInterval(async () => {
         if (!roomQrStream || !video || video.readyState < 2) return;
         try {

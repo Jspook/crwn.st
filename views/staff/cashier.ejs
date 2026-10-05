@@ -109,7 +109,7 @@
             </div>
             <div class="flex justify-between text-[#8A8177]">
               <span>VAT 7%</span>
-              <span>รวมแล้ว</span>
+              <span id="pos-vat" class="font-mono text-[#1F2421]">฿0.00</span>
             </div>
             <div class="flex justify-between text-base font-bold text-[#1F2421] pt-2 border-t border-[#A3907C]/15">
               <span>ยอดรวมสุทธิ</span>
@@ -356,9 +356,12 @@
     }).join('');
 
     itemsCount.textContent = count;
-    const formatted = '฿' + total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    subtotalEl.textContent = formatted;
-    totalEl.textContent = formatted;
+    const vat = total * 0.07;
+    const totalWithVat = total + vat;
+
+    subtotalEl.textContent = '฿' + total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    document.getElementById('pos-vat').textContent = '฿' + vat.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    totalEl.textContent = '฿' + totalWithVat.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     posCalcChange();
     if (window.lucide) window.lucide.createIcons();
@@ -388,7 +391,9 @@
       }).join('');
     }
     if (payTotal) {
-      payTotal.textContent = '฿' + total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const vat = total * 0.07;
+      const totalWithVat = total + vat;
+      payTotal.textContent = '฿' + totalWithVat.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
     // Toggle sections
@@ -432,13 +437,39 @@
     if (m === 'cash') {
       bCash.className = 'py-2 px-1 rounded-xl text-xs font-medium border-2 border-[#1F2421] bg-white text-[#1F2421] transition';
       cashBox.classList.remove('hidden');
+      document.getElementById('pos-mock-payment-container')?.classList.add('hidden');
     } else if (m === 'credit') {
       bCredit.className = 'py-2 px-1 rounded-xl text-xs font-medium border-2 border-[#1F2421] bg-white text-[#1F2421] transition';
       cashBox.classList.add('hidden');
+      showMockPayment('credit');
     } else {
       bQr.className = 'py-2 px-1 rounded-xl text-xs font-medium border-2 border-[#1F2421] bg-white text-[#1F2421] transition';
       cashBox.classList.add('hidden');
+      showMockPayment('qr');
     }
+  }
+
+  function showMockPayment(type) {
+    let container = document.getElementById('pos-mock-payment-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'pos-mock-payment-container';
+      container.className = 'mt-3 p-4 rounded-xl bg-white/60 border border-[#A3907C]/20 text-center flex flex-col items-center justify-center';
+      document.getElementById('pos-cash-container').parentNode.insertBefore(container, document.getElementById('checkout-error-banner'));
+    }
+    container.classList.remove('hidden');
+    if (type === 'qr') {
+      container.innerHTML = `
+        <i data-lucide="qr-code" class="w-12 h-12 text-[#1F2421] mb-2"></i>
+        <p class="text-xs text-[#8A8177]">สแกน Thai QR Code เพื่อชำระเงิน</p>
+      `;
+    } else {
+      container.innerHTML = `
+        <i data-lucide="credit-card" class="w-12 h-12 text-[#1F2421] mb-2"></i>
+        <p class="text-xs text-[#8A8177]">โปรดเสียบบัตรเครดิตที่เครื่องรูดบัตร</p>
+      `;
+    }
+    if (window.lucide) window.lucide.createIcons();
   }
 
   function posCalcChange() {
@@ -454,9 +485,10 @@
       }
     }
     const total = posCart.reduce((s, i) => s + (i.price * i.quantity), 0);
+    const totalWithVat = total * 1.07;
     const changeEl = document.getElementById('pos-cash-change');
     if (!changeEl) return;
-    const change = Math.max(0, val - total);
+    const change = Math.max(0, val - totalWithVat);
     changeEl.textContent = '฿' + change.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
@@ -499,6 +531,18 @@
 
   async function posSubmitOrder() {
     if (posCart.length === 0) return;
+
+    if (currentMethod === 'cash') {
+      const input = document.getElementById('pos-cash-received');
+      let val = parseFloat(input ? input.value : 0) || 0;
+      const total = posCart.reduce((s, i) => s + (i.price * i.quantity), 0);
+      const totalWithVat = total * 1.07;
+      if (val < totalWithVat) {
+        alert('กรุณาระบุจำนวนเงินสดให้ครบถ้วน (ต้องมากกว่าหรือเท่ากับยอดรวมสุทธิ)');
+        return;
+      }
+    }
+
     const submitBtn = document.getElementById('pos-submit-btn');
     if (submitBtn && submitBtn.disabled) return;
     if (submitBtn) submitBtn.disabled = true;

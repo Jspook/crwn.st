@@ -168,40 +168,9 @@ router.get('/products/barcode/:code', async (req, res) => {
       }
     }
 
-    // 3. Fallback: Check if numeric barcode maps to any known products
+    // Remove Fallback mechanism for barcode lookup (Defect 11)
     if (!variant) {
-      const barcodeMap = {
-        '8901234567891': 'p1',
-        '8901234567892': 'p2',
-        '8901234567893': 'p3',
-        '8901234567894': 'p4',
-        '8901234567895': 'p5',
-      };
-      const mappedId = barcodeMap[code];
-      if (mappedId) {
-        const item = await get(`SELECT * FROM ITEM WHERE ITM_ID = ?`, [mappedId]);
-        if (item) {
-          const itemVariants = await query(`SELECT * FROM ITEM_VARIANT WHERE ITM_ID = ?`, [mappedId]);
-          return res.json({
-            id: item.ITM_ID,
-            name: item.ITM_Name,
-            price: item.ITM_Price,
-            category: item.ITM_Category,
-            tag: item.ITM_Tag,
-            image: getProductMockImage(item.ITM_Tag, item.ITM_ID),
-            variants: itemVariants.map(iv => ({
-              sku: iv.ITV_SKUID,
-              color: iv.ITV_Color,
-              size: iv.ITV_Size,
-              stock: iv.ITV_Stock
-            }))
-          });
-        }
-      }
-    }
-
-    if (!variant) {
-      return res.status(404).json({ error: 'ไม่พบสินค้าจากบาร์โค้ดนี้' });
+      return res.status(404).json({ error: 'ไม่พบสินค้าจากบาร์โค้ดนี้ (ห้ามมั่ว)' });
     }
 
     res.json({
@@ -299,8 +268,7 @@ router.post('/cart', async (req, res) => {
         let sku = item.sku;
         const v = await get(`SELECT ITV_SKUID FROM ITEM_VARIANT WHERE ITV_SKUID = ?`, [sku]);
         if (!v) {
-          const firstV = await get(`SELECT ITV_SKUID FROM ITEM_VARIANT LIMIT 1`);
-          sku = firstV ? firstV.ITV_SKUID : '8850010001011';
+          throw new Error('INVALID_SKU');
         }
         const qty = item.quantity || 1;
         for (let q = 0; q < qty; q++) {
@@ -382,9 +350,9 @@ router.get('/fitting-orders', async (req, res) => {
       params.push(roomId);
     }
 
-    // Defect-6: filter by current staff employee when myOnly=true
+    // Defect-6 & Defect-1: filter by current staff employee AND unassigned orders when myOnly=true
     if (myOnly === 'true' && user && user.role !== 'CUSTOMER' && user.id) {
-      conditions.push(`f.EMP_ID = ?`);
+      conditions.push(`(f.EMP_ID = ? OR f.EMP_ID IS NULL)`);
       params.push(user.id);
     }
 
@@ -450,12 +418,14 @@ router.get('/fitting-rooms', async (req, res) => {
       for (const r of activeOrders) fallbackOccupied.add(String(r.roomNum));
     }
 
+    // Defect-10: Use 13-digit room IDs
+    const roomIds = ['5684848452325', '5684848452326', '5684848452327', '5684848452328'];
     const rooms = [];
-    for (let i = 1; i <= totalRooms; i++) {
-      const roomNumStr = String(i);
+    for (let i = 0; i < roomIds.length; i++) {
+      const roomNumStr = roomIds[i];
       const isOccupied = presentSet.has(roomNumStr) || fallbackOccupied.has(roomNumStr);
       rooms.push({
-        FTR_Num: i,
+        FTR_Num: roomNumStr,
         FTR_Status: isOccupied ? 'occupied' : 'available',
         isOccupied,
         occupantName: isOccupied ? 'กำลังลองชุด' : null
@@ -478,10 +448,20 @@ router.post('/fitting-rooms/:roomId/enter', async (req, res) => {
     return res.status(403).json({ error: 'Forbidden — customer session required' });
   }
   try {
-    await run(
+    // Defect-2: Insert a dummy row to mark the room as occupied if no row exists
+    const updateRes = await run(
       `UPDATE FITTING_ROOM SET FTR_CustomerPresent = 1 WHERE FTR_Number = ? AND FTR_FinishTime IS NULL`,
       [String(roomId)]
-    ).catch(() => {}); // If column not yet migrated, swallow error gracefully
+    ).catch(() => ({ changes: 0 }));
+
+    if (!updateRes || updateRes.changes === 0) {
+      const dummyId = 'occ_' + Date.now();
+      await run(
+        `INSERT INTO FITTING_ROOM (FTR_OrderID, ITV_SKUID, EMP_ID, FTR_Number, FTR_FinishTime) VALUES (?, NULL, NULL, ?, NULL)`,
+        [dummyId, String(roomId)]
+      ).catch(() => {});
+    }
+
     res.json({ success: true, roomId, customerPresent: true });
   } catch (err) {
     console.error('Error entering room:', err);
@@ -787,12 +767,14 @@ router.post('/receipts', async (req, res) => {
         });
       }
 
-      // 2. Insert SALE_ORDER with server-calculated total
+      // 2. Insert SALE_ORDER with server-calculated total (Subtotal + 7% VAT)
+      const vatAmount = calculatedTotal * 0.07;
+      const totalWithVat = calculatedTotal + vatAmount;
       const now = new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Bangkok' }).replace('T', ' ');
       await tx.run(
         `INSERT INTO SALE_ORDER (ORD_ID, CUS_ID, EMP_ID, ORD_Method, ORD_Channel, ORD_DateTime, ORD_Total)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [orderId, cusId, empId, paymentMethod || 'credit', orderChannel, now, calculatedTotal]
+        [orderId, cusId, empId, paymentMethod || 'credit', orderChannel, now, totalWithVat]
       );
 
       // 3. Insert SALE_ORDER_LINE for each verified item

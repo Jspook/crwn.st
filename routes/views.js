@@ -132,6 +132,14 @@ router.get('/customer/receipt/:id', async (req, res) => {
       return res.status(404).send('Receipt not found');
     }
 
+    let customerName = 'ลูกค้าทั่วไป (Guest)';
+    if (receipt.CUS_ID && receipt.CUS_ID !== 'guest') {
+      const cus = await get(`SELECT CUS_FName, CUS_LName FROM CUSTOMER WHERE CUS_ID = ?`, [receipt.CUS_ID]);
+      if (cus) {
+        customerName = `${cus.CUS_FName} ${cus.CUS_LName}`;
+      }
+    }
+
     const items = await query(
       `SELECT l.*, v.ITV_Color, v.ITV_Size, i.ITM_Name
        FROM SALE_ORDER_LINE l
@@ -142,6 +150,7 @@ router.get('/customer/receipt/:id', async (req, res) => {
     );
 
     receipt.items = items;
+    receipt.customerName = customerName;
 
     res.render('customer/receipt', {
       user,

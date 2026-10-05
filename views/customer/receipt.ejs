@@ -47,7 +47,7 @@
         </div>
         <div class="flex justify-between">
           <span>CUSTOMER:</span>
-          <span><%= user ? user.name : 'Customer' %></span>
+          <span><%= receipt.customerName || (user ? user.name : 'Customer') %></span>
         </div>
       </div>
     </div>
@@ -82,7 +82,7 @@
     <div class="border-t-2 border-dashed border-black pt-3 space-y-1.5 text-xs font-mono">
       <div class="flex justify-between">
         <span>SUBTOTAL:</span>
-        <span class="font-bold">฿<%= Number(receipt.ORD_Total || receipt.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 }) %></span>
+        <span class="font-bold">฿<%= (Number(receipt.ORD_Total || receipt.total || 0) * 100 / 107).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></span>
       </div>
       <div class="flex justify-between">
         <span>VAT 7% (INCLUDED):</span>

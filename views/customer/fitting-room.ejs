@@ -313,7 +313,7 @@
     const checkedCheckboxes = document.querySelectorAll('input[name="exit-item-check"]:checked');
     const checkedSkus = Array.from(checkedCheckboxes).map(cb => cb.value);
 
-    // Add selected items to cart
+    // Add selected items to cart locally without syncing each time (Defect 3, 4, 7)
     for (const item of sessionTriedItems) {
       if (checkedSkus.includes(item.sku)) {
         await Cart.addItem({
@@ -325,8 +325,13 @@
           size: item.size,
           image: item.image,
           quantity: item.quantity || 1
-        });
+        }, true); // skipSync = true
       }
+    }
+    
+    // Sync to backend once to prevent Race Condition
+    if (checkedSkus.length > 0) {
+      await Cart.syncBackend();
     }
 
     clearTriedFittingItems(currentRoomId);

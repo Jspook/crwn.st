@@ -98,7 +98,7 @@ const Cart = {
     }
   },
 
-  async addItem(item) {
+  async addItem(item, skipSync = false) {
     this.loadFromStorage(); // Always ensure latest items loaded
 
     const existing = this.items.find(i => i.sku === item.sku);
@@ -116,7 +116,10 @@ const Cart = {
         quantity: 1,
       });
     }
-    this.syncBackend(); // Optimistic update, no await
+    if (!skipSync) {
+      this.syncBackend(); // Optimistic update, no await
+      this.openDrawer();
+    }
     this.openDrawer();
     this.showToast(`เพิ่ม "${item.name}" ลงในตะกร้าแล้ว`);
   },

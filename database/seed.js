@@ -64,7 +64,7 @@ async function seedDatabase() {
         "name": "Classic Cotton Crewneck T-Shirt",
         "desc": "เสื้อยืดคอกลมผ้าคอตตอนแท้ 100% สัมผัสนุ่มสบาย สวมใส่ง่าย ระบายอากาศได้ดีเยี่ยม เหมาะสำหรับสวมใส่ในวันสบายๆ หรือใส่เป็นเสื้อตัวในในลุคแคชชวลสุดชิค",
         "price": 690,
-        "category": "female",
+        "category": "male",
         "tag": "top"
     },
     {
@@ -80,7 +80,7 @@ async function seedDatabase() {
         "name": "Oversized Heavyweight T-Shirt",
         "desc": "เสื้อยืดทรงโอเวอร์ไซส์เนื้อผ้าหนากำลังดี ทรงสวยอยู่ทรงไม่ย้วยง่าย ตัดเย็บอย่างประณีต ช่วยคอมพลีทลุคสตรีทแฟชั่นให้ดูโดดเด่นและทันสมัยในทุกๆ วัน",
         "price": 990,
-        "category": "female",
+        "category": "male",
         "tag": "top"
     },
     {
@@ -96,7 +96,7 @@ async function seedDatabase() {
         "name": "Pocket Detail Basic T-Shirt",
         "desc": "เสื้อยืดเบสิกแต่งกระเป๋าหน้าอกดีไซน์มินิมอล ผลิตจากผ้าฝ้ายเนื้อละเอียด ใส่สบายตลอดวัน สีสันคลาสสิกที่สามารถหยิบมาใส่ได้บ่อยไม่มีเบื่อ",
         "price": 1290,
-        "category": "female",
+        "category": "male",
         "tag": "top"
     },
     {
