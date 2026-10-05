@@ -75,6 +75,7 @@ const Cart = {
           this.items = data.items;
           this.saveToStorage();
           this.updateUI();
+          window.dispatchEvent(new CustomEvent('crwn:cart-updated', { detail: { items: this.items } }));
         }
       }
     } catch (err) {
@@ -112,16 +113,21 @@ const Cart = {
         color: item.color || 'Standard',
         size: item.size || 'M',
         price: Number(item.price),
-        image: item.image || '',
+        image: item.image || (() => {
+          const pId = item.productId || (item.sku ? item.sku.split('-')[0] : 'p1');
+          const num = parseInt(String(pId).replace(/[^0-9]/g, ''), 10) || 1;
+          const vIdx = (num % 2) + 1;
+          return `/images/products/top-${vIdx}.jpg`;
+        })(),
         quantity: 1,
       });
     }
+    this.saveToStorage(); // persist เสมอ ไม่ว่า skipSync
     if (!skipSync) {
       this.syncBackend(); // Optimistic update, no await
       this.openDrawer();
+      this.showToast(`เพิ่ม "${item.name}" ลงในตะกร้าแล้ว`);
     }
-    this.openDrawer();
-    this.showToast(`เพิ่ม "${item.name}" ลงในตะกร้าแล้ว`);
   },
 
   async updateQuantity(sku, delta) {

@@ -42,7 +42,7 @@
           <div class="flex gap-2">
             <div class="relative flex-1">
               <i data-lucide="scan-barcode" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#A3907C]"></i>
-              <input type="text" id="pos-barcode-input" placeholder="ยิงบาร์โค้ด หรือพิมพ์ เช่น 8901234567891, 8901234567892..." class="w-full pl-10 pr-4 py-3 rounded-xl bg-white border border-[#A3907C]/30 text-sm font-mono focus:outline-none focus:border-[#1F2421]" onkeypress="if(event.key==='Enter') posScanItem()">
+              <input type="text" id="pos-barcode-input" placeholder="ยิงบาร์โค้ด หรือพิมพ์ เช่น 8850010140000..." class="w-full pl-10 pr-4 py-3 rounded-xl bg-white border border-[#A3907C]/30 text-sm font-mono focus:outline-none focus:border-[#1F2421]" onkeypress="if(event.key==='Enter') posScanItem()">
             </div>
             <button onclick="posScanItem()" class="btn-primary text-xs px-5 py-3">
               เพิ่มสินค้า
@@ -52,9 +52,9 @@
           <!-- Quick Sample Chips -->
           <div class="flex flex-wrap gap-2 mt-3 text-[11px]">
             <span class="text-[#8A8177] py-1">ตัวอย่างบาร์โค้ด:</span>
-            <button onclick="posAddByCode('8901234567891')" class="px-2 py-1 rounded-md bg-white/70 hover:bg-white border border-[#A3907C]/25 text-[#1F2421] font-mono">8901234567891 (Scarf)</button>
-            <button onclick="posAddByCode('8901234567892')" class="px-2 py-1 rounded-md bg-white/70 hover:bg-white border border-[#A3907C]/25 text-[#1F2421] font-mono">8901234567892 (Sweater)</button>
-            <button onclick="posAddByCode('8901234567893')" class="px-2 py-1 rounded-md bg-white/70 hover:bg-white border border-[#A3907C]/25 text-[#1F2421] font-mono">8901234567893 (Coat)</button>
+            <button onclick="posAddByCode('8850010140000')" class="px-2 py-1 rounded-md bg-white/70 hover:bg-white border border-[#A3907C]/25 text-[#1F2421] font-mono">8850010140000 (Black/XL)</button>
+            <button onclick="posAddByCode('8850010310001')" class="px-2 py-1 rounded-md bg-white/70 hover:bg-white border border-[#A3907C]/25 text-[#1F2421] font-mono">8850010310001 (Navy/S)</button>
+            <button onclick="posAddByCode('8850100120019')" class="px-2 py-1 rounded-md bg-white/70 hover:bg-white border border-[#A3907C]/25 text-[#1F2421] font-mono">8850100120019 (Black/M)</button>
           </div>
         </div>
 

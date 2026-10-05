@@ -93,7 +93,23 @@ router.get('/customer/fitting-room', requireCustomer, async (req, res) => {
   };
   const roomDisplay = ROOM_MAP[roomId] || roomId.replace(/^568484845232/, '') || roomId;
 
+  function normalizeRoomId(id) {
+    const s = String(id || '1').trim();
+    if (s === '1') return '5684848452325';
+    if (s === '2') return '5684848452326';
+    if (s === '3') return '5684848452327';
+    if (s === '4') return '5684848452328';
+    return s;
+  }
+  const normRoom = normalizeRoomId(roomId);
+
   try {
+    const active = await get(`SELECT FTR_SessionID FROM FITTING_ROOM WHERE (FTR_Number = ? OR FTR_Number = ?) AND CUS_ID = ? AND FTR_CustomerPresent = 1 AND FTR_ReleasedAt IS NULL LIMIT 1`, [normRoom, String(roomId), req.user.id]);
+    if (!active) {
+      return res.redirect('/customer/dashboard');
+    }
+    const sessionId = active.FTR_SessionID;
+
     const products = await query(`SELECT * FROM ITEM ORDER BY ITM_ID ASC`);
     const variants = await query(`SELECT * FROM ITEM_VARIANT`);
 
@@ -118,7 +134,7 @@ router.get('/customer/fitting-room', requireCustomer, async (req, res) => {
       user: req.user,
       roomId,
       roomDisplay,
-      sessionId: '',
+      sessionId,
       products
     });
   } catch (err) {

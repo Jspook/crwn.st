@@ -376,6 +376,11 @@
     const checkedCheckboxes = document.querySelectorAll('input[name="exit-item-check"]:checked');
     const checkedSkus = Array.from(checkedCheckboxes).map(cb => cb.value);
 
+    const btnCheckout = document.getElementById('btn-add-and-checkout');
+    const btnReturn = document.getElementById('btn-add-and-return');
+    if (btnCheckout) { btnCheckout.disabled = true; btnCheckout.style.opacity = '0.7'; }
+    if (btnReturn) { btnReturn.disabled = true; btnReturn.style.opacity = '0.7'; }
+
     // Add only completed & checked items to cart
     for (const item of validCompletedOrders) {
       if (checkedSkus.includes(item.sku)) {
@@ -395,6 +400,7 @@
     // Sync authoritative cart to backend once
     if (checkedSkus.length > 0) {
       await Cart.syncBackend();
+      Cart.showToast(`เพิ่มสินค้า ${checkedSkus.length} รายการลงในตะกร้าแล้ว`);
     }
 
     clearTriedFittingItems(currentRoomId);

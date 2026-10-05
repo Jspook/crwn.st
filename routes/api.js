@@ -376,6 +376,9 @@ router.get('/fitting-orders', async (req, res) => {
 
     // Filter out dummy occupancy records so they never show as pending orders
     conditions.push(`f.ITV_SKUID IS NOT NULL AND f.ITV_SKUID != ''`);
+    
+    // Ignore released orders
+    conditions.push(`f.FTR_ReleasedAt IS NULL`);
 
     if (roomId) {
       const normRoom = normalizeRoomId(roomId);
@@ -383,8 +386,22 @@ router.get('/fitting-orders', async (req, res) => {
       params.push(normRoom, String(roomId));
     }
 
-    // Defect-6 & Defect-1: filter by current staff employee AND unassigned orders when myOnly=true
-    if (myOnly === 'true' && user && user.role !== 'CUSTOMER' && user.id) {
+    if (user && user.role === 'CUSTOMER') {
+      // Find user's active session for the room (if roomId provided)
+      let sessionCondition = `f.CUS_ID = ?`;
+      params.push(user.id);
+      
+      if (roomId) {
+        const normRoom = normalizeRoomId(roomId);
+        const active = await get(`SELECT FTR_SessionID FROM FITTING_ROOM WHERE FTR_Number = ? AND CUS_ID = ? AND FTR_CustomerPresent = 1 AND FTR_ReleasedAt IS NULL LIMIT 1`, [normRoom, user.id]);
+        if (!active) {
+          return res.json([]);
+        }
+        sessionCondition = `f.FTR_SessionID = ?`;
+        params[params.length - 1] = active.FTR_SessionID;
+      }
+      conditions.push(sessionCondition);
+    } else if (myOnly === 'true' && user && user.role !== 'CUSTOMER' && user.id) {
       conditions.push(`(f.EMP_ID = ? OR f.EMP_ID IS NULL)`);
       params.push(user.id);
     }
@@ -440,19 +457,12 @@ router.get('/fitting-rooms', async (req, res) => {
     const presenceRows = await query(`
       SELECT DISTINCT FTR_Number as roomNum, FTR_CustomerPresent
       FROM FITTING_ROOM
-      WHERE FTR_CustomerPresent = 1
+      WHERE FTR_CustomerPresent = 1 AND FTR_ReleasedAt IS NULL
     `).catch(() => []);
 
     const presentSet = new Set(presenceRows.map(r => String(r.roomNum)));
 
     let fallbackOccupied = new Set();
-    if (presenceRows.length === 0) {
-      const activeOrders = await query(`
-        SELECT FTR_Number as roomNum FROM FITTING_ROOM
-        WHERE FTR_FinishTime IS NULL
-      `);
-      for (const r of activeOrders) fallbackOccupied.add(String(r.roomNum));
-    }
 
     const rooms = [];
     for (let i = 0; i < ROOM_BARCODES.length; i++) {
@@ -485,20 +495,30 @@ router.post('/fitting-rooms/:roomId/enter', async (req, res) => {
     return res.status(403).json({ error: 'Forbidden — customer session required' });
   }
   try {
-    const updateRes = await run(
-      `UPDATE FITTING_ROOM SET FTR_CustomerPresent = 1 WHERE (FTR_Number = ? OR FTR_Number = ?) AND FTR_FinishTime IS NULL`,
+    const existing = await get(
+      `SELECT FTR_SessionID, CUS_ID FROM FITTING_ROOM WHERE (FTR_Number = ? OR FTR_Number = ?) AND FTR_CustomerPresent = 1 AND FTR_ReleasedAt IS NULL LIMIT 1`,
       [roomId, rawRoomId]
-    ).catch(() => ({ changes: 0 }));
+    );
 
-    if (!updateRes || updateRes.changes === 0) {
-      const dummyId = 'occ_' + Date.now();
-      await run(
-        `INSERT INTO FITTING_ROOM (FTR_OrderID, ITV_SKUID, EMP_ID, FTR_Number, FTR_FinishTime, FTR_CustomerPresent) VALUES (?, NULL, NULL, ?, NULL, 1)`,
-        [dummyId, roomId]
-      ).catch(() => {});
+    if (existing && existing.CUS_ID && existing.CUS_ID !== user.id) {
+      return res.status(409).json({ error: 'Room is occupied by another customer' });
     }
 
-    res.json({ success: true, roomId, customerPresent: true });
+    await run(
+      `UPDATE FITTING_ROOM SET FTR_ReleasedAt = NOW(), FTR_CustomerPresent = 0 WHERE (FTR_Number = ? OR FTR_Number = ?) AND FTR_FinishTime IS NULL AND FTR_ReleasedAt IS NULL`,
+      [roomId, rawRoomId]
+    );
+
+    const dummyId = 'occ_' + Date.now();
+    const crypto = require('crypto');
+    const sessionId = 'ses_' + crypto.randomUUID();
+    
+    await run(
+      `INSERT INTO FITTING_ROOM (FTR_OrderID, ITV_SKUID, EMP_ID, FTR_Number, FTR_FinishTime, FTR_CustomerPresent, FTR_SessionID, CUS_ID) VALUES (?, NULL, NULL, ?, NULL, 1, ?, ?)`,
+      [dummyId, roomId, sessionId, user.id]
+    );
+
+    res.json({ success: true, sessionId, roomId, customerPresent: true });
   } catch (err) {
     console.error('Error entering room:', err);
     res.status(500).json({ error: 'Failed to mark room entry' });
@@ -509,13 +529,23 @@ router.post('/fitting-rooms/:roomId/enter', async (req, res) => {
 router.post('/fitting-rooms/:roomId/release', async (req, res) => {
   const rawRoomId = req.params.roomId;
   const roomId = normalizeRoomId(rawRoomId);
+  const user = getCurrentUser(req);
   try {
+    if (user && user.role === 'CUSTOMER') {
+      const active = await get(`SELECT FTR_SessionID FROM FITTING_ROOM WHERE (FTR_Number = ? OR FTR_Number = ?) AND CUS_ID = ? AND FTR_CustomerPresent = 1 AND FTR_ReleasedAt IS NULL LIMIT 1`, [roomId, rawRoomId, user.id]);
+      if (!active) {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
+    }
+
     await run(
-      `UPDATE FITTING_ROOM SET FTR_FinishTime = NOW(), FTR_CustomerPresent = 0 WHERE (FTR_Number = ? OR FTR_Number = ?) AND FTR_FinishTime IS NULL`,
+      `UPDATE FITTING_ROOM SET FTR_ReleasedAt = NOW() WHERE (FTR_Number = ? OR FTR_Number = ?) AND FTR_FinishTime IS NULL AND FTR_ReleasedAt IS NULL`,
       [roomId, rawRoomId]
     );
-    // Delete any dummy rows that were released
-    await run(`DELETE FROM FITTING_ROOM WHERE (FTR_Number = ? OR FTR_Number = ?) AND ITV_SKUID IS NULL`, [roomId, rawRoomId]).catch(() => {});
+    await run(
+      `UPDATE FITTING_ROOM SET FTR_CustomerPresent = 0 WHERE (FTR_Number = ? OR FTR_Number = ?)`,
+      [roomId, rawRoomId]
+    );
     res.json({ success: true, roomId });
   } catch (err) {
     console.error('Error releasing room:', err);
@@ -537,8 +567,20 @@ router.post('/fitting-orders', async (req, res) => {
   }
 
   try {
-    const roomNum = String(roomId || '1');
+    const roomNum = normalizeRoomId(roomId || '1');
     const targetSku = String(sku).trim();
+    const user = getCurrentUser(req);
+    let sessionId = null;
+    let cusId = null;
+
+    if (user && user.role === 'CUSTOMER') {
+      const active = await get(`SELECT FTR_SessionID FROM FITTING_ROOM WHERE FTR_Number = ? AND CUS_ID = ? AND FTR_CustomerPresent = 1 AND FTR_ReleasedAt IS NULL LIMIT 1`, [roomNum, user.id]);
+      if (!active) {
+        return res.status(403).json({ error: 'Forbidden — no active fitting room session' });
+      }
+      sessionId = active.FTR_SessionID;
+      cusId = user.id;
+    }
 
     // Strict lookup — reject if SKU not found (Defect-1: no fallback chain)
     const variant = await get(
@@ -570,8 +612,8 @@ router.post('/fitting-orders', async (req, res) => {
     const orderId = 'fo_' + Date.now();
 
     await run(
-      `INSERT INTO FITTING_ROOM (FTR_OrderID, ITV_SKUID, EMP_ID, FTR_Number) VALUES (?, ?, NULL, ?)`,
-      [orderId, targetSku, roomNum]
+      `INSERT INTO FITTING_ROOM (FTR_OrderID, ITV_SKUID, EMP_ID, FTR_Number, FTR_SessionID, CUS_ID) VALUES (?, ?, NULL, ?, ?, ?)`,
+      [orderId, targetSku, roomNum, sessionId, cusId]
     );
 
     // Retrieve rich details for newly created order
@@ -613,7 +655,10 @@ router.patch('/fitting-orders/:id', async (req, res) => {
   const { id } = req.params;
   const { status, empId } = req.body;
   const user = getCurrentUser(req);
-  const staffId = empId || (user && user.role !== 'CUSTOMER' ? user.id : '68070056');
+  if (!user || user.role === 'CUSTOMER') {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  const staffId = user.id;
 
   const cleanStatus = String(status || '').trim().toLowerCase();
   if (!['pending', 'preparing', 'complete'].includes(cleanStatus)) {
@@ -622,16 +667,17 @@ router.patch('/fitting-orders/:id', async (req, res) => {
 
   try {
     // Fetch the order to check EMP_ID ownership (Defect-6)
-    const existing = await get(`SELECT EMP_ID FROM FITTING_ROOM WHERE FTR_OrderID = ?`, [id]);
+    const existing = await get(`SELECT EMP_ID, FTR_ReleasedAt FROM FITTING_ROOM WHERE FTR_OrderID = ?`, [id]);
     if (!existing) {
       return res.status(404).json({ error: 'ไม่พบคำสั่งซื้อนี้ในระบบ' });
+    }
+    if (existing.FTR_ReleasedAt !== null) {
+      return res.status(409).json({ error: 'ลูกค้ายกเลิกคำสั่งซื้อนี้แล้ว (ออกจากห้องลองแล้ว)' });
     }
 
     // If the order is already assigned to another staff, deny mutation from a different staff
     if (
       existing.EMP_ID &&
-      user &&
-      user.role !== 'CUSTOMER' &&
       String(existing.EMP_ID) !== String(staffId)
     ) {
       return res.status(403).json({
@@ -805,9 +851,8 @@ router.post('/receipts', async (req, res) => {
         });
       }
 
-      // 2. Insert SALE_ORDER with server-calculated total (Subtotal + 7% VAT)
-      const vatAmount = calculatedTotal * 0.07;
-      const totalWithVat = calculatedTotal + vatAmount;
+      // 2. Insert SALE_ORDER with server-calculated total (VAT already included)
+      const totalWithVat = calculatedTotal;
       const now = new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Bangkok' }).replace('T', ' ');
       await tx.run(
         `INSERT INTO SALE_ORDER (ORD_ID, CUS_ID, EMP_ID, ORD_Method, ORD_Channel, ORD_DateTime, ORD_Total)

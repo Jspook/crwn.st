@@ -309,7 +309,7 @@
 
   // Mutex-guarded room release: pauses polling during the action
   async function releaseStaffRoom(roomNum, displayNum) {
-    if (!confirm(`ต้องการเคลียร์สถานะห้องลองหมายเลข ${displayNum || roomNum} ให้กลับเป็น "ห้องว่าง" ใช่หรือไม่?`)) return;
+    if (!confirm(`คุณแน่ใจหรือไม่ว่าต้องการปล่อยห้องว่าง? (คำสั่งขอลองชุดที่ยังไม่ได้ส่งจะถูกยกเลิก)`)) return;
     if (isActionInProgress) return;
     isActionInProgress = true;
 
