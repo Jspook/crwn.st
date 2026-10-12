@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title><%= typeof title !== 'undefined' ? title : 'crwn.st' %></title>
   <meta name="description" content="crwn.st">
+  <script>
+    window.currentUser = <%- JSON.stringify(typeof currentUser !== 'undefined' ? currentUser : null).replace(/</g, '\\u003c') %>;
+  </script>
 
   <!-- Google Fonts: Outfit (Body) & Playfair Display (Luxury Serif) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">

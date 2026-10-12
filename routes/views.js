@@ -5,7 +5,7 @@
 const express = require('express');
 const router = express.Router();
 const { query, get, run } = require('../database/db');
-const { getCurrentUser } = require('./auth');
+const { getCurrentUser } = require('../middleware/auth');
 const { getProductMockImage } = require('../utils/productImages');
 
 // Middleware to ensure customer session
@@ -59,6 +59,11 @@ router.get('/', (req, res) => {
     if (user.role === 'FITTING_STAFF') return res.redirect('/staff/fitting');
   }
   res.render('index', { user: null });
+});
+
+// GET /login alias redirect to /
+router.get('/login', (req, res) => {
+  res.redirect('/');
 });
 
 // GET /customer/dashboard
@@ -154,10 +159,14 @@ router.get('/customer/checkout', requireCustomer, (req, res) => {
 router.get('/customer/receipt/:id', async (req, res) => {
   const user = getCurrentUser(req);
   const { id } = req.params;
+  if (!user) {
+    return res.redirect(`/?redirect=${encodeURIComponent(req.originalUrl)}`);
+  }
 
   try {
     const receipt = await get(`SELECT * FROM SALE_ORDER WHERE ORD_ID = ?`, [id]);
-    if (!receipt) {
+    const isOwner = receipt && user.role === 'CUSTOMER' && receipt.CUS_ID === user.id;
+    if (!receipt || !(isOwner || user.role === 'CASHIER')) {
       return res.status(404).send('Receipt not found');
     }
 

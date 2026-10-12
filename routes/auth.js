@@ -5,19 +5,8 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
-const { query, get, run } = require('../database/db');
-
-// Helper to get current user from cookies
-function getCurrentUser(req) {
-  try {
-    if (req.cookies && req.cookies.crwn_auth) {
-      return JSON.parse(req.cookies.crwn_auth);
-    }
-  } catch (e) {
-    // Ignore parse error
-  }
-  return null;
-}
+const { get, run } = require('../database/db');
+const { getCurrentUser, setAuthCookie, clearAuthCookie } = require('../middleware/auth');
 
 // POST /api/auth/register (Customer Registration)
 router.post('/register', async (req, res) => {
@@ -65,12 +54,7 @@ router.post('/register', async (req, res) => {
       role: 'CUSTOMER'
     };
 
-    // Set auth cookie (7 days)
-    res.cookie('crwn_auth', JSON.stringify(customer), {
-      httpOnly: false,
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-      path: '/'
-    });
+    setAuthCookie(res, customer);
 
     return res.json({ success: true, user: customer });
   } catch (err) {
@@ -93,12 +77,12 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'กรุณากรอกรหัสผ่าน' });
     }
 
-    // 1. First, check if input matches an EMPLOYEE (EMP_ID or EMP_Pass / Staff Code)
+    // 1. First, check if input matches an EMPLOYEE (EMP_ID or email only — never look up by password)
     const employee = await get(
       `SELECT EMP_ID as id, CONCAT(EMP_FName, ' ', EMP_LName) as name, EMP_Role as role, EMP_Pass as staffCode 
        FROM EMPLOYEE 
-       WHERE EMP_ID = ? OR EMP_Pass = ? OR EMP_Email = ?`,
-      [input, input, input]
+       WHERE EMP_ID = ? OR EMP_Email = ?`,
+      [input, input]
     );
 
     if (employee) {
@@ -108,7 +92,7 @@ router.post('/login', async (req, res) => {
       if (storedPass.startsWith('$2a$') || storedPass.startsWith('$2b$')) {
         isEmpMatch = bcrypt.compareSync(inputPass, storedPass);
       } else {
-        isEmpMatch = (storedPass === inputPass || employee.id === inputPass);
+        isEmpMatch = storedPass.length > 0 && storedPass === inputPass;
         if (isEmpMatch) {
           // Auto upgrade legacy plain password to bcrypt hash
           const newHash = bcrypt.hashSync(inputPass, 10);
@@ -123,15 +107,10 @@ router.post('/login', async (req, res) => {
       const staffUser = {
         id: employee.id,
         name: employee.name,
-        role: employee.role, // CASHIER or FITTING_STAFF
-        staffCode: employee.staffCode || input,
+        role: employee.role // CASHIER or FITTING_STAFF
       };
 
-      res.cookie('crwn_auth', JSON.stringify(staffUser), {
-        httpOnly: false,
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-        path: '/'
-      });
+      setAuthCookie(res, staffUser);
 
       const redirectUrl = employee.role === 'CASHIER' ? '/staff/cashier' : '/staff/fitting';
       return res.json({ success: true, user: staffUser, redirectUrl });
@@ -176,11 +155,7 @@ router.post('/login', async (req, res) => {
         role: 'CUSTOMER'
       };
 
-      res.cookie('crwn_auth', JSON.stringify(customerUser), {
-        httpOnly: false,
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-        path: '/'
-      });
+      setAuthCookie(res, customerUser);
 
       return res.json({ success: true, user: customerUser, redirectUrl: '/customer/dashboard' });
     }
@@ -208,7 +183,7 @@ router.post('/logout', async (req, res) => {
   } catch (e) {
     console.warn('Cart cleanup on logout failed:', e);
   }
-  res.clearCookie('crwn_auth', { path: '/' });
+  clearAuthCookie(res);
   res.json({ success: true });
 });
 

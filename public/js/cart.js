@@ -11,11 +11,6 @@ const Cart = {
       if (window.currentUser && window.currentUser.id) {
         return window.currentUser.id;
       }
-      const match = document.cookie.match(/crwn_auth=([^;]+)/);
-      if (match) {
-        const parsed = JSON.parse(decodeURIComponent(match[1]));
-        if (parsed && parsed.id) return parsed.id;
-      }
     } catch (e) {}
     return 'guest';
   },

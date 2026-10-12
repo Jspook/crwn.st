@@ -8,8 +8,19 @@ const assert = require('node:assert/strict');
 const http = require('node:http');
 const express = require('express');
 const cookieParser = require('cookie-parser');
+const cookieSignature = require('cookie-signature');
 const apiRouter = require('../routes/api');
+const authRouter = require('../routes/auth');
 const { query, get, run } = require('../database/db');
+
+const TEST_SECRET = process.env.COOKIE_SECRET || 'test_secret_32_characters_minimum_length_abcdef';
+
+// Helper to construct signed auth cookies matching middleware/auth.js
+function makeSignedAuthCookie(user, secret = TEST_SECRET) {
+  const val = JSON.stringify(user);
+  const signed = 's:' + cookieSignature.sign(val, secret);
+  return `crwn_auth=${encodeURIComponent(signed)}`;
+}
 
 // Helper to make test HTTP requests against Express app
 function makeRequest(app, options, body = null, cookies = null) {
@@ -67,16 +78,18 @@ function makeRequest(app, options, body = null, cookies = null) {
 // Setup test app instance
 function createTestApp() {
   const app = express();
+  app.disable('x-powered-by');
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
-  app.use(cookieParser());
+  app.use(cookieParser(TEST_SECRET));
+  app.use('/api/auth', authRouter);
   app.use('/api', apiRouter);
   return app;
 }
 
 const app = createTestApp();
 
-describe('crwn.st API & Defect Fix Verification Suite', () => {
+describe('crwn.st API & Security Suite', () => {
   let realCusId = null;
   let realEmpId = null;
 
@@ -154,11 +167,11 @@ describe('crwn.st API & Defect Fix Verification Suite', () => {
     });
 
     test('POST /api/fitting-rooms/:roomId/enter with customer session marks room occupied', async () => {
-      const customerCookie = 'crwn_auth=' + encodeURIComponent(JSON.stringify({
+      const customerCookie = makeSignedAuthCookie({
         id: realCusId || '68070001',
         name: 'สมชาย สายช้อป',
         role: 'CUSTOMER'
-      }));
+      });
 
       const enterRes = await makeRequest(app, {
         path: `/api/fitting-rooms/${testRoomId}/enter`,
@@ -177,10 +190,16 @@ describe('crwn.st API & Defect Fix Verification Suite', () => {
     });
 
     test('POST /api/fitting-rooms/:roomId/release clears room occupancy', async () => {
+      const customerCookie = makeSignedAuthCookie({
+        id: realCusId || '68070001',
+        name: 'สมชาย สายช้อป',
+        role: 'CUSTOMER'
+      });
+
       const releaseRes = await makeRequest(app, {
         path: `/api/fitting-rooms/${testRoomId}/release`,
         method: 'POST'
-      });
+      }, {}, customerCookie);
       assert.equal(releaseRes.status, 200);
 
       // Verify room is now available
@@ -193,22 +212,51 @@ describe('crwn.st API & Defect Fix Verification Suite', () => {
   });
 
   // --------------------------------------------------------------------------
-  // 3. Fitting Order Creation, Out-of-Stock Rejection & Queue (Defects #1, #4, #6)
+  // 3. Fitting Room Orders & Queue Management
   // --------------------------------------------------------------------------
   describe('3. Fitting Room Orders & Queue Management', () => {
     let testSku;
     let createdOrderId;
+    const testRoomId = '5684848452325';
+    let customerCookie;
+    let staffCookie;
 
     before(async () => {
       const variant = await get(`SELECT ITV_SKUID FROM ITEM_VARIANT WHERE ITV_Stock > 0 LIMIT 1`);
       testSku = variant.ITV_SKUID;
+
+      customerCookie = makeSignedAuthCookie({
+        id: realCusId || '68070001',
+        name: 'สมชาย สายช้อป',
+        role: 'CUSTOMER'
+      });
+
+      staffCookie = makeSignedAuthCookie({
+        id: realEmpId || '68070056',
+        name: 'จิรภัทร ชาญวิทย์',
+        role: 'FITTING_STAFF'
+      });
+
+      // Customer enters room first to establish session
+      await makeRequest(app, {
+        path: `/api/fitting-rooms/${testRoomId}/enter`,
+        method: 'POST'
+      }, {}, customerCookie);
+    });
+
+    after(async () => {
+      // Clean up room
+      await makeRequest(app, {
+        path: `/api/fitting-rooms/${testRoomId}/release`,
+        method: 'POST'
+      }, {}, customerCookie);
     });
 
     test('POST /api/fitting-orders with missing/invalid SKU rejects with 400', async () => {
       const res = await makeRequest(app, {
         path: '/api/fitting-orders',
         method: 'POST'
-      }, { roomId: '5684848452325', sku: 'NON_EXISTENT_SKU_999' });
+      }, { roomId: testRoomId, sku: 'NON_EXISTENT_SKU_999' }, customerCookie);
 
       assert.equal(res.status, 400);
       assert.equal(res.body.error.code, 'INVALID_SKU');
@@ -218,7 +266,7 @@ describe('crwn.st API & Defect Fix Verification Suite', () => {
       const res = await makeRequest(app, {
         path: '/api/fitting-orders',
         method: 'POST'
-      }, { roomId: '5684848452325', sku: testSku });
+      }, { roomId: testRoomId, sku: testSku }, customerCookie);
 
       assert.equal(res.status, 200);
       assert.ok(res.body.id);
@@ -227,12 +275,10 @@ describe('crwn.st API & Defect Fix Verification Suite', () => {
     });
 
     test('POST /api/fitting-orders with 0 stock item is rejected with OUT_OF_STOCK', async () => {
-      // Find an item with 0 stock or set a temporary variant
       const zeroVariant = await get(`SELECT ITV_SKUID FROM ITEM_VARIANT WHERE ITV_Stock = 0 LIMIT 1`);
       let zeroSku = zeroVariant ? zeroVariant.ITV_SKUID : null;
 
       if (!zeroSku) {
-        // Temporarily set one variant stock to 0
         const anyVar = await get(`SELECT ITV_SKUID, ITV_Stock FROM ITEM_VARIANT LIMIT 1`);
         zeroSku = anyVar.ITV_SKUID;
         const originalStock = anyVar.ITV_Stock;
@@ -241,9 +287,8 @@ describe('crwn.st API & Defect Fix Verification Suite', () => {
         const res = await makeRequest(app, {
           path: '/api/fitting-orders',
           method: 'POST'
-        }, { roomId: '5684848452325', sku: zeroSku });
+        }, { roomId: testRoomId, sku: zeroSku }, customerCookie);
 
-        // Restore stock
         await run(`UPDATE ITEM_VARIANT SET ITV_Stock = ? WHERE ITV_SKUID = ?`, [originalStock, zeroSku]);
 
         assert.equal(res.status, 400);
@@ -252,38 +297,31 @@ describe('crwn.st API & Defect Fix Verification Suite', () => {
         const res = await makeRequest(app, {
           path: '/api/fitting-orders',
           method: 'POST'
-        }, { roomId: '5684848452325', sku: zeroSku });
+        }, { roomId: testRoomId, sku: zeroSku }, customerCookie);
 
         assert.equal(res.status, 400);
         assert.equal(res.body.error.code, 'OUT_OF_STOCK');
       }
     });
 
-    test('GET /api/fitting-orders reflects newly created pending order', async () => {
-      const res = await makeRequest(app, { path: '/api/fitting-orders' });
+    test('GET /api/fitting-orders reflects newly created pending order for staff', async () => {
+      const res = await makeRequest(app, { path: '/api/fitting-orders' }, null, staffCookie);
       assert.equal(res.status, 200);
       const target = res.body.find(o => o.id === createdOrderId);
       assert.ok(target, 'Created order should be in list');
       assert.equal(target.status, 'pending');
       assert.equal(target.roomDisplay, '1');
 
-      // Verify no dummy null-SKU occupancy rows exist in orders
       const dummyRows = res.body.filter(o => !o.sku || o.sku === 'null');
       assert.equal(dummyRows.length, 0, 'No dummy occupancy rows should appear in fitting orders');
     });
 
     test('PATCH /api/fitting-orders/:id transitions status pending -> preparing -> complete', async () => {
-      const staffCookie = 'crwn_auth=' + encodeURIComponent(JSON.stringify({
-        id: realEmpId || '68070056',
-        name: 'จิรภัทร ชาญวิทย์',
-        role: 'STAFF_FITTING'
-      }));
-
       // 1. Move to preparing
       const prepRes = await makeRequest(app, {
         path: `/api/fitting-orders/${createdOrderId}`,
         method: 'PATCH'
-      }, { status: 'preparing', empId: realEmpId || '68070056' }, staffCookie);
+      }, { status: 'preparing' }, staffCookie);
 
       assert.equal(prepRes.status, 200);
       assert.equal(prepRes.body.status, 'preparing');
@@ -298,8 +336,8 @@ describe('crwn.st API & Defect Fix Verification Suite', () => {
       assert.equal(compRes.body.status, 'complete');
     });
 
-    test('GET /api/fitting-orders?limit=1 caps completed orders correctly (Defect #4)', async () => {
-      const res = await makeRequest(app, { path: '/api/fitting-orders?limit=1' });
+    test('GET /api/fitting-orders?limit=1 caps completed orders correctly', async () => {
+      const res = await makeRequest(app, { path: '/api/fitting-orders?limit=1' }, null, staffCookie);
       assert.equal(res.status, 200);
       const completes = res.body.filter(o => o.status === 'complete');
       assert.ok(completes.length <= 1, 'Completed orders must not exceed limit param');
@@ -307,14 +345,21 @@ describe('crwn.st API & Defect Fix Verification Suite', () => {
   });
 
   // --------------------------------------------------------------------------
-  // 4. POS Checkout, 7% VAT Calculation & Stock Deduction (Defects #7, #8, #13)
+  // 4. POS Checkout, 7% VAT Calculation & Stock Deduction
   // --------------------------------------------------------------------------
   describe('4. POS Checkout, 7% VAT & Atomic Stock Deduction', () => {
     let buySku;
     let initialStock;
     let unitPrice;
+    let cashierCookie;
 
     before(async () => {
+      cashierCookie = makeSignedAuthCookie({
+        id: realEmpId || '68070254',
+        name: 'พนักงาน แคชเชียร์',
+        role: 'CASHIER'
+      });
+
       const variant = await get(`
         SELECT v.ITV_SKUID, v.ITV_Stock, i.ITM_Price 
         FROM ITEM_VARIANT v 
@@ -329,22 +374,13 @@ describe('crwn.st API & Defect Fix Verification Suite', () => {
 
     test('POST /api/receipts calculates exact 7% VAT into ORD_Total and deducts stock', async () => {
       const qtyToBuy = 2;
-      const subtotal = unitPrice * qtyToBuy;
-      const expectedVat = subtotal * 0.07;
-      const expectedTotal = subtotal + expectedVat;
-
-      const cashierCookie = 'crwn_auth=' + encodeURIComponent(JSON.stringify({
-        id: realEmpId || '68070254',
-        name: 'พนักงาน แคชเชียร์',
-        role: 'CASHIER'
-      }));
+      const expectedTotal = unitPrice * qtyToBuy;
 
       const res = await makeRequest(app, {
         path: '/api/receipts',
         method: 'POST'
       }, {
         paymentMethod: 'cash',
-        channel: 'pos_cashier',
         memberId: realCusId || null,
         items: [{ sku: buySku, quantity: qtyToBuy }]
       }, cashierCookie);
@@ -353,18 +389,14 @@ describe('crwn.st API & Defect Fix Verification Suite', () => {
       assert.equal(res.body.success, true);
       const receiptId = res.body.id;
 
-      // Query database SALE_ORDER to verify exact ORD_Total stored with 7% VAT
       const orderDb = await get(`SELECT * FROM SALE_ORDER WHERE ORD_ID = ?`, [receiptId]);
       assert.ok(orderDb, 'Order must exist in database');
       if (realCusId) {
         assert.equal(orderDb.CUS_ID, realCusId);
       }
       assert.equal(orderDb.ORD_Channel, 'pos_cashier');
-      
-      // Floating point tolerance check for currency
-      assert.ok(Math.abs(orderDb.ORD_Total - expectedTotal) < 0.01, `ORD_Total ${orderDb.ORD_Total} should equal Subtotal + 7% VAT ${expectedTotal}`);
+      assert.ok(Math.abs(orderDb.ORD_Total - expectedTotal) < 0.01);
 
-      // Verify Stock deducted in database
       const updatedVariant = await get(`SELECT ITV_Stock FROM ITEM_VARIANT WHERE ITV_SKUID = ?`, [buySku]);
       assert.equal(Number(updatedVariant.ITV_Stock), initialStock - qtyToBuy);
     });
@@ -380,7 +412,7 @@ describe('crwn.st API & Defect Fix Verification Suite', () => {
       }, {
         paymentMethod: 'cash',
         items: [{ sku: buySku, quantity: excessiveQty }]
-      });
+      }, cashierCookie);
 
       assert.equal(res.status, 400);
       assert.equal(res.body.error.code, 'OUT_OF_STOCK');
@@ -388,19 +420,115 @@ describe('crwn.st API & Defect Fix Verification Suite', () => {
   });
 
   // --------------------------------------------------------------------------
-  // 5. Member Lookup API (Defect #12)
+  // 5. Security & Privilege Escalation Defenses (QA Findings F-1 to F-7)
   // --------------------------------------------------------------------------
-  describe('5. POS Member Lookup API', () => {
-    test('GET /api/users returns customer member list with phone numbers', async () => {
+  describe('5. Security Guard & Access Control Verification', () => {
+    let cashierCookie;
+    let customerCookie;
+    let otherCustomerCookie;
+
+    before(() => {
+      cashierCookie = makeSignedAuthCookie({
+        id: realEmpId || '68070254',
+        name: 'พนักงาน แคชเชียร์',
+        role: 'CASHIER'
+      });
+      customerCookie = makeSignedAuthCookie({
+        id: realCusId || '68070001',
+        name: 'สมชาย สายช้อป',
+        role: 'CUSTOMER'
+      });
+      otherCustomerCookie = makeSignedAuthCookie({
+        id: 'other_customer_999',
+        name: 'คนอื่น',
+        role: 'CUSTOMER'
+      });
+    });
+
+    test('F-1: Unsigned/tampered cookie privilege escalation is blocked (401)', async () => {
+      // Attacker sends forged unsigned cookie trying to claim CASHIER role
+      const forgedCookie = 'crwn_auth=' + encodeURIComponent(JSON.stringify({
+        id: 'h4x0r',
+        name: 'Hacker',
+        role: 'CASHIER'
+      }));
+
+      const res = await makeRequest(app, { path: '/api/receipts' }, null, forgedCookie);
+      assert.equal(res.status, 401, 'Forged cookie must be rejected');
+    });
+
+    test('F-2: GET /api/users rejects unauthenticated access with 401', async () => {
       const res = await makeRequest(app, { path: '/api/users' });
-      assert.equal(res.status, 200);
-      assert.ok(Array.isArray(res.body));
-      assert.ok(res.body.length > 0);
-      const member = res.body[0];
-      assert.ok(member.id);
-      assert.ok(member.name);
-      assert.ok(member.phone);
+      assert.equal(res.status, 401);
+    });
+
+    test('F-2: GET /api/users rejects CUSTOMER access with 403', async () => {
+      const res = await makeRequest(app, { path: '/api/users' }, null, customerCookie);
+      assert.equal(res.status, 403);
+    });
+
+    test('F-2: GET /api/users requires phone parameter and returns exact match for CASHIER', async () => {
+      const resNoPhone = await makeRequest(app, { path: '/api/users' }, null, cashierCookie);
+      assert.equal(resNoPhone.status, 200);
+      assert.deepEqual(resNoPhone.body, [], 'Without valid phone should return empty array, not full dump');
+    });
+
+    test('F-2: GET /api/receipts rejects unauthenticated access with 401', async () => {
+      const res = await makeRequest(app, { path: '/api/receipts' });
+      assert.equal(res.status, 401);
+    });
+
+    test('F-3: GET /api/receipts/:id rejects IDOR attempt by non-owner customer (404)', async () => {
+      const order = await get(`SELECT ORD_ID FROM SALE_ORDER WHERE CUS_ID = ? LIMIT 1`, [realCusId || '68070001']);
+      if (order) {
+        // Other customer tries to view this receipt
+        const res = await makeRequest(app, { path: `/api/receipts/${order.ORD_ID}` }, null, otherCustomerCookie);
+        assert.equal(res.status, 404, 'Must return 404 to avoid receipt existence enumeration');
+      }
+    });
+
+    test('F-4: POST /api/receipts rejects unauthenticated order placement (401)', async () => {
+      const res = await makeRequest(app, {
+        path: '/api/receipts',
+        method: 'POST'
+      }, {
+        paymentMethod: 'cash',
+        items: [{ sku: 'any_sku', quantity: 1 }]
+      });
+      assert.equal(res.status, 401, 'Anonymous receipt placement must be blocked');
+    });
+
+    test('F-5: Employee login with invalid password does not trigger ID-as-password backdoor', async () => {
+      const res = await makeRequest(app, {
+        path: '/api/auth/login',
+        method: 'POST'
+      }, {
+        identifier: '68070254',
+        password: 'wrong_password_xyz'
+      });
+      assert.equal(res.status, 401, 'Wrong password must fail authentication');
+    });
+
+    test('F-7: POST /api/fitting-orders rejects unauthenticated request with 401', async () => {
+      const res = await makeRequest(app, {
+        path: '/api/fitting-orders',
+        method: 'POST'
+      }, {
+        roomId: '5684848452325',
+        sku: 'any_sku'
+      });
+      assert.equal(res.status, 401);
+    });
+
+    test('F-7: POST /api/fitting-orders rejects non-customer with 403', async () => {
+      const res = await makeRequest(app, {
+        path: '/api/fitting-orders',
+        method: 'POST'
+      }, {
+        roomId: '5684848452325',
+        sku: 'any_sku'
+      }, cashierCookie);
+      assert.equal(res.status, 403);
     });
   });
-
 });

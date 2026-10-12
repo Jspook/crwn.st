@@ -6,7 +6,7 @@
 const express = require('express');
 const router = express.Router();
 const { query, get, run, withTransaction } = require('../database/db');
-const { getCurrentUser } = require('./auth');
+const { getCurrentUser, requireAuth, requireRole } = require('../middleware/auth');
 const { getProductMockImage } = require('../utils/productImages');
 
 // ==========================================================
@@ -344,9 +344,9 @@ function getRoomDisplayNumber(id) {
 // Defect-4 fix: supports ?limit=N to cap complete orders (default unlimited)
 // Defect-6 fix: supports ?myOnly=true so staff sees only their own orders
 // Item 3 fix: exclude dummy occupancy rows (ITV_SKUID IS NOT NULL)
-router.get('/fitting-orders', async (req, res) => {
+router.get('/fitting-orders', requireAuth, async (req, res) => {
   const { roomId, limit, myOnly } = req.query;
-  const user = getCurrentUser(req);
+  const user = req.user;
   try {
     let sql = `
       SELECT f.FTR_OrderID as id,
@@ -526,10 +526,10 @@ router.post('/fitting-rooms/:roomId/enter', async (req, res) => {
 });
 
 // POST /api/fitting-rooms/:roomId/release
-router.post('/fitting-rooms/:roomId/release', async (req, res) => {
+router.post('/fitting-rooms/:roomId/release', requireRole('CUSTOMER', 'FITTING_STAFF'), async (req, res) => {
   const rawRoomId = req.params.roomId;
   const roomId = normalizeRoomId(rawRoomId);
-  const user = getCurrentUser(req);
+  const user = req.user;
   try {
     if (user && user.role === 'CUSTOMER') {
       const active = await get(`SELECT FTR_SessionID FROM FITTING_ROOM WHERE (FTR_Number = ? OR FTR_Number = ?) AND CUS_ID = ? AND FTR_CustomerPresent = 1 AND FTR_ReleasedAt IS NULL LIMIT 1`, [roomId, rawRoomId, user.id]);
@@ -555,7 +555,7 @@ router.post('/fitting-rooms/:roomId/release', async (req, res) => {
 
 // POST /api/fitting-orders
 // Defect-1 fix: strict SKU validation — no fallback to first variant
-router.post('/fitting-orders', async (req, res) => {
+router.post('/fitting-orders', requireRole('CUSTOMER'), async (req, res) => {
   const { roomId, sku, productName, size, color } = req.body;
 
   // Validate that a SKU was provided
@@ -569,18 +569,15 @@ router.post('/fitting-orders', async (req, res) => {
   try {
     const roomNum = normalizeRoomId(roomId || '1');
     const targetSku = String(sku).trim();
-    const user = getCurrentUser(req);
-    let sessionId = null;
-    let cusId = null;
+    const user = req.user;
 
-    if (user && user.role === 'CUSTOMER') {
-      const active = await get(`SELECT FTR_SessionID FROM FITTING_ROOM WHERE FTR_Number = ? AND CUS_ID = ? AND FTR_CustomerPresent = 1 AND FTR_ReleasedAt IS NULL LIMIT 1`, [roomNum, user.id]);
-      if (!active) {
-        return res.status(403).json({ error: 'Forbidden — no active fitting room session' });
-      }
-      sessionId = active.FTR_SessionID;
-      cusId = user.id;
+    // Customer must hold an active session in this room
+    const active = await get(`SELECT FTR_SessionID FROM FITTING_ROOM WHERE FTR_Number = ? AND CUS_ID = ? AND FTR_CustomerPresent = 1 AND FTR_ReleasedAt IS NULL LIMIT 1`, [roomNum, user.id]);
+    if (!active) {
+      return res.status(403).json({ error: 'Forbidden — no active fitting room session' });
     }
+    const sessionId = active.FTR_SessionID;
+    const cusId = user.id;
 
     // Strict lookup — reject if SKU not found (Defect-1: no fallback chain)
     const variant = await get(
@@ -651,14 +648,10 @@ router.post('/fitting-orders', async (req, res) => {
 
 // PATCH /api/fitting-orders/:id
 // Defect-6 fix: verify that the requesting staff owns the order before allowing mutation
-router.patch('/fitting-orders/:id', async (req, res) => {
+router.patch('/fitting-orders/:id', requireRole('FITTING_STAFF'), async (req, res) => {
   const { id } = req.params;
-  const { status, empId } = req.body;
-  const user = getCurrentUser(req);
-  if (!user || user.role === 'CUSTOMER') {
-    return res.status(403).json({ error: 'Forbidden' });
-  }
-  const staffId = user.id;
+  const { status } = req.body;
+  const staffId = req.user.id;
 
   const cleanStatus = String(status || '').trim().toLowerCase();
   if (!['pending', 'preparing', 'complete'].includes(cleanStatus)) {
@@ -717,7 +710,7 @@ router.patch('/fitting-orders/:id', async (req, res) => {
 // ==========================================================
 
 // GET /api/receipts
-router.get('/receipts', async (req, res) => {
+router.get('/receipts', requireRole('CASHIER'), async (req, res) => {
   try {
     const orders = await query(`SELECT * FROM SALE_ORDER ORDER BY ORD_DateTime DESC`);
     res.json(orders);
@@ -726,12 +719,14 @@ router.get('/receipts', async (req, res) => {
   }
 });
 
-// GET /api/receipts/:id
-router.get('/receipts/:id', async (req, res) => {
+// GET /api/receipts/:id — owner (customer) or cashier only
+router.get('/receipts/:id', requireAuth, async (req, res) => {
   const { id } = req.params;
   try {
     const order = await get(`SELECT * FROM SALE_ORDER WHERE ORD_ID = ?`, [id]);
-    if (!order) {
+    const isOwner = order && req.user.role === 'CUSTOMER' && order.CUS_ID === req.user.id;
+    if (!order || !(isOwner || req.user.role === 'CASHIER')) {
+      // 404 for both cases to avoid receipt ID enumeration
       return res.status(404).json({ error: 'Receipt not found' });
     }
 
@@ -752,12 +747,18 @@ router.get('/receipts/:id', async (req, res) => {
 });
 
 // POST /api/receipts
-router.post('/receipts', async (req, res) => {
-  const { paymentMethod, items, memberId, channel } = req.body;
-  const user = getCurrentUser(req);
-  const cusId = memberId || (user && user.role === 'CUSTOMER' ? user.id : null);
-  const empId = (user && user.role === 'CASHIER') ? user.id : '68070254';
-  const orderChannel = channel || (user && user.role === 'CASHIER' ? 'pos_cashier' : 'customer_pay_and_go');
+router.post('/receipts', requireRole('CUSTOMER', 'CASHIER'), async (req, res) => {
+  const { paymentMethod, items, memberId } = req.body;
+  const user = req.user;
+  const isCashier = user.role === 'CASHIER';
+  // Customers can only buy for themselves; cashiers may attach a member
+  const cusId = isCashier ? (memberId ? String(memberId) : null) : user.id;
+  const empId = isCashier ? user.id : null;
+  const orderChannel = isCashier ? 'pos_cashier' : 'customer_pay_and_go';
+  const ALLOWED_METHODS = ['cash', 'credit', 'qr'];
+  if (paymentMethod && !ALLOWED_METHODS.includes(paymentMethod)) {
+    return res.status(400).json({ success: false, error: { code: 'INVALID_METHOD', message: 'Invalid payment method' } });
+  }
 
   if (!Array.isArray(items) || items.length === 0) {
     return res.status(400).json({
@@ -926,12 +927,17 @@ router.post('/receipts', async (req, res) => {
 // 5. USERS (MEMBER SEARCH FOR POS)
 // ==========================================================
 
-// GET /api/users
-router.get('/users', async (req, res) => {
+// GET /api/users?phone=08xxxxxxxx — cashier-only exact phone lookup (no bulk PII dump)
+router.get('/users', requireRole('CASHIER'), async (req, res) => {
+  const phone = String(req.query.phone || '').replace(/[-\s]/g, '');
+  if (!/^\d{9,10}$/.test(phone)) {
+    return res.json([]);
+  }
   try {
     const customers = await query(
       `SELECT CUS_ID as id, CONCAT(CUS_FName, ' ', CUS_LName) as name, CUS_Tel as phone, 'CUSTOMER' as role 
-       FROM CUSTOMER`
+       FROM CUSTOMER WHERE CUS_Tel = ? LIMIT 1`,
+      [phone]
     );
     res.json(customers);
   } catch (err) {

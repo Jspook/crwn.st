@@ -8,7 +8,15 @@ const path = require('path');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const compression = require('compression');
+require('dotenv').config();
 const { initDb } = require('./database/db');
+const { getCurrentUser } = require('./middleware/auth');
+
+const COOKIE_SECRET = process.env.COOKIE_SECRET;
+if (!COOKIE_SECRET || COOKIE_SECRET.length < 32) {
+  console.error('❌ COOKIE_SECRET is missing or shorter than 32 chars. Set it in .env (see .env.example).');
+  process.exit(1);
+}
 
 const authRoutes = require('./routes/auth');
 const apiRoutes = require('./routes/api');
@@ -21,16 +29,28 @@ const PORT = process.env.PORT || 3000;
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
+app.disable('x-powered-by');
+
 // Middlewares
 app.use(compression()); // Compress all HTTP responses (Gzip/Deflate)
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
+app.use(cors({ origin: false })); // same-origin only
+app.use(express.json({ limit: '100kb' }));
+app.use(express.urlencoded({ extended: true, limit: '100kb' }));
+app.use(cookieParser(COOKIE_SECRET));
 
-// Permissions-Policy: Allow camera access for barcode scanning
+// Security headers + camera permission for barcode scanning
 app.use((req, res, next) => {
-  res.setHeader('Permissions-Policy', 'camera=*');
+  res.setHeader('Permissions-Policy', 'camera=(self)');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+});
+
+// Expose minimal identity to templates (cookie is httpOnly, so JS cannot read it)
+app.use((req, res, next) => {
+  const u = getCurrentUser(req);
+  res.locals.currentUser = u ? { id: u.id, role: u.role } : null;
   next();
 });
 
