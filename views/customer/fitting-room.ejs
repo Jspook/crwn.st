@@ -286,8 +286,10 @@
     // If no orders were ever requested in this room, exit directly
     if (roomOrders.length === 0) {
       if (confirm(`คุณต้องการออกจากห้องลองเสื้อ ห้อง ${currentRoomDisplay} ใช่หรือไม่?`)) {
-        await releaseCurrentRoom();
-        window.location.href = '/customer/dashboard';
+        if (await releaseCurrentRoom()) {
+          clearTriedFittingItems(currentRoomId);
+          window.location.href = '/customer/dashboard';
+        }
       }
       return;
     }
@@ -301,9 +303,20 @@
 
   async function releaseCurrentRoom() {
     try {
-      await fetch(`/api/fitting-rooms/${currentRoomId}/release`, { method: 'POST' });
+      const res = await fetch(`/api/fitting-rooms/${encodeURIComponent(currentRoomId)}/release`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: currentSessionId })
+      });
+      if (!res.ok) throw new Error(`Release failed (${res.status})`);
+      const data = await res.json();
+      if (data.success !== true) throw new Error('Room release was not confirmed');
+      localStorage.removeItem(storageKey);
+      return true;
     } catch (e) {
       console.warn('Failed to release room:', e);
+      alert('ไม่สามารถออกจากห้องลองได้ กรุณาลองใหม่อีกครั้ง');
+      return false;
     }
   }
 
@@ -403,8 +416,12 @@
       Cart.showToast(`เพิ่มสินค้า ${checkedSkus.length} รายการลงในตะกร้าแล้ว`);
     }
 
+    if (!await releaseCurrentRoom()) {
+      if (btnCheckout) { btnCheckout.disabled = false; btnCheckout.style.opacity = ''; }
+      if (btnReturn) { btnReturn.disabled = false; btnReturn.style.opacity = ''; }
+      return;
+    }
     clearTriedFittingItems(currentRoomId);
-    await releaseCurrentRoom();
     closeExitModal();
 
     if (goToCheckout) {
@@ -415,8 +432,8 @@
   }
 
   async function exitWithoutCart() {
+    if (!await releaseCurrentRoom()) return;
     clearTriedFittingItems(currentRoomId);
-    await releaseCurrentRoom();
     closeExitModal();
     window.location.href = '/customer/dashboard';
   }

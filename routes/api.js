@@ -621,7 +621,7 @@ router.post('/fitting-rooms/:roomId/release', requireRole('CUSTOMER', 'FITTING_S
         targetSessionId = active.FTR_SessionID;
 
         // If client provided a sessionId, verify it matches active session
-        if (req.body.sessionId && String(req.body.sessionId).trim() !== String(targetSessionId).trim()) {
+        if (req.body?.sessionId && String(req.body.sessionId).trim() !== String(targetSessionId).trim()) {
           const mismatchErr = new Error('รหัสเซสชันห้องลองไม่ตรงกับเซสชันปัจจุบัน (Session mismatch)');
           mismatchErr.status = 403;
           throw mismatchErr;
