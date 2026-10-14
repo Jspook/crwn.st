@@ -78,8 +78,18 @@ async function fetchFittingRoomsStatus() {
     const rooms = await res.json();
     grid.innerHTML = rooms.map(room => {
       const isOccupied = room.isOccupied || room.FTR_Status === 'occupied';
-      const displayNum = getCleanRoomDisplay(room);
-      if (isOccupied) {
+      const displayNum = room.roomDisplay || room.roomNumber || getCleanRoomDisplay(room);
+      
+      if (room.isMyRoom || room.canResume) {
+        // Active room of current customer -> Allow Resume!
+        return `
+          <button type="button" onclick="simulateRoomQrScan('${room.FTR_Num}')" class="py-2.5 px-1 rounded-xl bg-amber-50 border-2 border-amber-400 text-amber-950 text-center font-medium shadow-2xs hover:bg-amber-100 active:scale-95 cursor-pointer">
+            <span class="block text-[10px] text-amber-700 font-bold">ห้องของคุณ</span>
+            <span class="font-bold text-xs">ห้อง ${displayNum}</span>
+            <span class="block text-[9px] text-amber-900 font-semibold">กลับเข้าห้อง ↩</span>
+          </button>
+        `;
+      } else if (isOccupied) {
         // Disabled — cannot enter an occupied room
         return `
           <button type="button" disabled title="ห้องนี้มีลูกค้าใช้งานอยู่ กรุณารอ" class="py-2.5 px-1 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-center font-medium shadow-2xs opacity-60 cursor-not-allowed select-none">
@@ -196,15 +206,12 @@ function stopRoomQrCamera() {
 function handleRoomQrScannedValue(raw) {
   if (!raw) return;
   stopRoomQrCamera();
-  let num = '1';
-  if (raw.includes('roomId=')) {
-    const m = raw.match(/roomId=([0-9]+)/);
-    if (m) num = m[1];
-  } else {
-    const digits = raw.replace(/[^0-9]/g, '');
-    if (digits) num = digits;
+  let code = String(raw).trim();
+  if (code.includes('roomId=')) {
+    const m = code.match(/roomId=([^&]+)/);
+    if (m) code = decodeURIComponent(m[1]);
   }
-  selectRoom(num);
+  selectRoom(code);
 }
 
 function simulateRoomQrScan(num) {
@@ -237,27 +244,33 @@ async function selectRoom(roomNum) {
   try {
     stopRoomQrCamera();
 
-    // Double-check server-side occupancy before navigating
-    const statusRes = await fetch('/api/fitting-rooms');
-    let targetRoom = null;
-    if (statusRes.ok) {
-      const rooms = await statusRes.json();
-      targetRoom = rooms.find(r => String(r.FTR_Num) === cleanNum || String(r.roomNumber) === cleanNum || String(r.roomDisplay) === cleanNum);
-      if (targetRoom && (targetRoom.isOccupied || targetRoom.FTR_Status === 'occupied')) {
-        showRoomModalError(`ห้องลองเสื้อหมายเลข ${targetRoom.roomDisplay || targetRoom.roomNumber || cleanNum} มีลูกค้าใช้งานอยู่แล้ว กรุณารอสักครู่`);
-        fetchFittingRoomsStatus();
-        return;
+    // Call /enter to atomically lock or resume room
+    const enterRes = await fetch(`/api/fitting-rooms/${encodeURIComponent(cleanNum)}/enter`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    const enterData = await enterRes.json();
+
+    if (!enterRes.ok) {
+      if (enterRes.status === 409) {
+        showRoomModalError(enterData.error || 'ห้องลองนี้มีลูกค้าท่านอื่นใช้งานอยู่ กรุณารอสักครู่');
+      } else {
+        showRoomModalError(enterData.error || 'รหัสห้องลองไม่ถูกต้อง กรุณาสแกน QR หน้าห้องลองเสื้อผ้า');
       }
+      fetchFittingRoomsStatus();
+      return;
     }
 
-    const finalRoomId = targetRoom ? targetRoom.FTR_Num : cleanNum;
-
-    // Mark customer as present in this room
-    await fetch(`/api/fitting-rooms/${finalRoomId}/enter`, { method: 'POST' }).catch(() => {});
+    const finalRoomId = enterData.roomId || cleanNum;
+    if (enterData.sessionId) {
+      window.currentSessionId = enterData.sessionId;
+      localStorage.setItem('crwn_active_session_' + finalRoomId, enterData.sessionId);
+    }
 
     document.body.classList.remove('overflow-hidden');
     document.documentElement.classList.remove('overflow-hidden');
-    window.location.href = `/customer/fitting-room?roomId=${finalRoomId}`;
+    window.location.href = `/customer/fitting-room?roomId=${encodeURIComponent(finalRoomId)}`;
   } catch (e) {
     console.error('Error selecting room:', e);
     showRoomModalError('เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง');
@@ -372,12 +385,25 @@ function openRequestModal(productJson) {
   document.getElementById('request-product-name').textContent = currentRequestProduct.name;
   document.getElementById('request-product-img').src = currentRequestProduct.image || '';
 
-  // Populate sizes and colors
+  // Populate sizes and dynamically filter available colors
   const variants = currentRequestProduct.variants || [];
   const sizes = [...new Set(variants.map(v => v.size))];
-  const colors = [...new Set(variants.map(v => v.color))];
 
   const sizeContainer = document.getElementById('request-size-options');
+  const colorContainer = document.getElementById('request-color-options');
+
+  function renderColorOptions(selectedSize) {
+    if (!colorContainer) return;
+    const availableColors = [...new Set(variants.filter(v => !selectedSize || v.size === selectedSize).map(v => v.color))];
+    const colorsToRender = availableColors.length > 0 ? availableColors : [...new Set(variants.map(v => v.color))];
+    colorContainer.innerHTML = colorsToRender.map((c, idx) => `
+      <label class="cursor-pointer">
+        <input type="radio" name="req-color" value="${c}" ${idx === 0 ? 'checked' : ''} class="peer sr-only">
+        <span class="inline-block px-3.5 py-1.5 rounded-xl border border-[#A3907C]/30 text-xs font-medium peer-checked:bg-[#1F2421] peer-checked:text-[#F5F2EB] peer-checked:border-[#1F2421] transition hover:border-[#1F2421]">${c}</span>
+      </label>
+    `).join('');
+  }
+
   if (sizeContainer) {
     sizeContainer.innerHTML = sizes.map((s, idx) => `
       <label class="cursor-pointer">
@@ -385,17 +411,15 @@ function openRequestModal(productJson) {
         <span class="inline-block px-3.5 py-1.5 rounded-xl border border-[#A3907C]/30 text-xs font-medium peer-checked:bg-[#1F2421] peer-checked:text-[#F5F2EB] peer-checked:border-[#1F2421] transition hover:border-[#1F2421]">${s}</span>
       </label>
     `).join('');
+
+    sizeContainer.querySelectorAll('input[name="req-size"]').forEach(input => {
+      input.addEventListener('change', (e) => {
+        renderColorOptions(e.target.value);
+      });
+    });
   }
 
-  const colorContainer = document.getElementById('request-color-options');
-  if (colorContainer) {
-    colorContainer.innerHTML = colors.map((c, idx) => `
-      <label class="cursor-pointer">
-        <input type="radio" name="req-color" value="${c}" ${idx === 0 ? 'checked' : ''} class="peer sr-only">
-        <span class="inline-block px-3.5 py-1.5 rounded-xl border border-[#A3907C]/30 text-xs font-medium peer-checked:bg-[#1F2421] peer-checked:text-[#F5F2EB] peer-checked:border-[#1F2421] transition hover:border-[#1F2421]">${c}</span>
-      </label>
-    `).join('');
-  }
+  renderColorOptions(sizes[0] || null);
 
   modal.classList.remove('hidden');
 }
@@ -440,15 +464,23 @@ function clearTriedFittingItems(roomId) {
 async function submitItemRequest(roomId) {
   if (!currentRequestProduct) return;
 
-  const size = document.querySelector('input[name="req-size"]:checked')?.value || 'M';
-  const color = document.querySelector('input[name="req-color"]:checked')?.value || 'Standard';
+  const sizeInput = document.querySelector('input[name="req-size"]:checked');
+  const colorInput = document.querySelector('input[name="req-color"]:checked');
+  const size = sizeInput ? sizeInput.value : '';
+  const color = colorInput ? colorInput.value : '';
 
   const variants = currentRequestProduct.variants || [];
-  let matchedVariant = variants.find(v => v.size === size && v.color === color);
+  const matchedVariant = variants.find(v => v.size === size && v.color === color);
   if (!matchedVariant) {
-    matchedVariant = variants.find(v => v.size === size) || variants.find(v => v.color === color) || variants[0];
+    const errorMsg = 'ขออภัย ไม่พบตัวเลือกขนาดและสีนี้ในระบบ กรุณาเลือกตัวเลือกอื่น';
+    if (typeof Cart !== 'undefined' && Cart.showToast) {
+      Cart.showToast(errorMsg);
+    } else {
+      alert(errorMsg);
+    }
+    return;
   }
-  const sku = matchedVariant ? matchedVariant.sku : `${currentRequestProduct.id}-${size.toLowerCase()}-${color.toLowerCase()}`;
+  const sku = matchedVariant.sku;
 
   const submitBtn = document.querySelector('#request-modal button.btn-primary');
   if (submitBtn) {
@@ -465,8 +497,8 @@ async function submitItemRequest(roomId) {
         sessionId: typeof currentSessionId !== 'undefined' ? currentSessionId : (window.currentSessionId || undefined),
         sku,
         productName: currentRequestProduct.name,
-        size,
-        color,
+        size: matchedVariant.size,
+        color: matchedVariant.color,
       }),
     });
 
@@ -485,14 +517,14 @@ async function submitItemRequest(roomId) {
         productId: currentRequestProduct.id,
         name: currentRequestProduct.name,
         price: Number(currentRequestProduct.price),
-        color,
-        size,
+        color: matchedVariant.color,
+        size: matchedVariant.size,
         image: currentRequestProduct.image,
         quantity: 1
       });
 
       closeRequestModal();
-      Cart.showToast(`ส่งคำขอ "${currentRequestProduct.name} (${size}/${color})" ถึงพนักงานเรียบร้อยแล้ว`);
+      Cart.showToast(`ส่งคำขอ "${currentRequestProduct.name} (${matchedVariant.size}/${matchedVariant.color})" ถึงพนักงานเรียบร้อยแล้ว`);
       
       if (typeof window.addOptimisticFittingOrder === 'function') {
         window.addOptimisticFittingOrder(newOrder || {

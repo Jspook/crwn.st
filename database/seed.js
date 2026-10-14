@@ -472,7 +472,7 @@ async function seedDatabase() {
         "name": "A-Line Denim Mini Skirt",
         "desc": "กระโปรงยีนส์สั้นทรงเอแต่งกระดุมหน้าเรียงยาวสไตล์วินเทจ เนื้อผ้าเดนิมฟอกนุ่ม ทนทาน แมทช์กับเสื้อเชิ้ตหรือเสื้อยืดก็สวย",
         "price": 1140,
-        "category": "male",
+        "category": "female",
         "tag": "skirt"
     },
     {
@@ -488,7 +488,7 @@ async function seedDatabase() {
         "name": "Suede Button Skirt",
         "desc": "กระโปรงสั้นผ้าหนังกลับสัมผัสนุ่มมือ ดีไซน์เรียบหรูให้ลุคอบอุ่นช่วงหน้าหนาว แมทช์กับบูทสั้นและเสื้อสเวตเตอร์ได้ลงตัว",
         "price": 1440,
-        "category": "male",
+        "category": "female",
         "tag": "skirt"
     },
     {
@@ -504,7 +504,7 @@ async function seedDatabase() {
         "name": "Flowy Boho Maxi Skirt",
         "desc": "กระโปรงยาวแม็กซี่สไตล์โบฮีเมียนผ้าชีฟองพิมพ์ลายพริ้วไหว สวมใส่สบายระบายอากาศดีเยี่ยม เดินเหินคล่องตัวในวันหยุดพักผ่อน",
         "price": 990,
-        "category": "male",
+        "category": "female",
         "tag": "skirt"
     },
     {
@@ -520,7 +520,7 @@ async function seedDatabase() {
         "name": "Tiered Cotton Long Skirt",
         "desc": "กระโปรงยาวผ้าคอตตอนต่อระบายเป็นชั้นๆ สไตล์วินเทจหวานละมุน ขอบเอวยางยืดใส่สบาย ไม่อึดอัด แมทช์กับเสื้อยืดง่ายๆ",
         "price": 1290,
-        "category": "male",
+        "category": "female",
         "tag": "skirt"
     },
     {
@@ -536,7 +536,7 @@ async function seedDatabase() {
         "name": "Knitted Ribbed Long Skirt",
         "desc": "กระโปรงยาวไหมพรมถักร่องผ่าข้างเล็กน้อยเพื่อความสะดวกในการเดิน เนื้อผ้าหนานุ่มให้อุ่นสบายในหน้าหนาว",
         "price": 1590,
-        "category": "male",
+        "category": "female",
         "tag": "skirt"
     },
     {

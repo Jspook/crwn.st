@@ -148,7 +148,12 @@
   }
 
   function createOrderCard(o, status) {
-    const timeStr = new Date(o.createdAt || Date.now()).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+    const isCompleted = status === 'complete';
+    const displayTimestamp = (isCompleted && o.finishedAt) ? o.finishedAt : o.createdAt;
+    const timeStr = displayTimestamp
+      ? new Date(displayTimestamp).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
+      : '--:--';
+    const timeLabel = isCompleted ? 'ส่งเมื่อ' : 'สั่งเมื่อ';
     
     let actionBtn = '';
     if (status === 'pending') {
@@ -177,7 +182,7 @@
           <span class="px-2.5 py-1 rounded-lg bg-[#1F2421] text-[#F5F2EB] font-serif font-bold text-xs">
             ห้อง ${o.roomDisplay || o.roomId || '1'}
           </span>
-          <span class="text-[11px] text-[#8A8177] font-mono">${timeStr}</span>
+          <span class="text-[11px] text-[#8A8177] font-mono">${timeLabel} ${timeStr}</span>
         </div>
 
         <div>

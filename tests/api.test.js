@@ -3,6 +3,20 @@
 // Using Node.js Native Test Runner (node:test & node:assert)
 // ==========================================================
 
+require('dotenv').config();
+
+// Safety Guard: Abort if pointed at live/production database
+const LIVE_HOSTS = ['webdev.it.kmitl.ac.th', '10.0.30.22'];
+const LIVE_DB = 's68070186';
+if (
+  (LIVE_HOSTS.includes(process.env.DB_HOST) || process.env.DB_NAME === LIVE_DB) &&
+  process.env.ISOLATED_TEST_DB !== 'true'
+) {
+  console.error('\n❌ [SAFETY ABORT] tests/api.test.js cannot run against live production DB (' + process.env.DB_HOST + ' / ' + process.env.DB_NAME + ').');
+  console.error('Please configure an isolated test database or set ISOLATED_TEST_DB=true with non-production credentials.\n');
+  process.exit(1);
+}
+
 const { test, describe, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const http = require('node:http');

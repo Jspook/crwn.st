@@ -144,9 +144,7 @@ router.post('/login', async (req, res) => {
         return res.status(401).json({ error: 'รหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบและลองใหม่อีกครั้ง' });
       }
 
-      // Always reset and empty shopping cart on customer login so cart is fresh & empty
-      const cartId = 'cart_' + customer.id;
-      await run(`DELETE FROM PAY_CART_ITEM WHERE PAY_CART_ID = ?`, [cartId]).catch(() => {});
+      // Preserve customer's existing cart items across login sessions
 
       const customerUser = {
         id: customer.id,

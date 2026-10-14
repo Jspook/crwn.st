@@ -7,6 +7,7 @@ const router = express.Router();
 const { query, get, run } = require('../database/db');
 const { getCurrentUser } = require('../middleware/auth');
 const { getProductMockImage } = require('../utils/productImages');
+const { resolveRoom, getRoomDisplayNumber } = require('../utils/roomResolver');
 
 // Middleware to ensure customer session
 function requireCustomer(req, res, next) {
@@ -73,43 +74,56 @@ router.get('/customer/dashboard', requireCustomer, async (req, res) => {
     products.forEach(p => {
       p.image = getProductMockImage(p.ITM_Tag, p.ITM_ID);
     });
+
+    // Check if customer holds an active fitting room session (Resume flow for BUG-001)
+    const active = await get(
+      `SELECT FTR_Number as roomId, FTR_SessionID as sessionId
+       FROM FITTING_ROOM
+       WHERE CUS_ID = ? AND FTR_CustomerPresent = 1 AND FTR_ReleasedAt IS NULL
+       ORDER BY FTR_OrderTime DESC
+       LIMIT 1`,
+      [req.user.id]
+    );
+
+    let activeRoom = null;
+    if (active) {
+      const room = resolveRoom(active.roomId);
+      if (room) {
+        activeRoom = {
+          roomId: room.barcode,
+          roomDisplay: room.display,
+          sessionId: active.sessionId
+        };
+      }
+    }
+
     res.render('customer/dashboard', {
       user: req.user,
-      products
+      products,
+      activeRoom
     });
   } catch (err) {
     console.error(err);
-    res.render('customer/dashboard', { user: req.user, products: [] });
+    res.render('customer/dashboard', { user: req.user, products: [], activeRoom: null });
   }
 });
 
 // GET /customer/fitting-room
 router.get('/customer/fitting-room', requireCustomer, async (req, res) => {
-  const roomId = String(req.query.roomId || '1').trim();
-  const ROOM_MAP = {
-    '5684848452325': '1',
-    '5684848452326': '2',
-    '5684848452327': '3',
-    '5684848452328': '4',
-    '1': '1',
-    '2': '2',
-    '3': '3',
-    '4': '4'
-  };
-  const roomDisplay = ROOM_MAP[roomId] || roomId.replace(/^568484845232/, '') || roomId;
-
-  function normalizeRoomId(id) {
-    const s = String(id || '1').trim();
-    if (s === '1') return '5684848452325';
-    if (s === '2') return '5684848452326';
-    if (s === '3') return '5684848452327';
-    if (s === '4') return '5684848452328';
-    return s;
+  const rawRoomId = String(req.query.roomId || '1').trim();
+  const room = resolveRoom(rawRoomId);
+  if (!room) {
+    return res.redirect('/customer/dashboard');
   }
-  const normRoom = normalizeRoomId(roomId);
+
+  const roomId = room.barcode;
+  const roomDisplay = room.display;
 
   try {
-    const active = await get(`SELECT FTR_SessionID FROM FITTING_ROOM WHERE (FTR_Number = ? OR FTR_Number = ?) AND CUS_ID = ? AND FTR_CustomerPresent = 1 AND FTR_ReleasedAt IS NULL LIMIT 1`, [normRoom, String(roomId), req.user.id]);
+    const active = await get(
+      `SELECT FTR_SessionID FROM FITTING_ROOM WHERE FTR_Number = ? AND CUS_ID = ? AND FTR_CustomerPresent = 1 AND FTR_ReleasedAt IS NULL LIMIT 1`,
+      [roomId, req.user.id]
+    );
     if (!active) {
       return res.redirect('/customer/dashboard');
     }
