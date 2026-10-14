@@ -52,13 +52,18 @@
         <span id="btn-room-camera-label">เปิดกล้องสแกน QR Code</span>
       </button>
 
-      <!-- Simulation Buttons for testing QR codes -->
+      <!-- Manual QR Code Input Section -->
       <div class="pt-3 border-t border-[#A3907C]/15">
-        <div id="room-simulation-grid" class="grid grid-cols-4 gap-1.5 text-xs">
-          <!-- Populated dynamically by JS -->
-          <div class="col-span-4 text-center py-2 text-[#8A8177]">กำลังโหลดสถานะห้องลอง...</div>
+        <label for="room-manual-code-input" class="block text-xs font-semibold text-[#1F2421] mb-1.5">หรือกรอกรหัส QR Code หน้าห้องลอง</label>
+        <div class="flex gap-2">
+          <input type="text" id="room-manual-code-input" placeholder="เช่น 5684848452325 หรือ 1"
+            class="flex-1 px-3.5 py-2.5 rounded-xl bg-white border border-[#A3907C]/30 text-xs text-[#1F2421] placeholder:text-[#8A8177]/60 focus:outline-none focus:border-[#1F2421]"
+            onkeydown="if(event.key === 'Enter'){ submitManualRoomCode(); event.preventDefault(); }">
+          <button type="button" id="btn-submit-room-code" onclick="submitManualRoomCode()" class="btn-primary text-xs px-4 py-2.5 rounded-xl whitespace-nowrap cursor-pointer">
+            ตกลง
+          </button>
         </div>
-        <p class="text-[10px] text-center text-[#8A8177] mt-2">หมายเหตุ: ระบบจะไม่อนุญาตให้เข้าห้องที่ล็อกอยู่หรือกำลังมีผู้ใช้งาน</p>
+        <p class="text-[10px] text-[#8A8177] mt-1.5">กรอกตัวเลขรหัสใต้ QR Code ที่ติดอยู่หน้าห้องลองเสื้อผ้า</p>
       </div>
     </div>
 

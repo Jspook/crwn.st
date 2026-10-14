@@ -1,15 +1,6 @@
 <%
-  const ROOM_DISPLAY_MAP = {
-    '5684848452325': '1',
-    '5684848452326': '2',
-    '5684848452327': '3',
-    '5684848452328': '4',
-    '1': '1',
-    '2': '2',
-    '3': '3',
-    '4': '4'
-  };
-  const activeRoomDisplay = (typeof roomDisplay !== 'undefined' && roomDisplay) ? roomDisplay : (ROOM_DISPLAY_MAP[roomId] || String(roomId).replace(/^568484845232/, '') || roomId);
+  // Display number comes from the server (utils/roomResolver); no client-side mapping.
+  const activeRoomDisplay = (typeof roomDisplay !== 'undefined' && roomDisplay) ? roomDisplay : '';
 %>
 <%- include('../partials/header', { title: 'ห้องลองเสื้อ ห้อง ' + activeRoomDisplay + ' — crwn.st' }) %>
 <%- include('../partials/navbar', { user, backAction: 'confirmExitFittingRoom()', showCart: true }) %>
@@ -308,14 +299,21 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId: currentSessionId })
       });
-      if (!res.ok) throw new Error(`Release failed (${res.status})`);
+      if (!res.ok) {
+        let errMessage = `Release failed (${res.status})`;
+        try {
+          const errData = await res.json();
+          if (errData && errData.error) errMessage = errData.error;
+        } catch (_) {}
+        throw new Error(errMessage);
+      }
       const data = await res.json();
       if (data.success !== true) throw new Error('Room release was not confirmed');
       localStorage.removeItem(storageKey);
       return true;
     } catch (e) {
       console.warn('Failed to release room:', e);
-      alert('ไม่สามารถออกจากห้องลองได้ กรุณาลองใหม่อีกครั้ง');
+      alert(e.message || 'ไม่สามารถออกจากห้องลองได้ กรุณาลองใหม่อีกครั้ง');
       return false;
     }
   }

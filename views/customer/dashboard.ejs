@@ -11,23 +11,6 @@
     <p class="text-xs text-[#8A8177] mt-1">ส่องกล้องไปที่ป้ายบาร์โค้ดสินค้าเพื่อเพิ่มลงในตะกร้า</p>
   </div>
 
-  <% if (typeof activeRoom !== 'undefined' && activeRoom) { %>
-  <!-- Active Fitting Room Resume Banner (BUG-001 Fix) -->
-  <div id="active-room-resume-banner" class="mb-4 p-4 rounded-2xl bg-amber-50 border border-amber-300 text-amber-950 shadow-sm flex items-center justify-between gap-3 animate-fade-in">
-    <div class="flex items-center gap-3">
-      <div class="w-10 h-10 rounded-xl bg-[#1F2421] text-[#F5F2EB] flex items-center justify-center font-serif text-lg font-bold flex-shrink-0 shadow-xs">
-        <%= activeRoom.roomDisplay %>
-      </div>
-      <div>
-        <p class="text-xs font-bold text-[#1F2421]">คุณกำลังใช้งานห้องลองเสื้อ ห้อง <%= activeRoom.roomDisplay %> อยู่</p>
-      </div>
-    </div>
-    <a href="/customer/fitting-room?roomId=<%= encodeURIComponent(activeRoom.roomId) %>" class="btn-primary text-xs py-2 px-3.5 whitespace-nowrap shadow-xs flex items-center gap-1.5 active:scale-95">
-      <span>กลับเข้าห้อง</span>
-      <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
-    </a>
-  </div>
-  <% } %>
 
   <!-- Occupied / Locked Room Warning Banner (shown if redirected) -->
   <div id="room-occupied-alert" class="hidden mb-4 p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center justify-between shadow-xs">

@@ -32,7 +32,7 @@ async function handleLogout() {
   window.location.href = '/';
 }
 
-// Room Scanner Modal (Scan QR only)
+// Room Scanner Modal (Scan QR or Manual Code)
 function openRoomModal() {
   const modal = document.getElementById('room-modal');
   const errBox = document.getElementById('room-modal-error');
@@ -43,75 +43,19 @@ function openRoomModal() {
     document.documentElement.classList.add('overflow-hidden');
     // Attempt auto-start camera for convenience
     toggleRoomQrCamera(true);
-    
-    // Fetch and render room status dynamically
-    fetchFittingRoomsStatus();
+    const manualInput = document.getElementById('room-manual-code-input');
+    if (manualInput) manualInput.value = '';
   }
 }
 
-function getCleanRoomDisplay(room) {
-  if (room && room.roomDisplay && String(room.roomDisplay).length <= 2) return String(room.roomDisplay);
-  if (room && room.roomNumber && String(room.roomNumber).length <= 2) return String(room.roomNumber);
-  const raw = String(room?.FTR_Num || room || '1').trim();
-  const MAP = {
-    '5684848452325': '1',
-    '5684848452326': '2',
-    '5684848452327': '3',
-    '5684848452328': '4',
-    '05684848452325': '1',
-    '05684848452326': '2',
-    '05684848452327': '3',
-    '05684848452328': '4',
-    '1': '1',
-    '2': '2',
-    '3': '3',
-    '4': '4'
-  };
-  return MAP[raw] || raw.replace(/^0?568484845232/, '') || '1';
-}
-
-async function fetchFittingRoomsStatus() {
-  const grid = document.getElementById('room-simulation-grid');
-  if (!grid) return;
-  try {
-    const res = await fetch('/api/fitting-rooms');
-    const rooms = await res.json();
-    grid.innerHTML = rooms.map(room => {
-      const isOccupied = room.isOccupied || room.FTR_Status === 'occupied';
-      const displayNum = room.roomDisplay || room.roomNumber || getCleanRoomDisplay(room);
-      
-      if (room.isMyRoom || room.canResume) {
-        // Active room of current customer -> Allow Resume!
-        return `
-          <button type="button" onclick="simulateRoomQrScan('${room.FTR_Num}')" class="py-2.5 px-1 rounded-xl bg-amber-50 border-2 border-amber-400 text-amber-950 text-center font-medium shadow-2xs hover:bg-amber-100 active:scale-95 cursor-pointer">
-            <span class="block text-[10px] text-amber-700 font-bold">ห้องของคุณ</span>
-            <span class="font-bold text-xs">ห้อง ${displayNum}</span>
-            <span class="block text-[9px] text-amber-900 font-semibold">กลับเข้าห้อง ↩</span>
-          </button>
-        `;
-      } else if (isOccupied) {
-        // Disabled — cannot enter an occupied room
-        return `
-          <button type="button" disabled title="ห้องนี้มีลูกค้าใช้งานอยู่ กรุณารอ" class="py-2.5 px-1 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-center font-medium shadow-2xs opacity-60 cursor-not-allowed select-none">
-            <span class="block text-[10px] text-rose-700">ไม่ว่าง</span>
-            <span class="font-bold text-xs">ห้อง ${displayNum}</span>
-            <span class="block text-[9px] text-rose-700 font-semibold">ล็อก/มีคนใช้</span>
-          </button>
-        `;
-      } else {
-        return `
-          <button type="button" onclick="simulateRoomQrScan('${room.FTR_Num}')" class="py-2.5 px-1 rounded-xl bg-white border border-[#A3907C]/30 hover:border-[#1F2421] text-[#1F2421] text-center font-medium transition shadow-2xs hover:bg-[#F5F2EB] active:scale-95 cursor-pointer">
-            <span class="block text-[10px] text-[#8A8177]">สแกน QR</span>
-            <span class="font-bold text-xs">ห้อง ${displayNum}</span>
-            <span class="block text-[9px] text-emerald-700 font-semibold">ห้องว่าง</span>
-          </button>
-        `;
-      }
-    }).join('');
-  } catch (err) {
-    console.error('Failed to load room status', err);
-    grid.innerHTML = '<div class="col-span-4 text-center py-2 text-rose-500">โหลดสถานะห้องลองไม่สำเร็จ</div>';
+function submitManualRoomCode() {
+  const input = document.getElementById('room-manual-code-input');
+  const val = (input?.value || '').trim();
+  if (!val) {
+    showRoomModalError('กรุณากรอกรหัส QR Code หน้าห้องลอง');
+    return;
   }
+  selectRoom(val);
 }
 
 
@@ -214,11 +158,6 @@ function handleRoomQrScannedValue(raw) {
   selectRoom(code);
 }
 
-function simulateRoomQrScan(num) {
-  stopRoomQrCamera();
-  selectRoom(num);
-}
-
 function showRoomModalError(message) {
   const errBox = document.getElementById('room-modal-error');
   const errText = document.getElementById('room-modal-error-text');
@@ -253,12 +192,13 @@ async function selectRoom(roomNum) {
     const enterData = await enterRes.json();
 
     if (!enterRes.ok) {
-      if (enterRes.status === 409) {
+      if (enterRes.status === 403) {
+        showRoomModalError(enterData.error || 'กรุณาเข้าสู่ระบบก่อนสแกน QR Code');
+      } else if (enterRes.status === 409) {
         showRoomModalError(enterData.error || 'ห้องลองนี้มีลูกค้าท่านอื่นใช้งานอยู่ กรุณารอสักครู่');
       } else {
-        showRoomModalError(enterData.error || 'รหัสห้องลองไม่ถูกต้อง กรุณาสแกน QR หน้าห้องลองเสื้อผ้า');
+        showRoomModalError(enterData.error || 'รหัสห้องลองไม่ถูกต้อง กรุณาสแกนหรือกรอกรหัส QR หน้าห้องลองเสื้อผ้า');
       }
-      fetchFittingRoomsStatus();
       return;
     }
 

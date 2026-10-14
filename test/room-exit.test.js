@@ -13,6 +13,7 @@ process.env.USE_MOCK_DB = 'true';
 const secret = 'test_secret_32_characters_minimum_length_abcdef';
 const { setMockHandler } = require('../database/db');
 const apiRoutes = require('../routes/api');
+const { roomOccupancy } = require('../utils/roomOccupancy');
 const app = express();
 app.use(express.json());
 app.use(cookieParser(secret));
@@ -46,7 +47,7 @@ async function withServer(fn) {
   finally { await new Promise(resolve => server.close(resolve)); }
 }
 
-function loadReleaseFunction(fetchImpl) {
+function loadReleaseFunction(fetchImpl, alertImpl = () => {}) {
   const source = fs.readFileSync(path.join(__dirname, '../views/customer/fitting-room.ejs'), 'utf8');
   const start = source.indexOf('  async function releaseCurrentRoom() {');
   const end = source.indexOf('\n  function renderExitItemsList(', start);
@@ -56,7 +57,7 @@ function loadReleaseFunction(fetchImpl) {
     currentSessionId: 'ses_current',
     storageKey: 'crwn_active_session_5684848452325',
     localStorage: { removeItem: () => {} },
-    alert: () => {},
+    alert: alertImpl,
     fetch: fetchImpl,
     console,
   };
@@ -82,6 +83,17 @@ test('exit does not claim success when release API rejects', async () => {
   const release = loadReleaseFunction(async () => ({ ok: false, status: 500, json: async () => ({ error: 'release failed' }) }));
   const result = await release();
   assert.equal(result, false);
+});
+
+test('exit displays server error message when release API returns error in body', async () => {
+  let alerted = null;
+  const release = loadReleaseFunction(
+    async () => ({ ok: false, status: 403, json: async () => ({ error: 'รหัสเซสชันห้องลองไม่ตรงกับเซสชันปัจจุบัน' }) }),
+    (msg) => { alerted = msg; }
+  );
+  const result = await release();
+  assert.equal(result, false);
+  assert.equal(alerted, 'รหัสเซสชันห้องลองไม่ตรงกับเซสชันปัจจุบัน');
 });
 
 function loadExitFunctions(releaseImpl) {
@@ -152,21 +164,28 @@ test('cart exit can retry after a failed release and only then navigate', async 
 });
 
 test('release endpoint tolerates an empty POST body from an older client', async () => {
-  let active = true;
-  setMockHandler(async (op, sql, params) => {
-    if (op === 'get' && sql.includes('FROM FITTING_ROOM') && sql.includes('FOR UPDATE')) {
-      return active ? { FTR_SessionID: 'ses_current' } : null;
-    }
-    if (op === 'run' && sql.includes('UPDATE FITTING_ROOM') && params[1] === 'ses_current') {
-      active = false;
-      return { changes: 1 };
-    }
-    throw new Error(`Unexpected mock SQL: ${op} ${sql}`);
+  roomOccupancy.clear();
+  roomOccupancy.acquire('1', 'u1');
+  setMockHandler(async (op, sql) => {
+    throw new Error(`Release must not touch the DB: ${op} ${sql}`);
   });
   await withServer(async server => {
     const response = await request(server, '5684848452325');
     assert.equal(response.status, 200);
     assert.equal(response.body.success, true);
   });
-  assert.equal(active, false);
+  assert.equal(roomOccupancy.get('1'), null);
 });
+
+test('release of an unknown session returns a 403 error the client can display', async () => {
+  roomOccupancy.clear();
+  roomOccupancy.acquire('1', 'u1');
+  await withServer(async server => {
+    const response = await request(server, '5684848452325', { sessionId: 'ses_unknown' });
+    assert.equal(response.status, 403);
+    assert.ok(response.body.error);
+  });
+  assert.ok(roomOccupancy.get('1'));
+  roomOccupancy.clear();
+});
+

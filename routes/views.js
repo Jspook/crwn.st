@@ -8,6 +8,7 @@ const { query, get, run } = require('../database/db');
 const { getCurrentUser } = require('../middleware/auth');
 const { getProductMockImage } = require('../utils/productImages');
 const { resolveRoom, getRoomDisplayNumber } = require('../utils/roomResolver');
+const { roomOccupancy } = require('../utils/roomOccupancy');
 
 // Middleware to ensure customer session
 function requireCustomer(req, res, next) {
@@ -75,36 +76,13 @@ router.get('/customer/dashboard', requireCustomer, async (req, res) => {
       p.image = getProductMockImage(p.ITM_Tag, p.ITM_ID);
     });
 
-    // Check if customer holds an active fitting room session (Resume flow for BUG-001)
-    const active = await get(
-      `SELECT FTR_Number as roomId, FTR_SessionID as sessionId
-       FROM FITTING_ROOM
-       WHERE CUS_ID = ? AND FTR_CustomerPresent = 1 AND FTR_ReleasedAt IS NULL
-       ORDER BY FTR_OrderTime DESC
-       LIMIT 1`,
-      [req.user.id]
-    );
-
-    let activeRoom = null;
-    if (active) {
-      const room = resolveRoom(active.roomId);
-      if (room) {
-        activeRoom = {
-          roomId: room.barcode,
-          roomDisplay: room.display,
-          sessionId: active.sessionId
-        };
-      }
-    }
-
     res.render('customer/dashboard', {
       user: req.user,
-      products,
-      activeRoom
+      products
     });
   } catch (err) {
     console.error(err);
-    res.render('customer/dashboard', { user: req.user, products: [], activeRoom: null });
+    res.render('customer/dashboard', { user: req.user, products: [] });
   }
 });
 
@@ -119,16 +97,15 @@ router.get('/customer/fitting-room', requireCustomer, async (req, res) => {
   const roomId = room.barcode;
   const roomDisplay = room.display;
 
-  try {
-    const active = await get(
-      `SELECT FTR_SessionID FROM FITTING_ROOM WHERE FTR_Number = ? AND CUS_ID = ? AND FTR_CustomerPresent = 1 AND FTR_ReleasedAt IS NULL LIMIT 1`,
-      [roomId, req.user.id]
-    );
-    if (!active) {
-      return res.redirect('/customer/dashboard');
-    }
-    const sessionId = active.FTR_SessionID;
+  // Gate: customer must hold this room in memory
+  const active = roomOccupancy.get(room.roomNumber);
+  if (!active || String(active.cusId) !== String(req.user.id)) {
+    return res.redirect('/customer/dashboard');
+  }
+  roomOccupancy.touch(room.roomNumber, active.sessionId);
+  const sessionId = active.sessionId;
 
+  try {
     const products = await query(`SELECT * FROM ITEM ORDER BY ITM_ID ASC`);
     const variants = await query(`SELECT * FROM ITEM_VARIANT`);
 

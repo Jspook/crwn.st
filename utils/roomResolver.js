@@ -3,19 +3,19 @@
 // Single source of truth for physical fitting room QR & Barcode registry
 // ==========================================================
 
-const ROOM_REGISTRY = {
-  '5684848452325': { barcode: '5684848452325', roomNumber: '1', display: '1' },
-  '5684848452326': { barcode: '5684848452326', roomNumber: '2', display: '2' },
-  '5684848452327': { barcode: '5684848452327', roomNumber: '3', display: '3' },
-  '5684848452328': { barcode: '5684848452328', roomNumber: '4', display: '4' },
-};
+// Room N barcode = QR_BASE + N (room 1 = 5684848452325 ... room 10 = 5684848452334).
+// Rooms 2-10 follow the approved rule and must be verified against physical stickers.
+const QR_BASE = 5684848452324;
+const ROOM_COUNT = 10;
 
-const ROOM_ALIASES = {
-  '1': '5684848452325',
-  '2': '5684848452326',
-  '3': '5684848452327',
-  '4': '5684848452328',
-};
+const ROOM_REGISTRY = {};
+const ROOM_ALIASES = {};
+for (let n = 1; n <= ROOM_COUNT; n += 1) {
+  const barcode = String(QR_BASE + n);
+  const roomNumber = String(n);
+  ROOM_REGISTRY[barcode] = { barcode, roomNumber, display: roomNumber };
+  ROOM_ALIASES[roomNumber] = barcode;
+}
 
 const ROOM_BARCODES = Object.keys(ROOM_REGISTRY);
 

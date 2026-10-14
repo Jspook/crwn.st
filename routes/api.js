@@ -9,6 +9,7 @@ const { query, get, run, withTransaction } = require('../database/db');
 const { getCurrentUser, requireAuth, requireRole } = require('../middleware/auth');
 const { getProductMockImage } = require('../utils/productImages');
 const { resolveRoom, getCanonicalBarcode, getRoomDisplayNumber, getAllRooms } = require('../utils/roomResolver');
+const { roomOccupancy } = require('../utils/roomOccupancy');
 
 // ==========================================================
 // 1. PRODUCTS & BARCODE LOOKUP
@@ -387,8 +388,7 @@ router.get('/fitting-orders', requireAuth, async (req, res) => {
     // Filter out dummy occupancy records so they never show as pending orders
     conditions.push(`f.ITV_SKUID IS NOT NULL AND f.ITV_SKUID != ''`);
     
-    // Ignore released orders
-    conditions.push(`f.FTR_ReleasedAt IS NULL`);
+    // Occupancy lives in memory; released-room orders are filtered out after the query
 
     if (roomId) {
       const room = resolveRoom(roomId);
@@ -398,20 +398,17 @@ router.get('/fitting-orders', requireAuth, async (req, res) => {
     }
 
     if (user && user.role === 'CUSTOMER') {
-      let sessionCondition = `f.CUS_ID = ?`;
+      conditions.push(`f.CUS_ID = ?`);
       params.push(user.id);
       
       if (roomId) {
         const room = resolveRoom(roomId);
-        const targetRoomId = room ? room.barcode : String(roomId);
-        const active = await get(`SELECT FTR_SessionID FROM FITTING_ROOM WHERE FTR_Number = ? AND CUS_ID = ? AND FTR_CustomerPresent = 1 AND FTR_ReleasedAt IS NULL LIMIT 1`, [targetRoomId, user.id]);
-        if (!active) {
+        const active = room ? roomOccupancy.get(room.roomNumber) : null;
+        if (!active || String(active.cusId) !== String(user.id)) {
           return res.json([]);
         }
-        sessionCondition = `f.FTR_SessionID = ?`;
-        params[params.length - 1] = active.FTR_SessionID;
+        roomOccupancy.touch(room.roomNumber, active.sessionId);
       }
-      conditions.push(sessionCondition);
     } else if (myOnly === 'true' && user && user.role !== 'CUSTOMER' && user.id) {
       conditions.push(`(f.EMP_ID = ? OR f.EMP_ID IS NULL)`);
       params.push(user.id);
@@ -436,6 +433,14 @@ router.get('/fitting-orders', requireAuth, async (req, res) => {
     `;
 
     let orders = await query(sql, params);
+
+    // Only orders of rooms that are currently occupied (customers: occupied by themselves)
+    orders = orders.filter(o => {
+      const r = resolveRoom(o.roomId);
+      const occ = r ? roomOccupancy.get(r.roomNumber) : null;
+      if (!occ) return false;
+      return !(user && user.role === 'CUSTOMER') || String(occ.cusId) === String(user.id);
+    });
 
     // Decorate with roomDisplay and image
     orders.forEach(o => {
@@ -468,25 +473,10 @@ router.get('/fitting-orders', requireAuth, async (req, res) => {
 router.get('/fitting-rooms', async (req, res) => {
   try {
     const user = getCurrentUser(req);
-    const presenceRows = await query(`
-      SELECT FTR_Number as roomNum, FTR_CustomerPresent, CUS_ID, FTR_SessionID
-      FROM FITTING_ROOM
-      WHERE FTR_CustomerPresent = 1 AND FTR_ReleasedAt IS NULL
-    `);
-
-    // Map presence by canonical barcode
-    const occupancyMap = {};
-    for (const r of presenceRows) {
-      const resolved = resolveRoom(r.roomNum);
-      if (resolved) {
-        occupancyMap[resolved.barcode] = r;
-      }
-    }
-
     const rooms = getAllRooms().map(room => {
-      const occ = occupancyMap[room.barcode];
+      const occ = roomOccupancy.get(room.roomNumber);
       const isOccupied = !!occ;
-      const isMyRoom = isOccupied && user && user.role === 'CUSTOMER' && String(occ.CUS_ID) === String(user.id);
+      const isMyRoom = isOccupied && user && user.role === 'CUSTOMER' && String(occ.cusId) === String(user.id);
 
       return {
         FTR_Num: room.barcode,
@@ -519,75 +509,23 @@ router.post('/fitting-rooms/:roomId/enter', async (req, res) => {
   const roomId = room.barcode;
   const user = getCurrentUser(req);
   if (!user || user.role !== 'CUSTOMER') {
-    return res.status(403).json({ error: 'Forbidden — customer session required' });
+    return res.status(403).json({ error: 'กรุณาเข้าสู่ระบบก่อนสแกน QR Code (Customer session required)' });
   }
 
-  try {
-    const crypto = require('crypto');
-    const result = await withTransaction(async (tx) => {
-      // Lock current occupancy record for this room
-      const existing = await tx.get(
-        `SELECT FTR_OrderID, FTR_SessionID, CUS_ID
-         FROM FITTING_ROOM
-         WHERE FTR_Number = ? AND FTR_CustomerPresent = 1 AND FTR_ReleasedAt IS NULL
-         LIMIT 1 FOR UPDATE`,
-        [roomId]
-      );
-
-      // If occupied by another customer -> Conflict
-      if (existing && existing.CUS_ID && String(existing.CUS_ID) !== String(user.id)) {
-        const conflictErr = new Error('ห้องลองนี้มีลูกค้าท่านอื่นใช้งานอยู่ กรุณาเลือกห้องอื่น');
-        conflictErr.status = 409;
-        throw conflictErr;
-      }
-
-      // If already occupied by the SAME customer -> Resume session seamlessly
-      if (existing && existing.CUS_ID && String(existing.CUS_ID) === String(user.id)) {
-        return {
-          success: true,
-          sessionId: existing.FTR_SessionID,
-          roomId,
-          roomDisplay: room.display,
-          customerPresent: true,
-          resumed: true
-        };
-      }
-
-      // Mark any prior stale sessions of this room as released
-      await tx.run(
-        `UPDATE FITTING_ROOM
-         SET FTR_ReleasedAt = NOW(), FTR_CustomerPresent = 0
-         WHERE FTR_Number = ? AND FTR_ReleasedAt IS NULL`,
-        [roomId]
-      );
-
-      const dummyId = 'occ_' + crypto.randomUUID();
-      const sessionId = 'ses_' + crypto.randomUUID();
-
-      await tx.run(
-        `INSERT INTO FITTING_ROOM (FTR_OrderID, ITV_SKUID, EMP_ID, FTR_Number, FTR_FinishTime, FTR_CustomerPresent, FTR_SessionID, CUS_ID)
-         VALUES (?, NULL, NULL, ?, NULL, 1, ?, ?)`,
-        [dummyId, roomId, sessionId, user.id]
-      );
-
-      return {
-        success: true,
-        sessionId,
-        roomId,
-        roomDisplay: room.display,
-        customerPresent: true,
-        resumed: false
-      };
-    });
-
-    res.json(result);
-  } catch (err) {
-    if (err.status === 409) {
-      return res.status(409).json({ error: err.message });
-    }
-    console.error('Error entering room:', err);
-    res.status(500).json({ error: 'Failed to mark room entry' });
+  // Occupancy is in server memory; acquire is synchronous so check-and-set is atomic.
+  const acquired = roomOccupancy.acquire(room.roomNumber, user.id);
+  if (!acquired.ok) {
+    return res.status(409).json({ error: 'ห้องลองนี้มีลูกค้าท่านอื่นใช้งานอยู่ กรุณาเลือกห้องอื่น' });
   }
+
+  res.json({
+    success: true,
+    sessionId: acquired.sessionId,
+    roomId,
+    roomDisplay: room.display,
+    customerPresent: true,
+    resumed: acquired.resumed
+  });
 });
 
 // POST /api/fitting-rooms/:roomId/release
@@ -602,69 +540,19 @@ router.post('/fitting-rooms/:roomId/release', requireRole('CUSTOMER', 'FITTING_S
   const roomId = room.barcode;
   const user = req.user;
 
-  try {
-    await withTransaction(async (tx) => {
-      let targetSessionId = null;
+  // Staff force-release; customers may only release their own room/session (in-memory lock)
+  const result = user.role === 'CUSTOMER'
+    ? roomOccupancy.release(room.roomNumber, { cusId: user.id, sessionId: req.body?.sessionId })
+    : roomOccupancy.release(room.roomNumber, { force: true });
 
-      if (user.role === 'CUSTOMER') {
-        const active = await tx.get(
-          `SELECT FTR_SessionID FROM FITTING_ROOM
-           WHERE FTR_Number = ? AND CUS_ID = ? AND FTR_CustomerPresent = 1 AND FTR_ReleasedAt IS NULL
-           LIMIT 1 FOR UPDATE`,
-          [roomId, user.id]
-        );
-        if (!active) {
-          const forbiddenErr = new Error('Forbidden — no active fitting room session to release');
-          forbiddenErr.status = 403;
-          throw forbiddenErr;
-        }
-        targetSessionId = active.FTR_SessionID;
-
-        // If client provided a sessionId, verify it matches active session
-        if (req.body?.sessionId && String(req.body.sessionId).trim() !== String(targetSessionId).trim()) {
-          const mismatchErr = new Error('รหัสเซสชันห้องลองไม่ตรงกับเซสชันปัจจุบัน (Session mismatch)');
-          mismatchErr.status = 403;
-          throw mismatchErr;
-        }
-      } else {
-        // Staff force release
-        const active = await tx.get(
-          `SELECT FTR_SessionID FROM FITTING_ROOM
-           WHERE FTR_Number = ? AND FTR_CustomerPresent = 1 AND FTR_ReleasedAt IS NULL
-           LIMIT 1 FOR UPDATE`,
-          [roomId]
-        );
-        if (active) {
-          targetSessionId = active.FTR_SessionID;
-        }
-      }
-
-      if (targetSessionId) {
-        // Mark all rows belonging to THIS session in this room as released
-        await tx.run(
-          `UPDATE FITTING_ROOM
-           SET FTR_ReleasedAt = NOW(), FTR_CustomerPresent = 0
-           WHERE FTR_Number = ? AND FTR_SessionID = ? AND FTR_ReleasedAt IS NULL`,
-          [roomId, targetSessionId]
-        );
-      } else {
-        await tx.run(
-          `UPDATE FITTING_ROOM
-           SET FTR_CustomerPresent = 0
-           WHERE FTR_Number = ?`,
-          [roomId]
-        );
-      }
-    });
-
-    res.json({ success: true, roomId, roomDisplay: room.display });
-  } catch (err) {
-    if (err.status === 403) {
-      return res.status(403).json({ error: err.message });
-    }
-    console.error('Error releasing room:', err);
-    res.status(500).json({ error: 'Failed to release fitting room' });
+  if (!result.ok) {
+    const error = result.reason === 'SESSION_MISMATCH'
+      ? 'รหัสเซสชันห้องลองไม่ตรงกับเซสชันปัจจุบัน (Session mismatch)'
+      : 'Forbidden — no active fitting room session to release';
+    return res.status(403).json({ error });
   }
+
+  res.json({ success: true, roomId, roomDisplay: room.display });
 });
 
 // POST /api/fitting-orders
@@ -689,19 +577,17 @@ router.post('/fitting-orders', requireRole('CUSTOMER'), async (req, res) => {
   }
 
   try {
-    const roomNum = room.barcode;
+    const roomNum = room.roomNumber;
     const targetSku = String(sku).trim();
     const user = req.user;
 
     // Customer must hold an active session in this room
-    const active = await get(
-      `SELECT FTR_SessionID FROM FITTING_ROOM WHERE FTR_Number = ? AND CUS_ID = ? AND FTR_CustomerPresent = 1 AND FTR_ReleasedAt IS NULL LIMIT 1`,
-      [roomNum, user.id]
-    );
-    if (!active) {
+    const active = roomOccupancy.get(room.roomNumber);
+    if (!active || String(active.cusId) !== String(user.id)) {
       return res.status(403).json({ error: 'Forbidden — no active fitting room session' });
     }
-    const sessionId = active.FTR_SessionID;
+    roomOccupancy.touch(room.roomNumber, active.sessionId);
+    const sessionId = active.sessionId;
     const cusId = user.id;
 
     // Strict lookup: join variant and item
@@ -755,8 +641,8 @@ router.post('/fitting-orders', requireRole('CUSTOMER'), async (req, res) => {
     const orderId = 'fo_' + crypto.randomUUID();
 
     await run(
-      `INSERT INTO FITTING_ROOM (FTR_OrderID, ITV_SKUID, EMP_ID, FTR_Number, FTR_SessionID, CUS_ID) VALUES (?, ?, NULL, ?, ?, ?)`,
-      [orderId, targetSku, roomNum, sessionId, cusId]
+      `INSERT INTO FITTING_ROOM (FTR_OrderID, ITV_SKUID, EMP_ID, FTR_Number, CUS_ID) VALUES (?, ?, NULL, ?, ?)`,
+      [orderId, targetSku, roomNum, cusId]
     );
 
     res.json({
@@ -790,12 +676,9 @@ router.patch('/fitting-orders/:id', requireRole('FITTING_STAFF'), async (req, re
   }
 
   try {
-    const existing = await get(`SELECT EMP_ID, FTR_FinishTime, FTR_ReleasedAt FROM FITTING_ROOM WHERE FTR_OrderID = ?`, [id]);
+    const existing = await get(`SELECT EMP_ID, FTR_FinishTime FROM FITTING_ROOM WHERE FTR_OrderID = ?`, [id]);
     if (!existing) {
       return res.status(404).json({ error: 'ไม่พบคำสั่งซื้อนี้ในระบบ' });
-    }
-    if (existing.FTR_ReleasedAt !== null) {
-      return res.status(409).json({ error: 'ลูกค้ายกเลิกคำสั่งซื้อนี้แล้ว (ออกจากห้องลองแล้ว)' });
     }
 
     // Verify staff ownership if already assigned
