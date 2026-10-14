@@ -13,7 +13,6 @@
         <i data-lucide="qr-code" class="w-6 h-6"></i>
       </div>
       <h3 class="font-serif text-2xl font-semibold text-[#1F2421]">สแกน QR Code เข้าห้องลอง</h3>
-      <p class="text-xs text-[#8A8177] mt-1">เข้าใช้งานห้องลองเสื้อได้โดยการสแกน QR Code ที่ติดอยู่หน้าห้องเท่านั้น</p>
     </div>
 
     <!-- Error notice container (if room is occupied or invalid) -->
@@ -24,8 +23,6 @@
 
     <!-- QR SCANNER SECTION -->
     <div class="space-y-4">
-      <p class="text-[11px] text-[#8A8177] text-center">ส่องกล้องไปที่ป้าย QR Code ติดหน้าประตูห้องลองเพื่อปลดล็อกและเริ่มลองชุด</p>
-
       <!-- Camera Viewfinder -->
       <div class="relative w-full aspect-[4/3] min-h-[240px] rounded-2xl bg-[#1F2421] overflow-hidden flex flex-col items-center justify-center border border-white/20 shadow-inner">
         <!-- Video stream -->
@@ -57,7 +54,6 @@
 
       <!-- Simulation Buttons for testing QR codes -->
       <div class="pt-3 border-t border-[#A3907C]/15">
-        <span class="text-[10px] font-bold text-[#8A8177] uppercase tracking-wider block mb-1.5 text-center">จำลองการสแกน QR Code หน้าห้อง (สำหรับทดสอบ):</span>
         <div id="room-simulation-grid" class="grid grid-cols-4 gap-1.5 text-xs">
           <!-- Populated dynamically by JS -->
           <div class="col-span-4 text-center py-2 text-[#8A8177]">กำลังโหลดสถานะห้องลอง...</div>

@@ -20,7 +20,6 @@
       </div>
       <div>
         <p class="text-xs font-bold text-[#1F2421]">คุณกำลังใช้งานห้องลองเสื้อ ห้อง <%= activeRoom.roomDisplay %> อยู่</p>
-        <p class="text-[11px] text-amber-800 mt-0.5">กดปุ่มด้านขวาเพื่อกลับเข้าห้องลองเสื้อและลองชุดต่อได้ทันที</p>
       </div>
     </div>
     <a href="/customer/fitting-room?roomId=<%= encodeURIComponent(activeRoom.roomId) %>" class="btn-primary text-xs py-2 px-3.5 whitespace-nowrap shadow-xs flex items-center gap-1.5 active:scale-95">
@@ -58,7 +57,6 @@
             <i data-lucide="camera" class="w-7 h-7"></i>
           </div>
           <p class="text-sm font-medium text-[#F5F2EB]">กล้องยังไม่ได้เปิดทำงาน</p>
-          <p class="text-[11px] text-[#F5F2EB]/60 mt-1 max-w-[220px]">กดปุ่มด้านล่างเพื่อเปิดกล้องมือถือสแกนป้ายบาร์โค้ด</p>
         </div>
 
         <!-- Scanning Beam Laser (Active when camera is on) -->
