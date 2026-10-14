@@ -31,13 +31,49 @@ function resolveRoom(rawId) {
   const s = String(rawId).trim();
   if (!s) return null;
 
+  // 1. Direct registry check (exact canonical 13-digit barcode)
   if (ROOM_REGISTRY[s]) {
     return ROOM_REGISTRY[s];
   }
 
+  // 2. Direct alias check (e.g. '1' - '10')
   const aliasBarcode = ROOM_ALIASES[s];
   if (aliasBarcode && ROOM_REGISTRY[aliasBarcode]) {
     return ROOM_REGISTRY[aliasBarcode];
+  }
+
+  // 3. Extract parameter if input is a URL or query string (e.g. '?roomId=...' or '.../fitting-room?roomId=1')
+  let candidate = s;
+  if (candidate.includes('roomId=') || candidate.includes('room=')) {
+    const m = candidate.match(/(?:roomId|room)=([^&]+)/i);
+    if (m) {
+      candidate = decodeURIComponent(m[1]).trim();
+    }
+  } else if (candidate.startsWith('http://') || candidate.startsWith('https://')) {
+    const lastPart = candidate.split('/').pop().split('?')[0].trim();
+    if (lastPart) candidate = lastPart;
+  }
+
+  if (ROOM_REGISTRY[candidate]) {
+    return ROOM_REGISTRY[candidate];
+  }
+  if (ROOM_ALIASES[candidate] && ROOM_REGISTRY[ROOM_ALIASES[candidate]]) {
+    return ROOM_REGISTRY[ROOM_ALIASES[candidate]];
+  }
+
+  // 4. Barcode with spaces, hyphens, or underscores (e.g. '5684-8484-52325')
+  const digitsOnly = candidate.replace(/[\s\-_]/g, '');
+  if (digitsOnly.length === 13 && ROOM_REGISTRY[digitsOnly]) {
+    return ROOM_REGISTRY[digitsOnly];
+  }
+
+  // 5. Thai and English colloquial prefixes (e.g. 'ห้อง 1', 'ห้อง1', 'ห้องที่ 1', 'Room 1', 'room-1', 'r1', '01')
+  const colloquialMatch = candidate.match(/^(?:ห้อง(?:ที่|ลอง)?|room|r|#)?[\s\-_]*(\d{1,2})$/i);
+  if (colloquialMatch) {
+    const cleanNum = String(parseInt(colloquialMatch[1], 10));
+    if (ROOM_ALIASES[cleanNum] && ROOM_REGISTRY[ROOM_ALIASES[cleanNum]]) {
+      return ROOM_REGISTRY[ROOM_ALIASES[cleanNum]];
+    }
   }
 
   return null;

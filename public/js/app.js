@@ -50,10 +50,14 @@ function openRoomModal() {
 
 function submitManualRoomCode() {
   const input = document.getElementById('room-manual-code-input');
-  const val = (input?.value || '').trim();
+  let val = (input?.value || '').trim();
   if (!val) {
     showRoomModalError('กรุณากรอกรหัส QR Code หน้าห้องลอง');
     return;
+  }
+  if (val.includes('roomId=')) {
+    const m = val.match(/roomId=([^&]+)/);
+    if (m) val = decodeURIComponent(m[1]).trim();
   }
   selectRoom(val);
 }
@@ -161,13 +165,21 @@ function handleRoomQrScannedValue(raw) {
 function showRoomModalError(message) {
   const errBox = document.getElementById('room-modal-error');
   const errText = document.getElementById('room-modal-error-text');
+  const manualErr = document.getElementById('room-manual-error');
+  const manualErrText = document.getElementById('room-manual-error-text');
+
   if (errBox && errText) {
     errText.textContent = message;
     errBox.classList.remove('hidden');
-    if (window.lucide) window.lucide.createIcons();
-  } else {
+  }
+  if (manualErr && manualErrText) {
+    manualErrText.textContent = message;
+    manualErr.classList.remove('hidden');
+  }
+  if (!errBox && !manualErr) {
     alert(message);
   }
+  if (window.lucide) window.lucide.createIcons();
 }
 
 async function selectRoom(roomNum) {
@@ -178,7 +190,16 @@ async function selectRoom(roomNum) {
   }
 
   const errBox = document.getElementById('room-modal-error');
+  const manualErr = document.getElementById('room-manual-error');
   if (errBox) errBox.classList.add('hidden');
+  if (manualErr) manualErr.classList.add('hidden');
+
+  const btn = document.getElementById('btn-submit-room-code');
+  const originalBtnHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin mr-1"></span> กำลังเข้า...';
+  }
 
   try {
     stopRoomQrCamera();
@@ -186,12 +207,17 @@ async function selectRoom(roomNum) {
     // Call /enter to atomically lock or resume room
     const enterRes = await fetch(`/api/fitting-rooms/${encodeURIComponent(cleanNum)}/enter`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include'
     });
 
     const enterData = await enterRes.json();
 
     if (!enterRes.ok) {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = originalBtnHtml;
+      }
       if (enterRes.status === 403) {
         showRoomModalError(enterData.error || 'กรุณาเข้าสู่ระบบก่อนสแกน QR Code');
       } else if (enterRes.status === 409) {
@@ -213,6 +239,10 @@ async function selectRoom(roomNum) {
     window.location.href = `/customer/fitting-room?roomId=${encodeURIComponent(finalRoomId)}`;
   } catch (e) {
     console.error('Error selecting room:', e);
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = originalBtnHtml;
+    }
     showRoomModalError('เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง');
   }
 }

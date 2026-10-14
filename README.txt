@@ -131,8 +131,7 @@ URL สำหรับการเข้าใช้งานระบบ (เ�
 8. SALE_ORDER       : บันทึกหัวบิลการขาย (ORD_ID, ยอดรวม, วิธีชำระเงิน, วันที่เวลา)
 9. SALE_ORDER_LINE  : บันทึกรายการสินค้าในแต่ละบิล (ORD_ID, ITV_SKUID, จำนวน, ราคาต่อหน่วย)
 10. FITTING_ROOM    : สถานะห้องลอง คิวคำขอ และประวัติการลองชุด 
-                      (FTR_OrderID, ITV_SKUID, FTR_Number, FTR_CustomerPresent, 
-                       FTR_SessionID, CUS_ID, FTR_OrderTime, FTR_FinishTime, FTR_ReleasedAt)
+                      (FTR_OrderID, ITV_SKUID, FTR_Number, CUS_ID, FTR_OrderTime, FTR_FinishTime)
 
 
 6. ข้อกำหนดและความปลอดภัยของระบบ (Security & Compliance)

@@ -98,9 +98,18 @@ router.get('/customer/fitting-room', requireCustomer, async (req, res) => {
   const roomDisplay = room.display;
 
   // Gate: customer must hold this room in memory
-  const active = roomOccupancy.get(room.roomNumber);
+  let active = roomOccupancy.get(room.roomNumber);
   if (!active || String(active.cusId) !== String(req.user.id)) {
-    return res.redirect('/customer/dashboard');
+    // If the room is occupied by someone else, redirect back with reason
+    if (active && String(active.cusId) !== String(req.user.id)) {
+      return res.redirect(`/customer/dashboard?roomOccupied=${encodeURIComponent(roomDisplay)}`);
+    }
+    // If the room is free, atomically acquire it for this customer
+    const acquired = roomOccupancy.acquire(room.roomNumber, req.user.id);
+    if (!acquired.ok) {
+      return res.redirect(`/customer/dashboard?roomOccupied=${encodeURIComponent(roomDisplay)}`);
+    }
+    active = roomOccupancy.get(room.roomNumber);
   }
   roomOccupancy.touch(room.roomNumber, active.sessionId);
   const sessionId = active.sessionId;

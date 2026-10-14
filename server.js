@@ -54,9 +54,10 @@ app.use((req, res, next) => {
   next();
 });
 
-// Static assets with cache control
+// Static assets with cache control (no cache in dev to prevent stale scripts)
+const isDev = process.env.NODE_ENV !== 'production';
 app.use(express.static(path.join(__dirname, 'public'), {
-  maxAge: '1d',
+  maxAge: isDev ? 0 : '1d',
   etag: true
 }));
 
