@@ -3,3 +3,7 @@ node_modules
 scratch/
 tests/
 WALKTHROUGH.md
+Audit/
+build-zip.bat
+exclude.txt
+start.bat
