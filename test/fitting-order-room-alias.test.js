@@ -33,6 +33,27 @@ async function fetchOrders(server, roomId) {
   });
 }
 
+test('customer GET without roomId fails closed (400) and never touches the orders query', async () => {
+  const calls = [];
+  setMockHandler(async (operation, sql) => { calls.push({ operation, sql }); throw new Error('must not query'); });
+  const server = app.listen(0);
+  try {
+    const response = await new Promise((resolve, reject) => {
+      http.get({ host: '127.0.0.1', port: server.address().port, path: '/api/fitting-orders',
+        headers: { Cookie: cookie() } }, res => {
+        let body = '';
+        res.on('data', chunk => { body += chunk; });
+        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(body) }));
+      }).on('error', reject);
+    });
+    assert.equal(response.status, 400);
+    assert.equal(calls.length, 0, 'no SQL may run before roomId is validated');
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+    setMockHandler(null);
+  }
+});
+
 test('barcode and number look up the same canonical FITTING_ROOM.FTR_Number', async () => {
   const seen = [];
   setMockHandler(async (operation, sql, params) => {

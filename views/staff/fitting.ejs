@@ -225,7 +225,16 @@
       });
 
       if (!res.ok) {
-        throw new Error('Server returned error status');
+        const errBody = await res.json().catch(() => ({}));
+        const code = typeof errBody.error === 'string' ? errBody.error : '';
+        const friendly = {
+          NOT_ACTIVE: 'ลูกค้าออกจากห้องหรือหมดเวลาแล้ว งานนี้ถูกปิดแล้ว',
+          STALE_ORDER: 'งานนี้ถูกเปลี่ยนแปลงหรือยกเลิกแล้ว กรุณารีเฟรช',
+          NOT_OWNER: 'งานนี้มีพนักงานคนอื่นรับไปแล้ว',
+          INVALID_TRANSITION: 'ไม่สามารถข้ามขั้นตอนหรือย้อนสถานะได้',
+          COMPLETE_IMMUTABLE: 'งานนี้นำส่งเรียบร้อยแล้ว แก้ไขไม่ได้',
+        };
+        throw new Error(friendly[code] || code || 'Server returned error status');
       }
 
       // Refresh from DB AFTER server confirms — this is now safe because

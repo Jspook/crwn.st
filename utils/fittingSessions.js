@@ -48,10 +48,21 @@ async function acquire(roomNumber, cusId) {
   });
 }
 
+// Lazy expiry: only reached while holding the slot lock. Cancels still-pending requests of the
+// expired session (preparing/complete remain history), ends the session and frees the slot.
+async function reapExpired(tx, roomNumber, slot, active) {
+  if (active && !active.FTR_EndedAt && active.expired) {
+    await closeSession(tx, roomNumber, active.FTR_SessionID, 'EXPIRED');
+    return true;
+  }
+  return false;
+}
+
 async function release(roomNumber, { cusId, sessionId, force = false } = {}) {
   return db.withTransaction(async tx => {
     const slot = await lockSlot(tx, roomNumber);
     const active = slot && await sessionById(tx, slot.FTR_ActiveSessionID);
+    await reapExpired(tx, roomNumber, slot, active);
     if (!active || active.FTR_EndedAt || active.expired) return { ok: false, reason: 'NOT_ACTIVE' };
     if (!force && (!sessionId || !cusId || String(cusId) !== String(active.CUS_ID) || sessionId !== active.FTR_SessionID)) {
       return { ok: false, reason: 'SESSION_MISMATCH' };
@@ -79,6 +90,7 @@ async function withLockedActive(roomNumber, { cusId, sessionId } = {}, work) {
   return db.withTransaction(async tx => {
     const slot = await lockSlot(tx, roomNumber);
     const active = slot && await sessionById(tx, slot.FTR_ActiveSessionID);
+    await reapExpired(tx, roomNumber, slot, active);
     if (!active || active.FTR_EndedAt || active.expired ||
         (cusId !== undefined && String(active.CUS_ID) !== String(cusId)) ||
         (sessionId !== undefined && active.FTR_SessionID !== sessionId)) {

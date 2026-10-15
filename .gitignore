@@ -1,7 +1,6 @@
 node_modules
 .env
 scratch/
-tests/
 WALKTHROUGH.md
 build-zip.bat
 exclude.txt

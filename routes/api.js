@@ -358,6 +358,8 @@ router.get('/fitting-orders', requireAuth, async (req, res) => {
   const { roomId, limit, myOnly } = req.query;
   const user = req.user;
   if (!['CUSTOMER', 'FITTING_STAFF'].includes(user.role)) return res.status(403).json({ error: 'Forbidden' });
+  // Customers are always scoped to one room's active session; never fall back to "all rooms".
+  if (user.role === 'CUSTOMER' && !roomId) return res.status(400).json({ error: 'roomId is required' });
   try {
     let sql = `
       SELECT f.FTR_OrderID as id,

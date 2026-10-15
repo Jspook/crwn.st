@@ -518,7 +518,7 @@ describe('crwn.st API & Security Suite', () => {
         method: 'POST'
       }, {
         identifier: '68070254',
-        password: 'wrong_password_xyz'
+        password: process.env.TEST_INVALID_PASSWORD || 'wrong-password-for-test'
       });
       assert.equal(res.status, 401, 'Wrong password must fail authentication');
     });
