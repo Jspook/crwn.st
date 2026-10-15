@@ -12,3 +12,6 @@ Audit/Archive/*.sql
 Audit/Archive/*.json
 Audit/Archive/*.csv
 Audit/Archive/*.js
+
+# /ship pipeline: per-task working folders stay local (remove these lines to keep task history in git)
+.pipeline/*/
