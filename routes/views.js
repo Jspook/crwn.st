@@ -8,7 +8,7 @@ const { query, get, run } = require('../database/db');
 const { getCurrentUser } = require('../middleware/auth');
 const { getProductMockImage } = require('../utils/productImages');
 const { resolveRoom, getRoomDisplayNumber } = require('../utils/roomResolver');
-const { roomOccupancy } = require('../utils/roomOccupancy');
+const fittingSessions = require('../utils/fittingSessions');
 
 // Middleware to ensure customer session
 function requireCustomer(req, res, next) {
@@ -97,24 +97,10 @@ router.get('/customer/fitting-room', requireCustomer, async (req, res) => {
   const roomId = room.barcode;
   const roomDisplay = room.display;
 
-  // Gate: customer must hold this room in memory
-  let active = roomOccupancy.get(room.roomNumber);
-  if (!active || String(active.cusId) !== String(req.user.id)) {
-    // If the room is occupied by someone else, redirect back with reason
-    if (active && String(active.cusId) !== String(req.user.id)) {
-      return res.redirect(`/customer/dashboard?roomOccupied=${encodeURIComponent(roomDisplay)}`);
-    }
-    // If the room is free, atomically acquire it for this customer
-    const acquired = roomOccupancy.acquire(room.roomNumber, req.user.id);
-    if (!acquired.ok) {
-      return res.redirect(`/customer/dashboard?roomOccupied=${encodeURIComponent(roomDisplay)}`);
-    }
-    active = roomOccupancy.get(room.roomNumber);
-  }
-  roomOccupancy.touch(room.roomNumber, active.sessionId);
-  const sessionId = active.sessionId;
-
   try {
+    const acquired = await fittingSessions.acquire(room.roomNumber, req.user.id);
+    if (!acquired.ok) return res.redirect(`/customer/dashboard?roomOccupied=${encodeURIComponent(roomDisplay)}`);
+    const sessionId = acquired.sessionId;
     const products = await query(`SELECT * FROM ITEM ORDER BY ITM_ID ASC`);
     const variants = await query(`SELECT * FROM ITEM_VARIANT`);
 
@@ -144,7 +130,7 @@ router.get('/customer/fitting-room', requireCustomer, async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    res.render('customer/fitting-room', { user: req.user, roomId, roomDisplay, sessionId: '', products: [] });
+    res.status(503).send('Unable to verify fitting room session');
   }
 });
 

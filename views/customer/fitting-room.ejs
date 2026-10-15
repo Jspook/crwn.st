@@ -260,13 +260,29 @@
 
   async function confirmExitFittingRoom() {
     let roomOrders = [];
+    let statusUnavailable = false;
     try {
       const res = await fetch(`/api/fitting-orders?roomId=${encodeURIComponent(currentRoomId)}`);
-      if (res.ok) {
-        roomOrders = await res.json();
+      if (!res.ok) {
+        statusUnavailable = true;
+      } else {
+        const payload = await res.json();
+        if (Array.isArray(payload)) {
+          roomOrders = payload;
+        } else {
+          statusUnavailable = true;
+        }
       }
     } catch (e) {
       console.warn('Failed to fetch room orders:', e);
+      statusUnavailable = true;
+    }
+
+    // Fail closed: if we cannot confirm there are no pending items, never
+    // release the room or claim there are no orders. Ask the customer to retry.
+    if (statusUnavailable) {
+      alert('ไม่สามารถตรวจสอบรายการสินค้าในห้องลองได้ กรุณาลองใหม่อีกครั้ง');
+      return;
     }
 
     // Filter real orders
