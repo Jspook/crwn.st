@@ -108,7 +108,11 @@ Subagent แก้เพียง `test/fitting-session-lifecycle.test.js` (untr
 
 **ข้อสังเกตใหม่จาก integration (ยังไม่แก้):** `PATCH /api/fitting-orders/:id` ใช้ `EMP_ID` จาก signed cookie โดยไม่ตรวจว่ามีแถวใน `EMPLOYEE` จริง — ถ้า id ไม่มีอยู่ การ UPDATE จะล้มด้วย FK (`ER_NO_REFERENCED_ROW_2`) แล้วตอบ **500** ไม่ใช่ 4xx. ตรวจสอบได้เฉพาะชั้น integration เพราะ mock ไม่มี FK; ผู้โจมตีทำไม่ได้เพราะ cookie ต้อง signed แต่เกิดได้ถ้าแถวพนักงานถูกลบระหว่างที่ session ยังไม่หมดอายุ — บันทึกเป็น observation ไม่แก้ในรอบนี้
 
-**ยังไม่ครอบ:** browser E2E, apply migration กับ DB จริง/การ deploy และ `ISOLATED_TEST_DB` ยังไม่ถูกใช้เลย (ตั้งใจ)
+**Browser E2E — ทำแล้ว (2026-10-15):** รันจริงบน Chrome ผ่าน `browser-skill` กับ isolated DB ยืนยัน **บั๊ก A** (คำเตือน "สินค้าที่พนักงานยังไม่ได้นำส่ง (1 รายการ)" ขึ้นก่อนออก และกด "ลองชุดต่อ" ไม่ปล่อยห้อง), **บั๊ก B** (Kanban ฝั่งพนักงานว่างและ API คืน 0 รายการหลังคำขอถูกยกเลิก), staff flow claim→complete บน UI และเกณฑ์ A03 (ของที่นำส่งแล้ว **ไม่** ขึ้นคำเตือน แต่เข้า flow ตะกร้าแทน) — รายละเอียดและภาพหลักฐานอยู่ที่ [[11-browser-e2e-report]]
+
+`tests/run-isolated.js` มีโหมด `serve` เพิ่มเพื่อสตาร์ทแอปชี้ isolated DB สำหรับ E2E (ไม่ให้รหัสผ่านอยู่ใน argv)
+
+**ยังไม่ครอบ:** apply migration กับ DB จริง/การ deploy, browser E2E กับ production, checkout/ชำระเงินจริง และ `ISOLATED_TEST_DB` ยังไม่ถูกใช้เลย (ตั้งใจ)
 
 ## เอกสารเชื่อมโยง
 

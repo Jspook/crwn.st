@@ -9,7 +9,8 @@
 
 | ไฟล์ | บทบาท | อ่านเมื่อ |
 | --- | --- | --- |
-| [[10-existing-change-review]] | **Source of truth ของสถานะปัจจุบัน** — findings, หลักฐาน mock test, approval/stop gate | ทุกครั้งก่อนทำงานต่อ |
+| [[10-existing-change-review]] | **Source of truth ของสถานะปัจจุบัน** — findings, หลักฐาน mock/integration/E2E, approval/stop gate | ทุกครั้งก่อนทำงานต่อ |
+| [[11-browser-e2e-report]] | Browser E2E บน Chrome กับ isolated DB — ยืนยันบั๊ก A/B, staff flow และเกณฑ์ A03 พร้อมภาพหลักฐาน | ก่อนอ้างว่าบั๊กถูกแก้บน UI จริง |
 | [[02-architecture-and-api-contract]] | Contract + business policy ที่ **อนุมัติแล้ว** (state machine, release semantics, DB additive change) | ก่อนแก้ route/schema |
 | [[2026-10-14 Pending Order Reentry Plan]] | Scope, acceptance cases A01–A04 / B01–B06, safety gate ฉบับรวม | ก่อนออกแบบ test/migration |
 | [[01-preflight-and-safety-report]] | Preflight + ตาราง safety ของแต่ละคำสั่ง test (อะไรห้ามรัน) | ก่อนรัน test/แตะ DB |

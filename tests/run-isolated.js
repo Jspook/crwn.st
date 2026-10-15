@@ -61,9 +61,12 @@ const commands = {
   // would never print its summary or exit without it.
   test: ['--test', '--test-force-exit', path.join('tests', 'api.test.js')],
   seed: [path.join('database', 'seed.js')],
+  // Boot the app against the isolated database (for browser E2E) without leaking the password
+  // through argv.
+  serve: [path.join('server.js')],
 };
 const args = commands[mode];
-if (!args) fail(`unknown mode "${mode}" (expected: test | seed)`);
+if (!args) fail(`unknown mode "${mode}" (expected: test | seed | serve)`);
 
 console.log(`[run-isolated] mode=${mode} host=${isolated.DB_HOST}:${isolated.DB_PORT} db=${isolated.DB_NAME} user=${isolated.DB_USER} (password not shown)`);
 const result = spawnSync(process.execPath, args, {
