@@ -157,19 +157,18 @@ describe('crwn.st API & Security Suite', () => {
   describe('2. Fitting Rooms Occupancy & 13-Digit Room IDs', () => {
     const testRoomId = '5684848452325'; // 13-digit room ID
 
-    test('GET /api/fitting-rooms returns 4 rooms with 13-digit identifiers and clean 1-4 roomDisplay', async () => {
+    test('GET /api/fitting-rooms returns 10 rooms with 13-digit identifiers and clean roomDisplay', async () => {
       const res = await makeRequest(app, { path: '/api/fitting-rooms' });
       assert.equal(res.status, 200);
       assert.ok(Array.isArray(res.body));
-      assert.equal(res.body.length, 4);
-      assert.equal(res.body[0].FTR_Num, '5684848452325');
-      assert.equal(res.body[0].roomDisplay, '1');
-      assert.equal(res.body[1].FTR_Num, '5684848452326');
-      assert.equal(res.body[1].roomDisplay, '2');
-      assert.equal(res.body[2].FTR_Num, '5684848452327');
-      assert.equal(res.body[2].roomDisplay, '3');
-      assert.equal(res.body[3].FTR_Num, '5684848452328');
-      assert.equal(res.body[3].roomDisplay, '4');
+      // The registry now covers all 10 physical rooms (see utils/roomResolver ROOM_BARCODES).
+      assert.equal(res.body.length, 10);
+      res.body.forEach((room, i) => {
+        const n = i + 1;
+        assert.equal(room.roomNumber, String(n));
+        assert.equal(room.FTR_Num, String(5684848452324 + n));
+        assert.equal(room.roomDisplay, String(n));
+      });
     });
 
     test('POST /api/fitting-rooms/:roomId/enter without customer cookie returns 403', async () => {
@@ -203,6 +202,34 @@ describe('crwn.st API & Security Suite', () => {
       assert.equal(room.FTR_Status, 'occupied');
     });
 
+    test('POST /api/fitting-rooms/:roomId/release without a sessionId is rejected (403)', async () => {
+      const customerCookie = makeSignedAuthCookie({
+        id: realCusId || '68070001',
+        name: 'สมชาย สายช้อป',
+        role: 'CUSTOMER'
+      });
+
+      const enterRes = await makeRequest(app, {
+        path: `/api/fitting-rooms/${testRoomId}/enter`,
+        method: 'POST'
+      }, {}, customerCookie);
+      assert.equal(enterRes.status, 200);
+
+      // Policy: a customer release must name the session it is releasing. Depending on whether the
+      // room already holds a session for this customer, the server answers SESSION_MISMATCH or
+      // NOT_ACTIVE — both are 403 and neither may free the room.
+      const releaseRes = await makeRequest(app, {
+        path: `/api/fitting-rooms/${testRoomId}/release`,
+        method: 'POST'
+      }, {}, customerCookie);
+      assert.equal(releaseRes.status, 403);
+      assert.match(String(releaseRes.body.error), /รหัสเซสชันห้องลองไม่ตรงกับเซสชันปัจจุบัน|no active fitting room session/);
+
+      const statusRes = await makeRequest(app, { path: '/api/fitting-rooms' });
+      const room = statusRes.body.find(r => r.FTR_Num === testRoomId);
+      assert.equal(room.isOccupied, true, 'a rejected release must not free the room');
+    });
+
     test('POST /api/fitting-rooms/:roomId/release clears room occupancy', async () => {
       const customerCookie = makeSignedAuthCookie({
         id: realCusId || '68070001',
@@ -210,10 +237,18 @@ describe('crwn.st API & Security Suite', () => {
         role: 'CUSTOMER'
       });
 
+      // Re-acquire to get the session this customer currently holds, then release exactly that one.
+      const enterRes = await makeRequest(app, {
+        path: `/api/fitting-rooms/${testRoomId}/enter`,
+        method: 'POST'
+      }, {}, customerCookie);
+      assert.equal(enterRes.status, 200);
+      assert.ok(enterRes.body.sessionId);
+
       const releaseRes = await makeRequest(app, {
         path: `/api/fitting-rooms/${testRoomId}/release`,
         method: 'POST'
-      }, {}, customerCookie);
+      }, { sessionId: enterRes.body.sessionId }, customerCookie);
       assert.equal(releaseRes.status, 200);
 
       // Verify room is now available
@@ -231,6 +266,7 @@ describe('crwn.st API & Security Suite', () => {
   describe('3. Fitting Room Orders & Queue Management', () => {
     let testSku;
     let createdOrderId;
+    let sessionId;
     const testRoomId = '5684848452325';
     let customerCookie;
     let staffCookie;
@@ -252,18 +288,19 @@ describe('crwn.st API & Security Suite', () => {
       });
 
       // Customer enters room first to establish session
-      await makeRequest(app, {
+      const enterRes = await makeRequest(app, {
         path: `/api/fitting-rooms/${testRoomId}/enter`,
         method: 'POST'
       }, {}, customerCookie);
+      sessionId = enterRes.body && enterRes.body.sessionId;
     });
 
     after(async () => {
-      // Clean up room
+      // Clean up room — release is session-scoped, so pass the session acquired above.
       await makeRequest(app, {
         path: `/api/fitting-rooms/${testRoomId}/release`,
         method: 'POST'
-      }, {}, customerCookie);
+      }, sessionId ? { sessionId } : {}, customerCookie);
     });
 
     test('POST /api/fitting-orders with missing/invalid SKU rejects with 400', async () => {
@@ -543,6 +580,178 @@ describe('crwn.st API & Security Suite', () => {
         sku: 'any_sku'
       }, cashierCookie);
       assert.equal(res.status, 403);
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // 6. Durable session expiry (real MySQL only — closes the E2 gap)
+  // --------------------------------------------------------------------------
+  describe('6. Durable Session Expiry & Reaping', () => {
+    const room2 = '5684848452326';
+    let customerCookie;
+    let staffCookie;
+    let sessionId;
+    let expiredOrderId;
+
+    before(async () => {
+      customerCookie = makeSignedAuthCookie({ id: realCusId || '68070001', name: 'สมชาย สายช้อป', role: 'CUSTOMER' });
+      staffCookie = makeSignedAuthCookie({ id: realEmpId || '68070056', name: 'จิรภัทร ชาญวิทย์', role: 'FITTING_STAFF' });
+
+      const enterRes = await makeRequest(app, { path: `/api/fitting-rooms/${room2}/enter`, method: 'POST' }, {}, customerCookie);
+      assert.equal(enterRes.status, 200);
+      sessionId = enterRes.body.sessionId;
+
+      const sku = (await get(`SELECT ITV_SKUID FROM ITEM_VARIANT WHERE ITV_Stock > 0 LIMIT 1`)).ITV_SKUID;
+      const orderRes = await makeRequest(app, { path: '/api/fitting-orders', method: 'POST' }, { roomId: room2, sku }, customerCookie);
+      assert.equal(orderRes.status, 200);
+      expiredOrderId = orderRes.body.id;
+    });
+
+    test('a live session keeps the pending order visible to staff', async () => {
+      const res = await makeRequest(app, { path: '/api/fitting-orders' }, null, staffCookie);
+      assert.equal(res.status, 200);
+      assert.ok(res.body.some(o => o.id === expiredOrderId), 'pending order visible while the session is live');
+    });
+
+    test('an expired session is reaped on release: pending cancelled, session ended, slot freed', async () => {
+      // Backdate the heartbeat past the 45 minute TTL so the session counts as expired in MySQL.
+      await run(`UPDATE FITTING_ROOM_SESSION SET FTR_LastSeenAt = DATE_SUB(NOW(), INTERVAL 60 MINUTE)
+        WHERE FTR_SessionID = ?`, [sessionId]);
+
+      const releaseRes = await makeRequest(app, { path: `/api/fitting-rooms/${room2}/release`, method: 'POST' }, { sessionId }, customerCookie);
+      assert.equal(releaseRes.status, 403);
+      assert.match(String(releaseRes.body.error), /no active fitting room session/);
+
+      const orderRow = await get(`SELECT FTR_CancelledAt FROM FITTING_ROOM WHERE FTR_OrderID = ?`, [expiredOrderId]);
+      assert.ok(orderRow.FTR_CancelledAt, 'pending order of the expired session must be cancelled');
+
+      const sessionRow = await get(`SELECT FTR_EndedAt, FTR_EndReason FROM FITTING_ROOM_SESSION WHERE FTR_SessionID = ?`, [sessionId]);
+      assert.ok(sessionRow.FTR_EndedAt, 'expired session must be ended');
+      assert.equal(sessionRow.FTR_EndReason, 'EXPIRED');
+
+      const slot = await get(`SELECT FTR_ActiveSessionID FROM FITTING_ROOM_SLOT WHERE FTR_RoomNumber = ?`, ['2']);
+      assert.equal(slot.FTR_ActiveSessionID, null, 'slot must no longer pin the expired session');
+    });
+
+    test('the cancelled order disappears from the staff queue and cannot be claimed', async () => {
+      const listRes = await makeRequest(app, { path: '/api/fitting-orders' }, null, staffCookie);
+      assert.equal(listRes.status, 200);
+      assert.equal(listRes.body.some(o => o.id === expiredOrderId), false, 'cancelled order must not be stored in the active queue');
+
+      // The slot no longer pins a session, so withLockedActive short-circuits before reading the
+      // order: the claim fails as NOT_ACTIVE (which the staff UI renders as "session ended").
+      const patchRes = await makeRequest(app, { path: `/api/fitting-orders/${expiredOrderId}`, method: 'PATCH' }, { status: 'preparing' }, staffCookie);
+      assert.equal(patchRes.status, 409);
+      assert.equal(patchRes.body.error, 'NOT_ACTIVE');
+
+      const orderRow = await get(`SELECT EMP_ID FROM FITTING_ROOM WHERE FTR_OrderID = ?`, [expiredOrderId]);
+      assert.equal(orderRow.EMP_ID, null, 'a rejected claim must not assign the order to staff');
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // 7. Real concurrency on MySQL (slot locking, guarded updates, create/release race)
+  // --------------------------------------------------------------------------
+  describe('7. Concurrency on real MySQL', () => {
+    const room3 = '5684848452327';
+    const room4 = '5684848452328';
+    const room5 = '5684848452329';
+
+    let staffIds = [];
+
+    const customerA = () => makeSignedAuthCookie({ id: realCusId || '68070001', name: 'ลูกค้า เอ', role: 'CUSTOMER' });
+    const customerB = () => makeSignedAuthCookie({ id: 'race_customer_b', name: 'ลูกค้า บี', role: 'CUSTOMER' });
+    // Must be real EMPLOYEE rows: FITTING_ROOM.EMP_ID has a foreign key to EMPLOYEE, so a fictional
+    // staff id makes the guarded UPDATE fail with ER_NO_REFERENCED_ROW_2 (a 500, not a 409).
+    const staffA = () => makeSignedAuthCookie({ id: staffIds[0], name: 'พนักงาน เอ', role: 'FITTING_STAFF' });
+    const staffB = () => makeSignedAuthCookie({ id: staffIds[1], name: 'พนักงาน บี', role: 'FITTING_STAFF' });
+
+    before(async () => {
+      const rows = await query(`SELECT EMP_ID FROM EMPLOYEE ORDER BY EMP_ID LIMIT 2`);
+      staffIds = rows.map(r => String(r.EMP_ID));
+      assert.equal(staffIds.length, 2, 'the seeded database must provide two employees for this race');
+    });
+
+    const enterRoom = (barcode, cookie) =>
+      makeRequest(app, { path: `/api/fitting-rooms/${barcode}/enter`, method: 'POST' }, {}, cookie);
+    const releaseRoom = (barcode, cookie, sessionId) =>
+      makeRequest(app, { path: `/api/fitting-rooms/${barcode}/release`, method: 'POST' }, { sessionId }, cookie);
+    const claimOrder = (orderId, cookie) =>
+      makeRequest(app, { path: `/api/fitting-orders/${orderId}`, method: 'PATCH' }, { status: 'preparing' }, cookie);
+    const staffList = () => makeRequest(app, { path: '/api/fitting-orders' }, null, staffA());
+
+    test('two customers entering the same room concurrently: exactly one wins the slot', async () => {
+      const [a, b] = await Promise.all([
+        enterRoom(room3, customerA()),
+        enterRoom(room3, customerB()),
+      ]);
+
+      const winners = [a, b].filter(r => r.status === 200);
+      assert.equal(winners.length, 1, `exactly one enter must win (got ${a.status} and ${b.status})`);
+      assert.equal([a, b].filter(r => r.status === 409).length, 1, 'the loser must get 409 OCCUPIED');
+
+      // The slot must pin the winner's session, not a blend of both.
+      const slot = await get(`SELECT FTR_ActiveSessionID FROM FITTING_ROOM_SLOT WHERE FTR_RoomNumber = ?`, ['3']);
+      assert.equal(slot.FTR_ActiveSessionID, winners[0].body.sessionId);
+
+      const liveSessions = await query(
+        `SELECT FTR_SessionID FROM FITTING_ROOM_SESSION WHERE FTR_RoomNumber = ? AND FTR_EndedAt IS NULL`, ['3']);
+      assert.equal(liveSessions.length, 1, 'a losing enter must not leave an orphan open session');
+
+      await releaseRoom(room3, customerA(), a.status === 200 ? a.body.sessionId : b.body.sessionId);
+    });
+
+    test('two staff claiming the same pending order concurrently: exactly one succeeds', async () => {
+      const enter = await enterRoom(room4, customerA());
+      assert.equal(enter.status, 200);
+
+      const sku = (await get(`SELECT ITV_SKUID FROM ITEM_VARIANT WHERE ITV_Stock > 0 LIMIT 1`)).ITV_SKUID;
+      const order = await makeRequest(app, { path: '/api/fitting-orders', method: 'POST' }, { roomId: room4, sku }, customerA());
+      assert.equal(order.status, 200);
+
+      const [p1, p2] = await Promise.all([
+        claimOrder(order.body.id, staffA()),
+        claimOrder(order.body.id, staffB()),
+      ]);
+
+      const ok = [p1, p2].filter(r => r.status === 200);
+      assert.equal(ok.length, 1, `exactly one claim must succeed (got ${p1.status} and ${p2.status})`);
+      assert.equal([p1, p2].filter(r => r.status === 409).length, 1, 'the loser must get 409');
+
+      const row = await get(`SELECT EMP_ID FROM FITTING_ROOM WHERE FTR_OrderID = ?`, [order.body.id]);
+      assert.ok(staffIds.includes(String(row.EMP_ID)), `claim must assign exactly one of the two staff (got ${row.EMP_ID})`);
+
+      await releaseRoom(room4, customerA(), enter.body.sessionId);
+    });
+
+    test('creating an order while the room is being released never leaves a claimable orphan', async () => {
+      const enter = await enterRoom(room5, customerA());
+      assert.equal(enter.status, 200);
+      const sessionId = enter.body.sessionId;
+      const sku = (await get(`SELECT ITV_SKUID FROM ITEM_VARIANT WHERE ITV_Stock > 0 LIMIT 1`)).ITV_SKUID;
+
+      const [orderRes, releaseRes] = await Promise.all([
+        makeRequest(app, { path: '/api/fitting-orders', method: 'POST' }, { roomId: room5, sku }, customerA()),
+        releaseRoom(room5, customerA(), sessionId),
+      ]);
+
+      assert.ok([200, 403].includes(orderRes.status),
+        `create must resolve to 200 or 403, not ${orderRes.status} (server error during the race)`);
+      assert.equal(releaseRes.status, 200, 'the release itself must succeed');
+
+      // Invariant: no matter who won the race, nothing stays visible/claimable without a session.
+      const list = await staffList();
+      if (orderRes.status === 200) {
+        const row = await get(`SELECT FTR_CancelledAt FROM FITTING_ROOM WHERE FTR_OrderID = ?`, [orderRes.body.id]);
+        assert.ok(row, 'a created order must exist as history');
+        assert.ok(row.FTR_CancelledAt, 'the pending order must be cancelled when its session is closed');
+        assert.equal(list.body.some(o => o.id === orderRes.body.id), false, 'cancelled order must not stay in the queue');
+      } else {
+        assert.equal(list.body.some(o => o.roomId === '5'), false, 'a rejected create must leave no order behind');
+      }
+
+      const slot = await get(`SELECT FTR_ActiveSessionID FROM FITTING_ROOM_SLOT WHERE FTR_RoomNumber = ?`, ['5']);
+      assert.equal(slot.FTR_ActiveSessionID, null, 'the room must end up free');
     });
   });
 });

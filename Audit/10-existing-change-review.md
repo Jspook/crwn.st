@@ -83,6 +83,33 @@ Subagent แก้เพียง `test/fitting-session-lifecycle.test.js` (untr
 
 **ข้อจำกัดของข้อกล่าวอ้าง:** baseline "68/68 ผ่าน" ก่อนหน้า durable-session refactor เป็นรายงานจากรอบก่อน — ผมไม่ได้ยืนยันเอง. ทั้งหมดเป็น **mock-only**: ไม่พิสูจน์ MySQL locking/`affectedRows`/DDL, ไม่มี browser E2E, ไม่มี isolated DB. `tests/` ถูก gitignore → `tests/audit-regression.test.js` เป็นไฟล์ในเครื่อง ไม่ได้ถูก track (ส่วน `test/*.test.js` tracked/untracked ตามรายการ Git).
 
+## MySQL Integration — ปลดล็อกและเขียวแล้ว (2026-10-15)
+
+ก่อนหน้านี้ integration ถูกบล็อกเพราะไม่มี isolated DB ตรวจแล้วว่า **สร้าง DB แยกบนเซิร์ฟเวอร์ KMITL ไม่ได้** (`SHOW GRANTS` = `ALL PRIVILEGES ON s68070186.*` + `USAGE ON *.*`; ไม่มี CREATE บน `*.*`) จึงตั้ง MySQL ในเครื่องแทน:
+
+- **MySQL 8.0.46 ใน WSL2 Ubuntu 24.04** (เวอร์ชันเดียวกับเซิร์ฟเวอร์จริง) ที่ `127.0.0.1:3306` schema `crwn_st_test` user `crwn_test`; credential อยู่ใน `.env.isolated` ซึ่ง **gitignore ไว้** และไม่เคยอยู่ใน argv
+- `tests/run-isolated.js` เป็น wrapper: โหลด `.env.isolated` แล้ว **ปฏิเสธการรัน** ถ้า `DB_HOST` ไม่ใช่ local, `DB_NAME` ตรงกับ `.env` หรือ `DB_HOST` ตรงกับ `.env`; ลบ `USE_MOCK_DB`/`ISOLATED_TEST_DB` ออกเพื่อไม่ให้ปิด guard ในตัวเทสต์
+- `tests/ISOLATED-DB.md` บันทึกวิธี start/stop/reseed และข้อกำหนด keep-alive (WSL2 ปิด distro เมื่อ idle ~60s ทำให้ mysqld ตาย — ต้องมี `sleep infinity` ค้างไว้)
+- **safety ที่ตรวจก่อนรันจริง:** `seed.js` TRUNCATE 5 ตาราง (`PAY_CART_ITEM`, `SALE_ORDER_LINE`, `FITTING_ROOM`, `ITEM_VARIANT`, `ITEM`) แบบ**ไม่ระบุ schema** จึงยิงเข้า DB ที่ `DB_NAME` ชี้เท่านั้น; ไม่มีชื่อ DB จริง/`USE` ฝังในโค้ด; `schema.sql` มีแต่ `CREATE TABLE` ไม่มี `DROP`/`TRUNCATE`/`DELETE`
+
+**ผล: `node tests/run-isolated.js` → exit 0, 32 tests / 32 pass / 0 fail** กับ MySQL จริง ทั้ง 7 suite (product, fitting rooms, fitting orders, POS/VAT, security, expiry, concurrency) — รันซ้ำ 3 รอบได้ 32/32 ทุกรอบ
+
+เทสต์ที่อัปเดตเพราะเป็นข้อคาดหวังล้าสมัย 2 จุด + เพิ่มใหม่ 7 จุด:
+
+| เทสต์ | เปลี่ยน |
+| --- | --- |
+| `GET /api/fitting-rooms returns 4 rooms...` | → ยืนยัน **10 ห้อง** พร้อม barcode/display ตาม `ROOM_BARCODES` |
+| `release clears room occupancy` | เดิมส่ง `{}` คาด 200 → ส่ง `sessionId` จริง; **เพิ่มเทสต์** ว่า release ไม่ระบุ session ได้ 403 และห้องไม่ถูกปล่อย |
+| `after()` ของ suite 3 | release ต้องมี sessionId ไม่งั้น cleanup ไม่ทำงาน |
+| **ใหม่: suite 6 Durable Session Expiry** | backdate `FTR_LastSeenAt` 60 นาที → release ต้อง reap: ยกเลิก pending, `FTR_EndReason='EXPIRED'`, slot ว่าง, งานหายจากคิว staff และ PATCH ถูกปฏิเสธ `NOT_ACTIVE` (409) โดยไม่ assign `EMP_ID` |
+| **ใหม่: suite 7 Concurrency on real MySQL** | (ก) enter ห้องเดียวกันพร้อมกัน 2 ลูกค้า → สำเร็จ 1 / 409 1, slot pin ผู้ชนะ, ไม่มี session กำพร้า; (ข) staff 2 คน claim งานเดียวกันพร้อมกัน → สำเร็จ 1 / 409 1, ผู้ชนะเขียน `EMP_ID` เดียว; (ค) สร้าง order ขณะ release → **ไม่ทิ้ง orphan ที่ claim ได้** ไม่ว่าใครชนะ (ถ้า create สำเร็จ ต้องได้ `FTR_CancelledAt` และหายจากคิว; ถ้า 403 ต้องไม่มีแถวเหลือ) และห้องต้องว่าง |
+
+**ปิดช่องว่างที่ค้าง:** expiry/TTL และ concurrency บน MySQL จริง พิสูจน์แล้วด้วย suite 6–7; `FOR UPDATE` slot lock, guarded conditional UPDATE (`affectedRows`) และ `DATE_SUB(NOW(), INTERVAL 45 MINUTE)` ทำงานจริงบน MySQL 8.0.46. Invariant ของบั๊ก B (ไม่มี pending ของ session ที่จบแล้วกลับเข้า Kanban) ผ่านแม้ยิงพร้อมกัน
+
+**ข้อสังเกตใหม่จาก integration (ยังไม่แก้):** `PATCH /api/fitting-orders/:id` ใช้ `EMP_ID` จาก signed cookie โดยไม่ตรวจว่ามีแถวใน `EMPLOYEE` จริง — ถ้า id ไม่มีอยู่ การ UPDATE จะล้มด้วย FK (`ER_NO_REFERENCED_ROW_2`) แล้วตอบ **500** ไม่ใช่ 4xx. ตรวจสอบได้เฉพาะชั้น integration เพราะ mock ไม่มี FK; ผู้โจมตีทำไม่ได้เพราะ cookie ต้อง signed แต่เกิดได้ถ้าแถวพนักงานถูกลบระหว่างที่ session ยังไม่หมดอายุ — บันทึกเป็น observation ไม่แก้ในรอบนี้
+
+**ยังไม่ครอบ:** browser E2E, apply migration กับ DB จริง/การ deploy และ `ISOLATED_TEST_DB` ยังไม่ถูกใช้เลย (ตั้งใจ)
+
 ## เอกสารเชื่อมโยง
 
 - [[09-recovery-checkpoint]] — Git/process snapshot และ outstanding constraints.

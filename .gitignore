@@ -1,5 +1,6 @@
 node_modules
 .env
+.env.isolated
 scratch/
 WALKTHROUGH.md
 build-zip.bat
