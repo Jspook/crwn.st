@@ -220,9 +220,6 @@ $ npm run test:regression
 - $ node database/seed.js
   ทำการ Re-seed ข้อมูลเริ่มต้น (สินค้า, บัญชีผู้ใช้, ตำแหน่งจัดเก็บ) ลงในตารางเดิม
 
-- Migration Files:
-  * database/migrations/20261014_room_schema_and_numbers.sql : ลบแถว dummy, normalize เลขห้อง, ลบ column ที่ไม่อยู่ใน schema.sql
-  * database/migrations/20261014_fix_skirt_category.sql : ปรับประเภทกระโปรงเป็น 'female'
 
 
 10. การทดสอบบนอุปกรณ์มือถือผ่าน Cloudflare Tunnel (Mobile QR Testing)
@@ -281,7 +278,7 @@ crwn.st/
 |-- views/                 # EJS Templates (customer, staff, cashier, partials)
 +-- public/                # ไฟล์สถิต: CSS, JS ฝั่งลูกค้า, รูปสินค้า
 
-หมายเหตุ: โฟลเดอร์ tests/, test/, Audit/ และ migrations ไม่อยู่ในแพ็กเกจส่งงาน (ยังอยู่ในคลัง Git สำหรับผู้พัฒนา)
+หมายเหตุ: โฟลเดอร์ tests/, test/ และ Audit/ ไม่อยู่ในแพ็กเกจส่งงาน (ยังอยู่ในคลัง Git สำหรับผู้พัฒนา)
 
 ================================================================================
 (C) 2026 crwn.st. All rights reserved. Built for Luxury Retail & Smart Fitting Innovation.
