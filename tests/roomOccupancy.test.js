@@ -53,11 +53,13 @@ describe('utils/roomOccupancy — in-memory room lock', () => {
     assert.equal(occ.get('2'), null);
   });
 
-  test('release without sessionId by the owner succeeds (older client)', () => {
+  test('release without sessionId by the owner is rejected with SESSION_MISMATCH and keeps the lock', () => {
     const { occ } = make();
     occ.acquire('2', 'cus_1');
-    assert.equal(occ.release('2', { cusId: 'cus_1' }).ok, true);
-    assert.equal(occ.get('2'), null);
+    const r = occ.release('2', { cusId: 'cus_1' });
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, 'SESSION_MISMATCH');
+    assert.equal(occ.get('2').cusId, 'cus_1');
   });
 
   test('release with wrong session is rejected with SESSION_MISMATCH', () => {

@@ -108,7 +108,7 @@
               <span id="pos-subtotal" class="font-mono text-[#1F2421]">฿0.00</span>
             </div>
             <div class="flex justify-between text-[#8A8177]">
-              <span>VAT 7%</span>
+              <span>VAT 7% (รวมในราคาแล้ว)</span>
               <span id="pos-vat" class="font-mono text-[#1F2421]">฿0.00</span>
             </div>
             <div class="flex justify-between text-base font-bold text-[#1F2421] pt-2 border-t border-[#A3907C]/15">
@@ -356,8 +356,8 @@
     }).join('');
 
     itemsCount.textContent = count;
-    const vat = total * 0.07;
-    const totalWithVat = total + vat;
+    const vat = total * 7 / 107; // prices already include VAT
+    const totalWithVat = total;
 
     subtotalEl.textContent = '฿' + total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     document.getElementById('pos-vat').textContent = '฿' + vat.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -391,8 +391,7 @@
       }).join('');
     }
     if (payTotal) {
-      const vat = total * 0.07;
-      const totalWithVat = total + vat;
+      const totalWithVat = total; // prices already include VAT
       payTotal.textContent = '฿' + totalWithVat.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
@@ -485,7 +484,7 @@
       }
     }
     const total = posCart.reduce((s, i) => s + (i.price * i.quantity), 0);
-    const totalWithVat = total * 1.07;
+    const totalWithVat = total; // prices already include VAT
     const changeEl = document.getElementById('pos-cash-change');
     if (!changeEl) return;
     const change = Math.max(0, val - totalWithVat);
@@ -536,7 +535,7 @@
       const input = document.getElementById('pos-cash-received');
       let val = parseFloat(input ? input.value : 0) || 0;
       const total = posCart.reduce((s, i) => s + (i.price * i.quantity), 0);
-      const totalWithVat = total * 1.07;
+      const totalWithVat = total; // prices already include VAT
       if (val < totalWithVat) {
         alert('กรุณาระบุจำนวนเงินสดให้ครบถ้วน (ต้องมากกว่าหรือเท่ากับยอดรวมสุทธิ)');
         return;
