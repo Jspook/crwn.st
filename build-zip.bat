@@ -16,7 +16,7 @@ for %%F in (start.bat server.js package.json package-lock.json .env.example .env
   if exist "%%F" copy /Y "%%F" "%PKG_DIR%\" >nul
 )
 
-rem โฟลเดอร์ฐานข้อมูล: schema + seed + db layer (ไม่รวม migrations)
+rem โฟลเดอร์ฐานข้อมูล: schema + seed + db layer
 copy /Y "database\db.js" "%PKG_DIR%\database\" >nul
 copy /Y "database\schema.sql" "%PKG_DIR%\database\" >nul
 copy /Y "database\seed.js" "%PKG_DIR%\database\" >nul
