@@ -1,29 +1,30 @@
 // ==========================================================
-// crwn.st Product Mock Image Resolver
-// Maps product categories/tags into clean, aesthetic local mock images
+// crwn.st Product Image Resolver
+// Each product has public/images/products/<ITM_ID>.webp.
+// Products without an image fall back to a category image.
 // ==========================================================
 
-function getProductMockImage(tag, id) {
-  const num = id ? (parseInt(String(id).replace(/[^0-9]/g, ''), 10) || 1) : 1;
-  const variantIndex = (num % 2) + 1; // Alternates between 1 and 2
-  const cleanTag = String(tag || '').toLowerCase().trim();
+const fs = require('fs');
+const path = require('path');
 
-  if (cleanTag === 'outerwear') {
-    return `/images/products/outerwear-${variantIndex}.jpg`;
+const PRODUCT_IMG_DIR = path.join(__dirname, '..', 'public', 'images', 'products');
+const PRODUCT_IMG_FILES = new Set(fs.existsSync(PRODUCT_IMG_DIR) ? fs.readdirSync(PRODUCT_IMG_DIR) : []);
+
+function getProductMockImage(tag, productId) {
+  const id = String(productId || '').trim().toLowerCase();
+  if (id && PRODUCT_IMG_FILES.has(`${id}.webp`)) {
+    return `/images/products/${id}.webp`;
   }
-  if (cleanTag === 'bottom') {
-    return `/images/products/bottom-${variantIndex}.jpg`;
-  }
-  if (cleanTag === 'skirt') {
-    return `/images/products/skirt-${variantIndex}.jpg`;
-  }
-  if (cleanTag === 'accessory') {
-    return `/images/products/accessory-${variantIndex}.jpg`;
-  }
-  // Default to top
-  return `/images/products/top-${variantIndex}.jpg`;
+
+  const numMatch = id.match(/\d+/);
+  const num = numMatch ? parseInt(numMatch[0], 10) : 1;
+  const variantIdx = (num % 2) + 1;
+
+  const normalizedTag = String(tag || '').toLowerCase().trim();
+  const validTags = ['top', 'bottom', 'outerwear', 'skirt', 'accessory'];
+  const prefix = validTags.includes(normalizedTag) ? normalizedTag : 'top';
+
+  return `/images/products/${prefix}-${variantIdx}.jpg`;
 }
 
-module.exports = {
-  getProductMockImage
-};
+module.exports = { getProductMockImage };
