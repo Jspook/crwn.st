@@ -78,8 +78,16 @@ app.use((req, res) => {
 async function startServer() {
   try {
     await initDb();
-    app.listen(PORT, '0.0.0.0', () => {
+    const server = app.listen(PORT, '0.0.0.0', () => {
       console.log(`crwn.st server running smoothly at http://localhost:${PORT}`);
+    });
+    server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.error(`❌ พอร์ต ${PORT} ถูกใช้งานอยู่แล้ว (มีโปรแกรมอื่นหรือเซิร์ฟเวอร์อีกตัวเปิดอยู่) ปิดโปรแกรมนั้นก่อนแล้วรันใหม่`);
+      } else {
+        console.error('Server error:', err);
+      }
+      process.exit(1);
     });
   } catch (err) {
     console.error('Failed to start server:', err);

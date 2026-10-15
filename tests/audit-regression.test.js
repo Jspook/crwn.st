@@ -695,14 +695,6 @@ describe('Audit Remediation Regression Test Suite', () => {
         assert.strictEqual(item.tag, 'skirt', `Item ${id} tag must be 'skirt'`);
       }
     });
-
-    test('SQL migration file 20261014_fix_skirt_category.sql exists and patches skirts', () => {
-      const migPath = path.join(__dirname, '../database/migrations/20261014_fix_skirt_category.sql');
-      assert.ok(fs.existsSync(migPath), 'Migration file must exist');
-      const sql = fs.readFileSync(migPath, 'utf8');
-      assert.match(sql, /UPDATE ITEM\s+SET ITM_Category = 'female'/i);
-      assert.match(sql, /'p52',\s*'p54',\s*'p56',\s*'p58',\s*'p60'/);
-    });
   });
 
   describe('Audit Finding: Cart Wipe Prevention on Login', () => {

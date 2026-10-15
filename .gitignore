@@ -3,9 +3,6 @@ node_modules
 .env.isolated
 scratch/
 WALKTHROUGH.md
-build-zip.bat
-exclude.txt
-start.bat
 
 # Audit/Archive raw artifacts: DB backups (production row data) + one-off scripts — never commit
 Audit/Archive/*.sql
