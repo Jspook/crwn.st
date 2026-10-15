@@ -60,11 +60,8 @@ const Cart = {
           // Add fallback image if missing
           data.items.forEach(item => {
             if (!item.image) {
-              const tag = item.tag || 'top';
               const pId = item.productId || (item.sku ? item.sku.split('-')[0] : 'p1');
-              const num = parseInt(String(pId).replace(/[^0-9]/g, ''), 10) || 1;
-              const vIdx = (num % 2) + 1;
-              item.image = `/images/products/${tag}-${vIdx}.jpg`;
+              item.image = `/images/products/${String(pId).toLowerCase()}.webp`;
             }
           });
           // Server cart is authoritative: on fresh login or after checkout/reset, empty items take precedence
@@ -111,9 +108,7 @@ const Cart = {
         price: Number(item.price),
         image: item.image || (() => {
           const pId = item.productId || (item.sku ? item.sku.split('-')[0] : 'p1');
-          const num = parseInt(String(pId).replace(/[^0-9]/g, ''), 10) || 1;
-          const vIdx = (num % 2) + 1;
-          return `/images/products/top-${vIdx}.jpg`;
+          return `/images/products/${String(pId).toLowerCase()}.webp`;
         })(),
         quantity: 1,
       });
