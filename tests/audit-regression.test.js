@@ -19,6 +19,7 @@ const path = require('node:path');
 const { setMockHandler } = require('../database/db');
 const roomResolver = require('../utils/roomResolver');
 const apiRoutes = require('../routes/api');
+const { roomOccupancy } = require('../utils/roomOccupancy');
 
 const TEST_SECRET = process.env.COOKIE_SECRET;
 
@@ -83,9 +84,6 @@ function makeRequest(app, options, body = null, cookies = null) {
 // In-memory mock data store
 let mockFittingRoomRows = [];
 let mockCartItemRows = [];
-// Durable room session authority (mirrors FITTING_ROOM_SLOT / FITTING_ROOM_SESSION)
-let mockSlots = new Map();    // roomNumber -> sessionId | null
-let mockSessions = new Map(); // sessionId -> session row
 
 const mockCatalog = [
   {
@@ -118,212 +116,54 @@ const mockCatalog = [
 function resetMockDb() {
   mockFittingRoomRows = [];
   mockCartItemRows = [];
-  mockSlots = new Map();
-  mockSessions = new Map();
+  roomOccupancy.clear();
 }
 
 function handleMockQuery(type, sql, params = []) {
   const norm = sql.trim().replace(/\s+/g, ' ');
 
-  // 0. Durable session authority — must precede the FITTING_ROOM matchers below, because e.g.
-  //    "INSERT INTO FITTING_ROOM_SESSION" also contains "INSERT INTO FITTING_ROOM".
-  if (norm.startsWith('INSERT IGNORE INTO FITTING_ROOM_SLOT')) {
-    const room = String(params[0]);
-    if (!mockSlots.has(room)) mockSlots.set(room, null);
-    return { changes: 1 };
-  }
-  if (norm.includes('FROM FITTING_ROOM_SLOT') && norm.includes('FOR UPDATE')) {
-    const room = String(params[0]);
-    return { FTR_ActiveSessionID: mockSlots.has(room) ? mockSlots.get(room) : null };
-  }
-  if (norm.includes('FROM FITTING_ROOM_SESSION') && norm.includes('FTR_SessionID = ?')) {
-    return mockSessions.get(String(params[0])) || null;
-  }
-  if (norm.startsWith('INSERT INTO FITTING_ROOM_SESSION')) {
-    const [sessionId, room, cusId] = params;
-    mockSessions.set(String(sessionId), {
-      FTR_SessionID: String(sessionId), FTR_RoomNumber: String(room),
-      CUS_ID: String(cusId), FTR_EndedAt: null, expired: false
-    });
-    return { changes: 1 };
-  }
-  if (norm.startsWith('UPDATE FITTING_ROOM_SESSION SET FTR_LastSeenAt')) return { changes: 1 };
-  if (norm.startsWith('UPDATE FITTING_ROOM_SESSION SET FTR_EndedAt')) {
-    const s = mockSessions.get(String(params[1]));
-    if (s) s.FTR_EndedAt = new Date();
-    return { changes: 1 };
-  }
-  if (norm.startsWith('UPDATE FITTING_ROOM_SLOT SET FTR_ActiveSessionID = NULL')) {
-    const room = String(params[0]);
-    if (mockSlots.get(room) === String(params[1])) { mockSlots.set(room, null); return { changes: 1 }; }
-    return { changes: 0 };
-  }
-  if (norm.startsWith('UPDATE FITTING_ROOM_SLOT SET FTR_ActiveSessionID = ?')) {
-    const room = String(params[1]);
-    if (mockSlots.get(room) == null) { mockSlots.set(room, String(params[0])); return { changes: 1 }; }
-    return { changes: 0 };
-  }
-  // closeSession() cancels only the still-pending rows of that exact session.
-  if (norm.startsWith('UPDATE FITTING_ROOM SET FTR_CancelledAt')) {
-    const sessionId = String(params[0]);
-    let changes = 0;
-    for (const r of mockFittingRoomRows) {
-      if (r.FTR_SessionID === sessionId && r.EMP_ID == null && !r.FTR_FinishTime && !r.FTR_CancelledAt) {
-        r.FTR_CancelledAt = new Date();
-        changes++;
-      }
-    }
-    return { changes };
-  }
-  // getActive (type 'get') / listActive (type 'query')
-  if (norm.includes('FROM FITTING_ROOM_SLOT slot') && norm.includes('JOIN FITTING_ROOM_SESSION s')) {
-    const live = [...mockSlots]
-      .filter(([, id]) => id && mockSessions.get(id) && !mockSessions.get(id).FTR_EndedAt && !mockSessions.get(id).expired)
-      .map(([room, id]) => ({ FTR_RoomNumber: room, FTR_SessionID: id, CUS_ID: mockSessions.get(id).CUS_ID }));
-    if (type === 'get') return live.find(r => r.FTR_RoomNumber === String(params[0])) || null;
-    return live;
-  }
-  // Staff PATCH: locator, locked row read, and the guarded conditional updates.
-  if (norm.includes('SELECT FTR_Number FROM FITTING_ROOM WHERE FTR_OrderID = ?')) {
-    const r = mockFittingRoomRows.find(x => x.FTR_OrderID === String(params[0]));
-    return r ? { FTR_Number: r.FTR_Number } : null;
-  }
-  if (norm.includes('SELECT EMP_ID, FTR_FinishTime, FTR_CancelledAt, FTR_SessionID') && norm.includes('FOR UPDATE')) {
-    const r = mockFittingRoomRows.find(x => x.FTR_OrderID === String(params[0]));
-    return r ? { EMP_ID: r.EMP_ID, FTR_FinishTime: r.FTR_FinishTime, FTR_CancelledAt: r.FTR_CancelledAt, FTR_SessionID: r.FTR_SessionID } : null;
-  }
-  if (norm.startsWith('UPDATE FITTING_ROOM SET EMP_ID = ?') && norm.includes('AND EMP_ID IS NULL AND FTR_FinishTime IS NULL')) {
-    const [empId, orderId, sessionId] = params;
-    const r = mockFittingRoomRows.find(x => x.FTR_OrderID === String(orderId));
-    if (!r || r.FTR_CancelledAt || r.FTR_SessionID !== String(sessionId) || r.EMP_ID != null || r.FTR_FinishTime) return { changes: 0 };
-    r.EMP_ID = empId;
-    return { changes: 1 };
-  }
-  if (norm.startsWith('UPDATE FITTING_ROOM SET FTR_FinishTime = NOW()') && norm.includes('AND EMP_ID = ? AND FTR_FinishTime IS NULL')) {
-    const [orderId, sessionId, empId] = params;
-    const r = mockFittingRoomRows.find(x => x.FTR_OrderID === String(orderId));
-    if (!r || r.FTR_CancelledAt || r.FTR_SessionID !== String(sessionId) || String(r.EMP_ID) !== String(empId) || r.FTR_FinishTime) return { changes: 0 };
-    r.FTR_FinishTime = new Date();
-    return { changes: 1 };
-  }
-  if (norm.startsWith('SELECT FTR_FinishTime FROM FITTING_ROOM')) {
-    const r = mockFittingRoomRows.find(x => x.FTR_OrderID === String(params[0]));
-    return r ? { FTR_FinishTime: r.FTR_FinishTime } : null;
-  }
+  // 1. FITTING_ROOM queries (schema.sql columns only; occupancy lives in memory)
 
-  // 1. FITTING_ROOM Queries
-
-  // A. Active session lookup for customer in room:
-  //    WHERE FTR_Number = ? AND CUS_ID = ? AND FTR_CustomerPresent = 1 AND FTR_ReleasedAt IS NULL
-  if (norm.includes('FROM FITTING_ROOM') && norm.includes('WHERE FTR_Number = ? AND CUS_ID = ? AND FTR_CustomerPresent = 1 AND FTR_ReleasedAt IS NULL')) {
-    const roomNum = String(params[0]);
-    const cusId = String(params[1]);
-    const found = mockFittingRoomRows.find(r => String(r.FTR_Number) === roomNum && String(r.CUS_ID) === cusId && r.FTR_CustomerPresent === 1 && !r.FTR_ReleasedAt);
-    return type === 'get' ? (found ? { ...found } : null) : (found ? [{ ...found }] : []);
-  }
-
-  // B. Active room occupancy lock (for enter/staff release):
-  //    WHERE FTR_Number = ? AND FTR_CustomerPresent = 1 AND FTR_ReleasedAt IS NULL
-  if (norm.includes('FROM FITTING_ROOM') && norm.includes('WHERE FTR_Number = ? AND FTR_CustomerPresent = 1 AND FTR_ReleasedAt IS NULL')) {
-    const roomNum = String(params[0]);
-    const found = mockFittingRoomRows.find(r => String(r.FTR_Number) === roomNum && r.FTR_CustomerPresent === 1 && !r.FTR_ReleasedAt);
-    return type === 'get' ? (found ? { ...found } : null) : (found ? [{ ...found }] : []);
-  }
-
-  // C. Presence rows for GET /fitting-rooms (all rooms without room filter):
-  if (norm.includes('FROM FITTING_ROOM') && norm.includes('WHERE FTR_CustomerPresent = 1 AND FTR_ReleasedAt IS NULL')) {
-    const active = mockFittingRoomRows.filter(r => r.FTR_CustomerPresent === 1 && !r.FTR_ReleasedAt);
-    return active.map(r => ({
-      roomNum: r.FTR_Number,
-      FTR_CustomerPresent: r.FTR_CustomerPresent,
-      CUS_ID: r.CUS_ID,
-      FTR_SessionID: r.FTR_SessionID
-    }));
-  }
-
-  // D. Single order lookup by FTR_OrderID (e.g. for PATCH)
-  if (norm.includes('FROM FITTING_ROOM') && norm.includes('WHERE FTR_OrderID = ?')) {
-    const orderId = String(params[0]);
-    const found = mockFittingRoomRows.find(r => r.FTR_OrderID === orderId);
-    return type === 'get' ? (found ? { ...found } : null) : (found ? [{ ...found }] : []);
-  }
-
-  // E. Mark stale prior sessions as released
-  if (norm.includes('UPDATE FITTING_ROOM SET FTR_ReleasedAt = NOW(), FTR_CustomerPresent = 0 WHERE FTR_Number = ? AND FTR_ReleasedAt IS NULL')) {
-    const roomNum = String(params[0]);
-    let changes = 0;
-    for (const r of mockFittingRoomRows) {
-      if (String(r.FTR_Number) === roomNum && !r.FTR_ReleasedAt) {
-        r.FTR_ReleasedAt = new Date();
-        r.FTR_CustomerPresent = 0;
-        changes++;
-      }
-    }
-    return { changes };
-  }
-
-  // F. Insert fitting order record: [orderId, targetSku, roomNum, cusId, sessionId]
-  if (norm.includes('INSERT INTO FITTING_ROOM')) {
-    const [orderId, sku, roomNum, cusId, sessionId] = params;
-    const orderRecord = {
+  // Insert fitting order: [orderId, sku, roomNumber, cusId, orderTime]
+  if (norm.startsWith('INSERT INTO FITTING_ROOM (FTR_OrderID, ITV_SKUID, EMP_ID, FTR_Number, CUS_ID, FTR_OrderTime) VALUES (?, ?, NULL, ?, ?, ?)')) {
+    const [orderId, sku, roomNum, cusId, orderTime] = params;
+    mockFittingRoomRows.push({
       FTR_OrderID: orderId,
       ITV_SKUID: sku,
       EMP_ID: null,
       FTR_Number: String(roomNum),
-      FTR_OrderTime: new Date(),
+      FTR_OrderTime: orderTime,
       FTR_FinishTime: null,
-      FTR_CancelledAt: null,
-      CUS_ID: String(cusId),
-      FTR_SessionID: sessionId == null ? null : String(sessionId)
-    };
-    mockFittingRoomRows.push(orderRecord);
+      CUS_ID: String(cusId)
+    });
     return { insertId: 1, changes: 1 };
   }
 
-  // G. Release specific session for room
-  if (norm.includes('UPDATE FITTING_ROOM') && norm.includes('FTR_SessionID = ?')) {
-    const roomNum = String(params[0]);
-    const sessionId = String(params[1]);
-    let changes = 0;
-    for (const r of mockFittingRoomRows) {
-      if (String(r.FTR_Number) === roomNum && r.FTR_SessionID === sessionId && !r.FTR_ReleasedAt) {
-        r.FTR_ReleasedAt = new Date();
-        r.FTR_CustomerPresent = 0;
-        changes++;
-      }
-    }
-    return { changes };
+  // Staff PATCH: locked row read
+  if (norm.startsWith('SELECT FTR_OrderID, CUS_ID, FTR_Number, FTR_OrderTime, EMP_ID, FTR_FinishTime FROM FITTING_ROOM WHERE FTR_OrderID = ?')) {
+    const r = mockFittingRoomRows.find(x => x.FTR_OrderID === String(params[0]));
+    return r ? { ...r } : null;
+  }
+  // Claim: [empId, orderId]
+  if (norm === 'UPDATE FITTING_ROOM SET EMP_ID = ? WHERE FTR_OrderID = ? AND EMP_ID IS NULL AND FTR_FinishTime IS NULL') {
+    const [empId, orderId] = params;
+    const r = mockFittingRoomRows.find(x => x.FTR_OrderID === String(orderId));
+    if (!r || r.EMP_ID != null || r.FTR_FinishTime) return { changes: 0 };
+    r.EMP_ID = empId;
+    return { changes: 1 };
+  }
+  // Complete: [finishTime, orderId, empId]
+  if (norm === 'UPDATE FITTING_ROOM SET FTR_FinishTime = ? WHERE FTR_OrderID = ? AND EMP_ID = ? AND FTR_FinishTime IS NULL') {
+    const [finishTime, orderId, empId] = params;
+    const r = mockFittingRoomRows.find(x => x.FTR_OrderID === String(orderId));
+    if (!r || String(r.EMP_ID) !== String(empId) || r.FTR_FinishTime) return { changes: 0 };
+    r.FTR_FinishTime = finishTime;
+    return { changes: 1 };
   }
 
-  // H. Update order status: complete / preparing
-  if (norm.includes('UPDATE FITTING_ROOM SET FTR_FinishTime = COALESCE(FTR_FinishTime, NOW()), EMP_ID = COALESCE(EMP_ID, ?) WHERE FTR_OrderID = ?')) {
-    const empId = params[0];
-    const orderId = params[1];
-    const r = mockFittingRoomRows.find(row => row.FTR_OrderID === orderId);
-    if (r) {
-      if (!r.FTR_FinishTime) r.FTR_FinishTime = new Date();
-      if (!r.EMP_ID) r.EMP_ID = empId;
-      return { changes: 1 };
-    }
-    return { changes: 0 };
-  }
-
-  if (norm.includes('UPDATE FITTING_ROOM SET EMP_ID = ? WHERE FTR_OrderID = ?')) {
-    const empId = params[0];
-    const orderId = params[1];
-    const r = mockFittingRoomRows.find(row => row.FTR_OrderID === orderId);
-    if (r) {
-      r.EMP_ID = empId;
-      return { changes: 1 };
-    }
-    return { changes: 0 };
-  }
-
-  // I. Orders list query: FROM FITTING_ROOM f LEFT JOIN ITEM_VARIANT v ...
+  // Orders list query (coarse SQL filter; the service applies the visit filter in JS)
   if (norm.includes('FROM FITTING_ROOM f') && norm.includes('LEFT JOIN ITEM_VARIANT v')) {
-    // Return item requests (ITV_SKUID not null) that are not released
-    const validOrders = mockFittingRoomRows.filter(r => r.ITV_SKUID && !r.FTR_ReleasedAt);
-    return validOrders.map(o => {
+    return mockFittingRoomRows.filter(r => r.ITV_SKUID).map(o => {
       let catalogItem = null;
       let variant = null;
       for (const itm of mockCatalog) {
@@ -348,7 +188,8 @@ function handleMockQuery(type, sql, params = []) {
         price: catalogItem ? catalogItem.price : 0,
         tag: catalogItem ? catalogItem.tag : 'general',
         productId: catalogItem ? catalogItem.id : 'p1',
-        staffName: o.EMP_ID ? 'Staff Member' : null
+        staffName: o.EMP_ID ? 'Staff Member' : null,
+        cusId: o.CUS_ID
       };
     });
   }
@@ -569,16 +410,22 @@ describe('Audit Remediation Regression Test Suite', () => {
       assert.strictEqual(releaseRes.body.success, true);
     });
 
-    test('entering a room pins the durable slot and writes a session row, but no order row', async () => {
-      const res = await makeRequest(app, {
-        path: '/api/fitting-rooms/1/enter',
-        method: 'POST'
-      }, {}, customer1Cookie);
-      assert.strictEqual(res.status, 200);
-      assert.strictEqual(mockFittingRoomRows.length, 0);
-      assert.strictEqual(mockSlots.get('1'), res.body.sessionId);
-      assert.ok(mockSessions.get(res.body.sessionId));
-      assert.strictEqual(mockSessions.get(res.body.sessionId).CUS_ID, 'cus_001');
+    test('entering a room runs no SQL and records the owner in memory, no order row', async () => {
+      const seen = [];
+      setMockHandler(async (op, sql) => { seen.push(sql); throw new Error('enter must not run SQL'); });
+      try {
+        const res = await makeRequest(app, {
+          path: '/api/fitting-rooms/1/enter',
+          method: 'POST'
+        }, {}, customer1Cookie);
+        assert.strictEqual(res.status, 200);
+        assert.strictEqual(seen.length, 0);
+        assert.strictEqual(mockFittingRoomRows.length, 0);
+        assert.strictEqual(roomOccupancy.get('1').cusId, 'cus_001');
+        assert.strictEqual(roomOccupancy.get('1').sessionId, res.body.sessionId);
+      } finally {
+        setMockHandler(handleMockQuery);
+      }
     });
 
     test('rooms 5 and 10 can be entered by QR barcode, 11 is rejected', async () => {
@@ -592,7 +439,7 @@ describe('Audit Remediation Regression Test Suite', () => {
       assert.strictEqual(r11.status, 400);
     });
 
-    test('GET /fitting-rooms reflects durable session occupancy and isMyRoom', async () => {
+    test('GET /fitting-rooms reflects in-memory occupancy and isMyRoom', async () => {
       await makeRequest(app, { path: '/api/fitting-rooms/1/enter', method: 'POST' }, {}, customer1Cookie);
       const mine = await makeRequest(app, { path: '/api/fitting-rooms' }, null, customer1Cookie);
       const theirs = await makeRequest(app, { path: '/api/fitting-rooms' }, null, customer2Cookie);
@@ -614,8 +461,8 @@ describe('Audit Remediation Regression Test Suite', () => {
       const enter = await makeRequest(app, { path: '/api/fitting-rooms/1/enter', method: 'POST' }, {}, customer1Cookie);
       const res = await makeRequest(app, { path: '/api/fitting-rooms/1/release', method: 'POST' }, {}, customer2Cookie);
       assert.strictEqual(res.status, 403);
-      assert.strictEqual(mockSlots.get('1'), enter.body.sessionId);
-      assert.strictEqual(mockSessions.get(enter.body.sessionId).FTR_EndedAt, null);
+      assert.strictEqual(roomOccupancy.get('1').cusId, 'cus_001');
+      assert.strictEqual(roomOccupancy.get('1').sessionId, enter.body.sessionId);
     });
 
     test('ordering without holding the room is 403', async () => {

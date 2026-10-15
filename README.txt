@@ -219,7 +219,7 @@ $ npm run test:regression
   ทำการ Re-seed ข้อมูลเริ่มต้น (สินค้า, บัญชีผู้ใช้, ตำแหน่งจัดเก็บ) ลงในตารางเดิม
 
 - Migration Files:
-  * database/migrations/20261005_add_session_id.sql : เพิ่มคอลัมน์ Session และ Customer
+  * database/migrations/20261014_room_schema_and_numbers.sql : ลบแถว dummy, normalize เลขห้อง, ลบ column ที่ไม่อยู่ใน schema.sql
   * database/migrations/20261014_fix_skirt_category.sql : ปรับประเภทกระโปรงเป็น 'female'
 
 
@@ -255,15 +255,20 @@ crwn.st/
 |-- middleware/            # มิดเดิลแวร์การตรวจสอบสิทธิ์ (Authentication & Role Guards)
 |-- public/                # ไฟล์สถิต (Static Assets: CSS, Client JS, Icons, Images)
 |   |-- js/app.js          # Client-side Logic หลัก, การจัดการ Modal และการสแกน QR
-|   |-- js/cart.js         # Client-side Shopping Cart Manager
-|   +-- js/cashier.js      # Client-side POS Checkout & Barcode Scanner
+|   +-- js/cart.js         # Client-side Shopping Cart Manager
 |-- routes/                # Express API & View Routing Handlers
-|   |-- api.js             # REST API Endpoints สำหรับสินค้า, ตะกร้า, ห้องลอง, ใบเสร็จ
+|   |-- api.js             # Aggregator ที่ mount sub-router ของ /api
+|   |-- api/               # REST API แยกตาม domain
+|   |   |-- products.js    # สินค้าและบาร์โค้ด
+|   |   |-- cart.js        # ตะกร้าสินค้า
+|   |   |-- fitting.js     # ห้องลองและออร์เดอร์ลองเสื้อ
+|   |   |-- receipts.js    # ใบเสร็จและการขาย
+|   |   +-- users.js       # ค้นหาสมาชิกสำหรับ POS
 |   |-- auth.js            # Authentication Endpoints (Login, Register, Logout)
 |   +-- views.js           # Server-side Rendering View Routes
 |-- test/                  # ชุดทดสอบเฉพาะทาง (Room Exit Flow)
 |-- tests/                 # ชุดทดสอบระดับระบบ (Regression, Room Resolver, API Safety)
-|-- utils/                 # โมดูลฟังก์ชันช่วยเหลือ (Canonical Room Resolver)
+|-- utils/                 # โมดูลช่วยเหลือ (roomResolver, roomOccupancy, productImages, ids)
 |-- views/                 # EJS Template Views (Customer, Staff, Cashier, Modals)
 |-- .env.example           # แม่แบบตัวแปรสภาพแวดล้อม
 |-- package.json           # โครงสร้างโครงการ Dependencies และคำสั่งสคริปต์

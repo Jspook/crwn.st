@@ -46,6 +46,11 @@ function createRoomOccupancy({ ttlMs = DEFAULT_TTL_MS, now = Date.now } = {}) {
       }
       return { ok: false, reason: 'OCCUPIED' };
     }
+    // One active room per customer
+    const other = getByCustomer(owner);
+    if (other && other.roomNumber !== key) {
+      return { ok: false, reason: 'CUSTOMER_IN_OTHER_ROOM', roomNumber: other.roomNumber };
+    }
     const t = now();
     const sessionId = 'ses_' + crypto.randomUUID();
     rooms.set(key, { roomNumber: key, cusId: owner, sessionId, since: t, lastSeen: t });
@@ -62,7 +67,7 @@ function createRoomOccupancy({ ttlMs = DEFAULT_TTL_MS, now = Date.now } = {}) {
     if (!existing || cusId === undefined || existing.cusId !== String(cusId)) {
       return { ok: false, reason: 'NOT_ACTIVE' };
     }
-    if (sessionId && String(sessionId).trim() !== existing.sessionId) {
+    if (!sessionId || String(sessionId).trim() !== existing.sessionId) {
       return { ok: false, reason: 'SESSION_MISMATCH' };
     }
     rooms.delete(key);
