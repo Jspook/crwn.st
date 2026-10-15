@@ -13,7 +13,6 @@ process.env.USE_MOCK_DB = 'true';
 const secret = 'test_secret_32_characters_minimum_length_abcdef';
 const { setMockHandler } = require('../database/db');
 const apiRoutes = require('../routes/api');
-const { roomOccupancy } = require('../utils/roomOccupancy');
 const app = express();
 app.use(express.json());
 app.use(cookieParser(secret));
@@ -163,29 +162,84 @@ test('cart exit can retry after a failed release and only then navigate', async 
   assert.equal(attempts, 2);
 });
 
-test('release endpoint tolerates an empty POST body from an older client', async () => {
-  roomOccupancy.clear();
-  roomOccupancy.acquire('1', 'u1');
-  setMockHandler(async (op, sql) => {
-    throw new Error(`Release must not touch the DB: ${op} ${sql}`);
+// Durable-session mock: the route now serializes on FITTING_ROOM_SLOT and reads FITTING_ROOM_SESSION.
+function mockSessionStore({ sessionId = 'ses_current', cusId = 'u1', expired = false } = {}) {
+  const slots = new Map([['1', sessionId]]);
+  const sessions = new Map([[sessionId, {
+    FTR_SessionID: sessionId, FTR_RoomNumber: '1', CUS_ID: cusId, FTR_EndedAt: null, expired
+  }]]);
+  const cancelledSessions = [];
+  setMockHandler(async (op, sql, params = []) => {
+    const q = sql.replace(/\s+/g, ' ').trim();
+    if (q.includes('FROM FITTING_ROOM_SLOT') && q.includes('FOR UPDATE')) {
+      const id = slots.get(params[0]);
+      return { FTR_ActiveSessionID: id === undefined ? null : id };
+    }
+    if (q.includes('FROM FITTING_ROOM_SESSION') && q.includes('FTR_SessionID = ?')) {
+      return sessions.get(params[0]) || null;
+    }
+    if (q.startsWith('UPDATE FITTING_ROOM SET FTR_CancelledAt')) {
+      cancelledSessions.push(params[0]);
+      return { changes: 0 };
+    }
+    if (q.startsWith('UPDATE FITTING_ROOM_SESSION SET FTR_EndedAt')) {
+      sessions.get(params[1]).FTR_EndedAt = new Date();
+      return { changes: 1 };
+    }
+    if (q.startsWith('UPDATE FITTING_ROOM_SLOT SET FTR_ActiveSessionID = NULL')) {
+      if (slots.get(params[0]) === params[1]) { slots.delete(params[0]); return { changes: 1 }; }
+      return { changes: 0 };
+    }
+    throw new Error(`Unexpected SQL: ${op} ${q}`);
   });
+  return { slots, sessions, cancelledSessions };
+}
+
+// CONTRACT CHANGE (approved policy): a customer release must name its session, so an empty body is
+// no longer accepted. The pre-refactor suite asserted 200 here; that expectation is deliberately gone.
+test('release without a sessionId is rejected with 403 and keeps the session intact', async () => {
+  const store = mockSessionStore();
   await withServer(async server => {
     const response = await request(server, '5684848452325');
+    assert.equal(response.status, 403);
+    assert.match(response.body.error, /รหัสเซสชันห้องลองไม่ตรงกับเซสชันปัจจุบัน/);
+  });
+  assert.equal(store.slots.get('1'), 'ses_current');
+  assert.equal(store.sessions.get('ses_current').FTR_EndedAt, null);
+  assert.deepEqual(store.cancelledSessions, []);
+});
+
+test('release with the matching session clears the slot and reports success', async () => {
+  const store = mockSessionStore();
+  await withServer(async server => {
+    const response = await request(server, '5684848452325', { sessionId: 'ses_current' });
     assert.equal(response.status, 200);
     assert.equal(response.body.success, true);
   });
-  assert.equal(roomOccupancy.get('1'), null);
+  assert.equal(store.slots.has('1'), false);
+  assert.ok(store.sessions.get('ses_current').FTR_EndedAt);
 });
 
 test('release of an unknown session returns a 403 error the client can display', async () => {
-  roomOccupancy.clear();
-  roomOccupancy.acquire('1', 'u1');
+  const store = mockSessionStore();
   await withServer(async server => {
     const response = await request(server, '5684848452325', { sessionId: 'ses_unknown' });
     assert.equal(response.status, 403);
-    assert.ok(response.body.error);
+    assert.match(response.body.error, /รหัสเซสชันห้องลองไม่ตรงกับเซสชันปัจจุบัน/);
   });
-  assert.ok(roomOccupancy.get('1'));
-  roomOccupancy.clear();
+  assert.equal(store.slots.get('1'), 'ses_current');
+});
+
+test('release on an empty room returns 403 without touching any session', async () => {
+  setMockHandler(async (op, sql, params = []) => {
+    const q = sql.replace(/\s+/g, ' ').trim();
+    if (q.includes('FROM FITTING_ROOM_SLOT') && q.includes('FOR UPDATE')) return { FTR_ActiveSessionID: null };
+    throw new Error(`Unexpected SQL: ${op} ${q}`);
+  });
+  await withServer(async server => {
+    const response = await request(server, '5684848452325', { sessionId: 'ses_current' });
+    assert.equal(response.status, 403);
+    assert.match(response.body.error, /no active fitting room session/);
+  });
 });
 

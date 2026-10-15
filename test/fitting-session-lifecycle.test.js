@@ -96,3 +96,42 @@ test('database cancellation failure cannot be reported as successful release', a
   db.setFailCancel(true);
   await assert.rejects(() => sessions.release('1', { cusId: 'customer1', sessionId: s.sessionId }), /mock cancellation failure/);
 });
+
+test('E2: release on an expired session reaps it (cancels pending, ends session, clears slot) and reports NOT_ACTIVE', async () => {
+  const db = fakeStore();
+  const s = await sessions.acquire('1', 'customer1');
+  db.orders.set('p', { session: s.sessionId, status: 'pending', cancelled: false });
+  db.orders.set('a', { session: s.sessionId, status: 'preparing', cancelled: false });
+  db.history.get(s.sessionId).expired = true;
+  const result = await sessions.release('1', { cusId: 'customer1', sessionId: s.sessionId });
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, 'NOT_ACTIVE');
+  assert.equal(db.orders.get('p').cancelled, true, 'pending of the expired session is cancelled');
+  assert.equal(db.orders.get('a').cancelled, false, 'preparing stays as history');
+  assert.ok(db.history.get(s.sessionId).FTR_EndedAt, 'expired session is ended');
+  assert.equal(db.slots.get('1'), null, 'slot is no longer pinned to the expired session');
+});
+
+test('E2: withLockedActive on an expired session reaps it without running the work callback', async () => {
+  const db = fakeStore();
+  const s = await sessions.acquire('1', 'customer1');
+  db.orders.set('p', { session: s.sessionId, status: 'pending', cancelled: false });
+  db.history.get(s.sessionId).expired = true;
+  let ran = false;
+  const result = await sessions.withLockedActive('1', {}, async () => { ran = true; });
+  assert.equal(result.ok, false);
+  assert.equal(ran, false);
+  assert.equal(db.orders.get('p').cancelled, true);
+  assert.equal(db.slots.get('1'), null);
+});
+
+test('E2: a live (non-expired) session is never reaped by withLockedActive', async () => {
+  const db = fakeStore();
+  const s = await sessions.acquire('1', 'customer1');
+  db.orders.set('p', { session: s.sessionId, status: 'pending', cancelled: false });
+  const result = await sessions.withLockedActive('1', { cusId: 'customer1' }, async (tx, active) => active.FTR_SessionID);
+  assert.equal(result.ok, true);
+  assert.equal(result.value, s.sessionId);
+  assert.equal(db.orders.get('p').cancelled, false);
+  assert.equal(db.slots.get('1'), s.sessionId);
+});
