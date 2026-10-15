@@ -17,6 +17,14 @@ if not exist ".env" (
   exit /b 1
 )
 
+netstat -ano | findstr /R /C:":3000 .*LISTENING" >nul 2>nul
+if not errorlevel 1 (
+  echo [ERROR] พอร์ต 3000 ถูกใช้งานอยู่แล้ว ^(มีโปรแกรมอื่นหรือเซิร์ฟเวอร์อีกตัวเปิดอยู่^)
+  echo ปิดโปรแกรมนั้นก่อน แล้วดับเบิลคลิก start.bat อีกครั้ง
+  pause
+  exit /b 1
+)
+
 if not exist "node_modules" (
   echo กำลังติดตั้ง dependencies ^(ครั้งแรกอาจใช้เวลาสักครู่^)...
   call npm install
