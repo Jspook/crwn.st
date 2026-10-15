@@ -91,4 +91,45 @@ describe('utils/roomResolver — Canonical Fitting Room Registry', () => {
     assert.deepEqual(resolveRoom('http://localhost:3000/customer/fitting-room?roomId=1'), { barcode: '5684848452325', roomNumber: '1', display: '1' });
     assert.deepEqual(resolveRoom('https://crwn.st/customer/fitting-room?roomId=5684848452325'), { barcode: '5684848452325', roomNumber: '1', display: '1' });
   });
+
+  // P1.5 — deep-link parsing robustness (card t_5d19c63b). These inputs are NOT resolved today.
+  // Root causes: the '?roomId=' gate is case-sensitive, the value pattern [^&]+ swallows the URL
+  // fragment, and the path branch requires an absolute http(s) URL. Expected = resolve to the room.
+  test('P1.5: resolves the room query key in any case (?RoomId=5, ?ROOMID=5)', () => {
+    const expected = { barcode: '5684848452329', roomNumber: '5', display: '5' };
+    assert.deepEqual(resolveRoom('?RoomId=5'), expected);
+    assert.deepEqual(resolveRoom('?ROOMID=5'), expected);
+    assert.deepEqual(resolveRoom('http://localhost:3000/customer/fitting-room?RoomId=5'), expected);
+  });
+
+  test('P1.5: ignores a URL fragment appended to the room value (?roomId=2#qr)', () => {
+    const expected = { barcode: '5684848452326', roomNumber: '2', display: '2' };
+    assert.deepEqual(resolveRoom('?roomId=2#qr'), expected);
+    assert.deepEqual(resolveRoom('2#qr'), expected);
+    assert.deepEqual(resolveRoom('http://localhost:3000/customer/fitting-room?roomId=2#qr'), expected);
+  });
+
+  test('P1.5: resolves a relative fitting-room path (/customer/fitting-room/4)', () => {
+    const expected = { barcode: '5684848452328', roomNumber: '4', display: '4' };
+    assert.deepEqual(resolveRoom('/customer/fitting-room/4'), expected);
+    assert.deepEqual(resolveRoom('/customer/fitting-room/4?src=qr'), expected);
+    assert.deepEqual(resolveRoom('/customer/fitting-room/4#qr'), expected);
+  });
+
+  test('P1.5: keeps every currently-accepted form and every rejection intact', () => {
+    // Accepted controls — must not regress while fixing the four cases above.
+    assert.deepEqual(resolveRoom('?roomId=3&src=qr'), { barcode: '5684848452327', roomNumber: '3', display: '3' });
+    assert.deepEqual(resolveRoom('?src=qr&roomId=9'), { barcode: '5684848452333', roomNumber: '9', display: '9' });
+    assert.deepEqual(resolveRoom('?room=10'), { barcode: '5684848452334', roomNumber: '10', display: '10' });
+    assert.deepEqual(resolveRoom('?roomId=%35'), { barcode: '5684848452329', roomNumber: '5', display: '5' });
+    assert.deepEqual(resolveRoom('http://localhost:3000/customer/fitting-room/4'), { barcode: '5684848452328', roomNumber: '4', display: '4' });
+    assert.deepEqual(resolveRoom('roomId=7'), { barcode: '5684848452331', roomNumber: '7', display: '7' });
+    // Rejections — must stay rejected (never resolve to a phantom room).
+    assert.equal(resolveRoom('?roomId=11'), null);
+    assert.equal(resolveRoom('?RoomId=99'), null);
+    assert.equal(resolveRoom('/customer/fitting-room/11'), null);
+    assert.equal(resolveRoom('?roomId='), null);
+    assert.equal(resolveRoom('?roomId=abc'), null);
+    assert.equal(resolveRoom('unknown-room'), null);
+  });
 });

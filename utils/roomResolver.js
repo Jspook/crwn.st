@@ -42,16 +42,26 @@ function resolveRoom(rawId) {
     return ROOM_REGISTRY[aliasBarcode];
   }
 
-  // 3. Extract parameter if input is a URL or query string (e.g. '?roomId=...' or '.../fitting-room?roomId=1')
-  let candidate = s;
-  if (candidate.includes('roomId=') || candidate.includes('room=')) {
-    const m = candidate.match(/(?:roomId|room)=([^&]+)/i);
+  // 3. Extract the room parameter from a URL, query string, or deep link (e.g. '?roomId=...',
+  //    '.../fitting-room?roomId=1', '.../fitting-room/4').
+  //    P1.5 fixes (card t_5d19c63b): the room key is matched case-insensitively, the value never
+  //    absorbs a '#fragment', and a relative deep-link path is accepted like its absolute form.
+  //    A leading '#' is preserved: '#7' is a colloquial room token, not a fragment on an empty base.
+  const hashIndex = s.indexOf('#');
+  const queryless = hashIndex > 0 ? s.slice(0, hashIndex) : s;
+
+  let candidate = queryless;
+  if (/(?:roomid|room)=/i.test(queryless)) {
+    const m = queryless.match(/(?:roomid|room)=([^&#]*)/i);
     if (m) {
       candidate = decodeURIComponent(m[1]).trim();
     }
-  } else if (candidate.startsWith('http://') || candidate.startsWith('https://')) {
-    const lastPart = candidate.split('/').pop().split('?')[0].trim();
+  } else if (queryless.startsWith('http://') || queryless.startsWith('https://')) {
+    const lastPart = queryless.split('/').pop().split('?')[0].trim();
     if (lastPart) candidate = lastPart;
+  } else if (queryless.startsWith('/') && queryless.includes('/fitting-room')) {
+    const lastPart = queryless.split('?')[0].split('/').filter(Boolean).pop();
+    if (lastPart && lastPart !== 'fitting-room') candidate = lastPart;
   }
 
   if (ROOM_REGISTRY[candidate]) {
