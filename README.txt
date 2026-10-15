@@ -276,7 +276,7 @@ crwn.st/
 |-- services/              # ตรรกะทางธุรกิจของแต่ละส่วน (catalog, cart, fittingOrders, receipts)
 |-- utils/                 # roomResolver, roomOccupancy (ห้องลองในหน่วยความจำ), productImages, ids
 |-- views/                 # EJS Templates (customer, staff, cashier, partials)
-+-- public/                # ไฟล์สถิต: CSS, JS ฝั่งลูกค้า, รูปสินค้า
++-- public/                # ไฟล์สถิต: CSS, JS ฝั่งลูกค้า, รูปสินค้า (images/products/<รหัสสินค้า>.webp)
 
 หมายเหตุ: โฟลเดอร์ tests/, test/ และ Audit/ ไม่อยู่ในแพ็กเกจส่งงาน (ยังอยู่ในคลัง Git สำหรับผู้พัฒนา)
 
