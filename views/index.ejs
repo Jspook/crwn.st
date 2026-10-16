@@ -263,7 +263,7 @@
     btn.disabled = true;
 
     try {
-      // Clear previous local cart cache so every login starts with a fresh empty cart
+      // Clear local cart cache only; the server cart (PAY_CART_ITEM) is reloaded by Cart.init() after redirect
       clearClientCartStorage();
 
       const res = await fetch('/api/auth/login', {
@@ -286,7 +286,7 @@
         return;
       }
 
-      // Ensure all cart storage for any user key is completely purged upon login
+      // Drop local cache of any previous user; this user's server cart is restored by Cart.init()
       clearClientCartStorage();
 
       showSuccess(`ยินดีต้อนรับคุณ ${data.user.name}`);

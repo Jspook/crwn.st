@@ -14,9 +14,21 @@ window.debounce = debounce;
 
 async function handleLogout() {
   try {
-    if (window.Cart && typeof window.Cart.clear === 'function') {
-      try { await window.Cart.clear(); } catch (e) {}
-    }
+    // Push the current cart to the server (awaited) so it persists across logout.
+    try {
+      // Cart is a top-level const in cart.js (not on window), so resolve the global first.
+      const cart = (typeof Cart !== 'undefined') ? Cart : window.Cart;
+      if (cart) {
+        if (typeof cart.loadFromStorage === 'function') cart.loadFromStorage();
+        if (Array.isArray(cart.items) && cart.items.length > 0) {
+          await fetch('/api/cart', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ items: cart.items })
+          });
+        }
+      }
+    } catch (e) {}
     try {
       for (let i = localStorage.length - 1; i >= 0; i--) {
         const k = localStorage.key(i);

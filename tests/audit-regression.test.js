@@ -19,6 +19,7 @@ const path = require('node:path');
 const { setMockHandler } = require('../database/db');
 const roomResolver = require('../utils/roomResolver');
 const apiRoutes = require('../routes/api');
+const authRoutes = require('../routes/auth');
 const { roomOccupancy } = require('../utils/roomOccupancy');
 
 const TEST_SECRET = process.env.COOKIE_SECRET;
@@ -288,6 +289,7 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser(TEST_SECRET));
 app.use('/api', apiRoutes);
+app.use('/api/auth', authRoutes);
 
 describe('Audit Remediation Regression Test Suite', () => {
   before(() => {
@@ -705,6 +707,43 @@ describe('Audit Remediation Regression Test Suite', () => {
         false,
         'routes/auth.js must not wipe cart items on customer login'
       );
+    });
+  });
+
+  describe('Cart persists across logout', () => {
+    beforeEach(resetMockDb);
+
+    test('Test A: server cart survives POST /api/auth/logout', async () => {
+      const cookie = makeSignedAuthCookie({ id: 'cus_logout_01', name: 'Dana', role: 'CUSTOMER' });
+
+      const addRes = await makeRequest(app, { path: '/api/cart', method: 'POST' },
+        { items: [{ sku: '8850010110001', quantity: 2 }] }, cookie);
+      assert.strictEqual(addRes.status, 200);
+
+      const logoutRes = await makeRequest(app, { path: '/api/auth/logout', method: 'POST' }, {}, cookie);
+      assert.strictEqual(logoutRes.status, 200);
+      assert.strictEqual(logoutRes.body.success, true);
+
+      const getRes = await makeRequest(app, { path: '/api/cart', method: 'GET' }, null, cookie);
+      assert.strictEqual(getRes.status, 200);
+      assert.strictEqual(getRes.body.items.length, 1);
+      assert.strictEqual(getRes.body.items[0].sku, '8850010110001');
+      assert.strictEqual(getRes.body.items[0].quantity, 2);
+    });
+
+    test('Test B: routes/auth.js does not call clearCart', () => {
+      const src = fs.readFileSync(path.join(__dirname, '../routes/auth.js'), 'utf8');
+      assert.strictEqual(src.includes('clearCart'), false);
+    });
+
+    test('Test C: handleLogout in app.js neither calls Cart.clear nor sends DELETE', () => {
+      const src = fs.readFileSync(path.join(__dirname, '../public/js/app.js'), 'utf8');
+      const start = src.indexOf('async function handleLogout() {');
+      const end = src.indexOf('\n// Room Scanner Modal', start);
+      assert.ok(start >= 0 && end > start, 'handleLogout is present and bounded');
+      const slice = src.slice(start, end);
+      assert.strictEqual(slice.includes('Cart.clear('), false);
+      assert.strictEqual(slice.includes("method: 'DELETE'"), false);
     });
   });
 });

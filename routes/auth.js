@@ -8,7 +8,6 @@ const bcrypt = require('bcryptjs');
 const { get, run } = require('../database/db');
 const { getCurrentUser, setAuthCookie, clearAuthCookie } = require('../middleware/auth');
 const { newShortId } = require('../utils/ids');
-const cart = require('../services/cart');
 
 // POST /api/auth/register (Customer Registration)
 router.post('/register', async (req, res) => {
@@ -169,15 +168,8 @@ router.post('/login', async (req, res) => {
 });
 
 // POST /api/auth/logout
+// Logout must NOT clear PAY_CART_ITEM: unpaid cart persists until checkout or explicit clear
 router.post('/logout', async (req, res) => {
-  try {
-    const user = getCurrentUser(req);
-    if (user && user.role === 'CUSTOMER') {
-      await cart.clearCart(user.id).catch(() => {});
-    }
-  } catch (e) {
-    console.warn('Cart cleanup on logout failed:', e);
-  }
   clearAuthCookie(res);
   res.json({ success: true });
 });
