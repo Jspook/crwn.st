@@ -7,6 +7,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const { get, run } = require('../database/db');
 const { getCurrentUser, setAuthCookie, clearAuthCookie } = require('../middleware/auth');
+const { newShortId } = require('../utils/ids');
 
 // POST /api/auth/register (Customer Registration)
 router.post('/register', async (req, res) => {
@@ -35,17 +36,13 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'เบอร์โทรศัพท์นี้ลงทะเบียนสมาชิกไว้แล้ว กรุณาเข้าสู่ระบบ', alreadyRegistered: true });
     }
 
-    const newId = 'u_' + Date.now().toString().slice(-6);
+    const newId = newShortId('u_');
     const hashedPassword = bcrypt.hashSync(cleanPass, 10);
     await run(
       `INSERT INTO CUSTOMER (CUS_ID, CUS_FName, CUS_LName, CUS_Email, CUS_Tel, CUS_Pass) 
        VALUES (?, ?, ?, ?, ?, ?)`,
       [newId, cleanFName, cleanLName, cleanEmail, cleanPhone, hashedPassword]
     );
-
-    // Ensure new customer cart is reset/empty
-    const newCartId = 'cart_' + newId;
-    await run(`DELETE FROM PAY_CART_ITEM WHERE PAY_CART_ID = ?`, [newCartId]).catch(() => {});
 
     const customer = {
       id: newId,
@@ -171,16 +168,8 @@ router.post('/login', async (req, res) => {
 });
 
 // POST /api/auth/logout
+// Logout must NOT clear PAY_CART_ITEM: unpaid cart persists until checkout or explicit clear
 router.post('/logout', async (req, res) => {
-  try {
-    const user = getCurrentUser(req);
-    if (user && user.role === 'CUSTOMER') {
-      const cartId = 'cart_' + user.id;
-      await run(`DELETE FROM PAY_CART_ITEM WHERE PAY_CART_ID = ?`, [cartId]).catch(() => {});
-    }
-  } catch (e) {
-    console.warn('Cart cleanup on logout failed:', e);
-  }
   clearAuthCookie(res);
   res.json({ success: true });
 });
@@ -193,4 +182,3 @@ router.get('/me', (req, res) => {
 });
 
 module.exports = router;
-module.exports.getCurrentUser = getCurrentUser;

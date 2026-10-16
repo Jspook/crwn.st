@@ -162,84 +162,62 @@ test('cart exit can retry after a failed release and only then navigate', async 
   assert.equal(attempts, 2);
 });
 
-// Durable-session mock: the route now serializes on FITTING_ROOM_SLOT and reads FITTING_ROOM_SESSION.
-function mockSessionStore({ sessionId = 'ses_current', cusId = 'u1', expired = false } = {}) {
-  const slots = new Map([['1', sessionId]]);
-  const sessions = new Map([[sessionId, {
-    FTR_SessionID: sessionId, FTR_RoomNumber: '1', CUS_ID: cusId, FTR_EndedAt: null, expired
-  }]]);
-  const cancelledSessions = [];
-  setMockHandler(async (op, sql, params = []) => {
-    const q = sql.replace(/\s+/g, ' ').trim();
-    if (q.includes('FROM FITTING_ROOM_SLOT') && q.includes('FOR UPDATE')) {
-      const id = slots.get(params[0]);
-      return { FTR_ActiveSessionID: id === undefined ? null : id };
-    }
-    if (q.includes('FROM FITTING_ROOM_SESSION') && q.includes('FTR_SessionID = ?')) {
-      return sessions.get(params[0]) || null;
-    }
-    if (q.startsWith('UPDATE FITTING_ROOM SET FTR_CancelledAt')) {
-      cancelledSessions.push(params[0]);
-      return { changes: 0 };
-    }
-    if (q.startsWith('UPDATE FITTING_ROOM_SESSION SET FTR_EndedAt')) {
-      sessions.get(params[1]).FTR_EndedAt = new Date();
-      return { changes: 1 };
-    }
-    if (q.startsWith('UPDATE FITTING_ROOM_SLOT SET FTR_ActiveSessionID = NULL')) {
-      if (slots.get(params[0]) === params[1]) { slots.delete(params[0]); return { changes: 1 }; }
-      return { changes: 0 };
-    }
-    throw new Error(`Unexpected SQL: ${op} ${q}`);
-  });
-  return { slots, sessions, cancelledSessions };
+// Room occupancy is in memory only: release must never run SQL.
+const { roomOccupancy } = require('../utils/roomOccupancy');
+
+function noSqlMock() {
+  const seen = [];
+  setMockHandler(async (op, sql) => { seen.push(sql); throw new Error(`Unexpected SQL: ${op} ${sql}`); });
+  return seen;
 }
 
-// CONTRACT CHANGE (approved policy): a customer release must name its session, so an empty body is
-// no longer accepted. The pre-refactor suite asserted 200 here; that expectation is deliberately gone.
-test('release without a sessionId is rejected with 403 and keeps the session intact', async () => {
-  const store = mockSessionStore();
+// A customer release must name its session, so an empty body is rejected (403).
+test('release without a sessionId is rejected with 403 and keeps the room held', async () => {
+  roomOccupancy.clear();
+  const seen = noSqlMock();
+  roomOccupancy.acquire('1', 'u1');
   await withServer(async server => {
     const response = await request(server, '5684848452325');
     assert.equal(response.status, 403);
     assert.match(response.body.error, /รหัสเซสชันห้องลองไม่ตรงกับเซสชันปัจจุบัน/);
   });
-  assert.equal(store.slots.get('1'), 'ses_current');
-  assert.equal(store.sessions.get('ses_current').FTR_EndedAt, null);
-  assert.deepEqual(store.cancelledSessions, []);
+  assert.equal(roomOccupancy.get('1').cusId, 'u1');
+  assert.deepEqual(seen, []);
 });
 
-test('release with the matching session clears the slot and reports success', async () => {
-  const store = mockSessionStore();
+test('release with the matching session frees the room and reports success', async () => {
+  roomOccupancy.clear();
+  const seen = noSqlMock();
+  const { sessionId } = roomOccupancy.acquire('1', 'u1');
   await withServer(async server => {
-    const response = await request(server, '5684848452325', { sessionId: 'ses_current' });
+    const response = await request(server, '5684848452325', { sessionId });
     assert.equal(response.status, 200);
     assert.equal(response.body.success, true);
   });
-  assert.equal(store.slots.has('1'), false);
-  assert.ok(store.sessions.get('ses_current').FTR_EndedAt);
+  assert.equal(roomOccupancy.get('1'), null);
+  assert.deepEqual(seen, []);
 });
 
 test('release of an unknown session returns a 403 error the client can display', async () => {
-  const store = mockSessionStore();
+  roomOccupancy.clear();
+  const seen = noSqlMock();
+  roomOccupancy.acquire('1', 'u1');
   await withServer(async server => {
     const response = await request(server, '5684848452325', { sessionId: 'ses_unknown' });
     assert.equal(response.status, 403);
     assert.match(response.body.error, /รหัสเซสชันห้องลองไม่ตรงกับเซสชันปัจจุบัน/);
   });
-  assert.equal(store.slots.get('1'), 'ses_current');
+  assert.equal(roomOccupancy.get('1').cusId, 'u1');
+  assert.deepEqual(seen, []);
 });
 
-test('release on an empty room returns 403 without touching any session', async () => {
-  setMockHandler(async (op, sql, params = []) => {
-    const q = sql.replace(/\s+/g, ' ').trim();
-    if (q.includes('FROM FITTING_ROOM_SLOT') && q.includes('FOR UPDATE')) return { FTR_ActiveSessionID: null };
-    throw new Error(`Unexpected SQL: ${op} ${q}`);
-  });
+test('release on an empty room returns 403 without any SQL', async () => {
+  roomOccupancy.clear();
+  const seen = noSqlMock();
   await withServer(async server => {
     const response = await request(server, '5684848452325', { sessionId: 'ses_current' });
     assert.equal(response.status, 403);
     assert.match(response.body.error, /no active fitting room session/);
   });
+  assert.deepEqual(seen, []);
 });
-

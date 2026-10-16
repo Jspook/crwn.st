@@ -181,10 +181,12 @@ URL สำหรับการเข้าใช้งานระบบ (เ�
    --------------------------------------------------
 
 4. เริ่มต้นรันเว็บแอปพลิเคชัน:
-   - โหมดสำหรับการพัฒนา (Development Mode):
-     $ npm run dev
-   - โหมดการทำงานจริง (Production Mode):
-     $ npm start
+   - วิธีที่ 1 (Windows, แนะนำสำหรับผู้ตรวจ): ดับเบิลคลิกไฟล์ start.bat
+     สคริปต์จะตรวจ Node.js และไฟล์ .env ติดตั้ง dependencies (ครั้งแรก) แล้วเปิดเว็บให้อัตโนมัติ
+   - วิธีที่ 2 (Terminal):
+     $ npm install
+     $ npm start            (โหมดใช้งานจริง)
+     $ npm run dev         (โหมดพัฒนา)
 
 5. เข้าใช้งานผ่านเว็บเบราว์เซอร์:
    เปิดไปที่ http://localhost:3000
@@ -218,9 +220,6 @@ $ npm run test:regression
 - $ node database/seed.js
   ทำการ Re-seed ข้อมูลเริ่มต้น (สินค้า, บัญชีผู้ใช้, ตำแหน่งจัดเก็บ) ลงในตารางเดิม
 
-- Migration Files:
-  * database/migrations/20261005_add_session_id.sql : เพิ่มคอลัมน์ Session และ Customer
-  * database/migrations/20261014_fix_skirt_category.sql : ปรับประเภทกระโปรงเป็น 'female'
 
 
 10. การทดสอบบนอุปกรณ์มือถือผ่าน Cloudflare Tunnel (Mobile QR Testing)
@@ -245,30 +244,41 @@ $ npm run test:regression
 
 11. โครงสร้างไดเรกทอรีโครงการ (Project Structure)
 --------------------------------------------------------------------------------
+ไฟล์ในแพ็กเกจส่งอาจารย์ (ไฟล์ที่จำเป็นต่อการรันระบบเท่านั้น):
+
 crwn.st/
-|-- Audit/                 # รายงานการวิเคราะห์และแผนการแก้ไขจุดบกพร่องของระบบ
-|-- database/              # ตัวจัดการฐานข้อมูล, Schema, Migrations และ Seeder
-|   |-- db.js              # Database Access Layer พร้อม Mock Handler สำหรับ Unit Test
+|-- start.bat              # เริ่มระบบบน Windows (ดับเบิลคลิกเพื่อรัน)
+|-- build-zip.bat          # สร้างไฟล์ zip สำหรับส่งงาน (ใช้เฉพาะผู้พัฒนา)
+|-- server.js              # ไฟล์เริ่มต้นระบบเซิร์ฟเวอร์หลัก (Application Entrypoint)
+|-- setup-db.js            # สร้าง Schema และเพิ่มข้อมูลเริ่มต้นลงฐานข้อมูล
+|-- package.json           # รายการ dependencies และคำสั่ง npm
+|-- package-lock.json      # เวอร์ชัน dependencies ที่ล็อกไว้
+|-- .env                   # ค่าการเชื่อมต่อฐานข้อมูลและ COOKIE_SECRET
+|-- .env.example           # แม่แบบ .env
+|-- ERD.png                # แผนภาพ ER ของฐานข้อมูล
+|-- README.txt             # คู่มือการใช้งานระบบ (ไฟล์นี้)
+|-- database/
 |   |-- schema.sql         # โครงสร้างตารางทั้ง 10 ตาราง
-|   |-- seed.js            # ข้อมูลตั้งต้นสำหรับระบบ (สินค้า, สมาชิก, พนักงาน)
-|   +-- migrations/        # ไฟล์ SQL Patch สำหรับฐานข้อมูล
-|-- middleware/            # มิดเดิลแวร์การตรวจสอบสิทธิ์ (Authentication & Role Guards)
-|-- public/                # ไฟล์สถิต (Static Assets: CSS, Client JS, Icons, Images)
-|   |-- js/app.js          # Client-side Logic หลัก, การจัดการ Modal และการสแกน QR
-|   |-- js/cart.js         # Client-side Shopping Cart Manager
-|   +-- js/cashier.js      # Client-side POS Checkout & Barcode Scanner
-|-- routes/                # Express API & View Routing Handlers
-|   |-- api.js             # REST API Endpoints สำหรับสินค้า, ตะกร้า, ห้องลอง, ใบเสร็จ
-|   |-- auth.js            # Authentication Endpoints (Login, Register, Logout)
-|   +-- views.js           # Server-side Rendering View Routes
-|-- test/                  # ชุดทดสอบเฉพาะทาง (Room Exit Flow)
-|-- tests/                 # ชุดทดสอบระดับระบบ (Regression, Room Resolver, API Safety)
-|-- utils/                 # โมดูลฟังก์ชันช่วยเหลือ (Canonical Room Resolver)
-|-- views/                 # EJS Template Views (Customer, Staff, Cashier, Modals)
-|-- .env.example           # แม่แบบตัวแปรสภาพแวดล้อม
-|-- package.json           # โครงสร้างโครงการ Dependencies และคำสั่งสคริปต์
-|-- README.txt             # คู่มือการใช้งานระบบฉบับทางการภาษาไทย
-+-- server.js              # ไฟล์เริ่มต้นระบบเซิร์ฟเวอร์หลัก (Application Entrypoint)
+|   |-- seed.js            # ข้อมูลตั้งต้น (สินค้า, สมาชิก, พนักงาน, ตำแหน่งจัดเก็บ)
+|   +-- db.js              # ชั้นเข้าถึงฐานข้อมูล (MySQL connection pool, transaction)
+|-- middleware/
+|   +-- auth.js            # การตรวจสอบสิทธิ์และ Role Guards
+|-- routes/
+|   |-- auth.js            # Login, Register, Logout
+|   |-- views.js           # Route สำหรับหน้า EJS (ลูกค้า, พนักงาน, แคชเชียร์)
+|   |-- api.js             # ตัวรวม sub-router ของ /api
+|   +-- api/
+|       |-- products.js    # สินค้าและการค้นหาด้วยบาร์โค้ด
+|       |-- cart.js        # ตะกร้าสินค้า
+|       |-- fitting.js     # ห้องลองและออร์เดอร์ลองเสื้อ
+|       |-- receipts.js    # ใบเสร็จและการขาย
+|       +-- users.js       # ค้นหาสมาชิกสำหรับ POS
+|-- services/              # ตรรกะทางธุรกิจของแต่ละส่วน (catalog, cart, fittingOrders, receipts)
+|-- utils/                 # roomResolver, roomOccupancy (ห้องลองในหน่วยความจำ), productImages, ids
+|-- views/                 # EJS Templates (customer, staff, cashier, partials)
++-- public/                # ไฟล์สถิต: CSS, JS ฝั่งลูกค้า, รูปสินค้า (images/products/<รหัสสินค้า>.webp)
+
+หมายเหตุ: โฟลเดอร์ tests/, test/ และ Audit/ ไม่อยู่ในแพ็กเกจส่งงาน (ยังอยู่ในคลัง Git สำหรับผู้พัฒนา)
 
 ================================================================================
 (C) 2026 crwn.st. All rights reserved. Built for Luxury Retail & Smart Fitting Innovation.

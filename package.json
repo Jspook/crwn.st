@@ -4,12 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "node server.js",
-    "test": "node --test tests/roomResolver.test.js tests/roomOccupancy.test.js tests/fitting-room-view.test.js tests/room-ui.test.js tests/audit-regression.test.js test/room-exit.test.js",
+    "test": "node --test tests/roomResolver.test.js tests/roomOccupancy.test.js tests/fitting-room-view.test.js tests/room-ui.test.js tests/audit-regression.test.js tests/fitting-orders-visit.test.js tests/api-shapes.test.js tests/one-room-per-customer.test.js test/room-exit.test.js test/fitting-order-transition.test.js test/fitting-order-room-alias.test.js test/customer-exit-warning.test.js test/logout-cart-persist.test.js",
     "test:regression": "node --test tests/audit-regression.test.js",
     "test:integration": "node --test tests/api.test.js",
     "build": "node -e 'console.log(\"Build complete\")'",
-    "start": "node server.js",
-    "lint": "eslint"
+    "start": "node server.js"
   },
   "engines": {
     "node": ">=22.0.0"
@@ -22,13 +21,6 @@
     "dotenv": "^17.4.2",
     "ejs": "^6.0.1",
     "express": "^5.2.1",
-    "mysql2": "^3.24.4",
-    "sqlite3": "^6.0.1"
-  },
-  "devDependencies": {
-    "eslint": "^9"
-  },
-  "allowScripts": {
-    "sqlite3@6.0.1": true
+    "mysql2": "^3.24.4"
   }
 }

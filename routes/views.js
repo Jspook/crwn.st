@@ -4,11 +4,12 @@
 
 const express = require('express');
 const router = express.Router();
-const { query, get, run } = require('../database/db');
+const { get } = require('../database/db');
 const { getCurrentUser } = require('../middleware/auth');
-const { getProductMockImage } = require('../utils/productImages');
-const { resolveRoom, getRoomDisplayNumber } = require('../utils/roomResolver');
+const { resolveRoom } = require('../utils/roomResolver');
 const { roomOccupancy } = require('../utils/roomOccupancy');
+const catalog = require('../services/catalog');
+const receipts = require('../services/receipts');
 
 // Middleware to ensure customer session
 function requireCustomer(req, res, next) {
@@ -71,10 +72,7 @@ router.get('/login', (req, res) => {
 // GET /customer/dashboard
 router.get('/customer/dashboard', requireCustomer, async (req, res) => {
   try {
-    const products = await query(`SELECT * FROM ITEM ORDER BY ITM_ID ASC`);
-    products.forEach(p => {
-      p.image = getProductMockImage(p.ITM_Tag, p.ITM_ID);
-    });
+    const products = await catalog.listItemsWithImages();
 
     res.render('customer/dashboard', {
       user: req.user,
@@ -88,7 +86,10 @@ router.get('/customer/dashboard', requireCustomer, async (req, res) => {
 
 // GET /customer/fitting-room
 router.get('/customer/fitting-room', requireCustomer, async (req, res) => {
-  const rawRoomId = String(req.query.roomId || '1').trim();
+  const rawRoomId = String(req.query.roomId || '').trim();
+  if (!rawRoomId) {
+    return res.redirect('/customer/dashboard');
+  }
   const room = resolveRoom(rawRoomId);
   if (!room) {
     return res.redirect('/customer/dashboard');
@@ -106,6 +107,9 @@ router.get('/customer/fitting-room', requireCustomer, async (req, res) => {
     }
     // If the room is free, atomically acquire it for this customer
     const acquired = roomOccupancy.acquire(room.roomNumber, req.user.id);
+    if (!acquired.ok && acquired.reason === 'CUSTOMER_IN_OTHER_ROOM') {
+      return res.redirect(`/customer/dashboard?inOtherRoom=${encodeURIComponent(acquired.roomNumber)}`);
+    }
     if (!acquired.ok) {
       return res.redirect(`/customer/dashboard?roomOccupied=${encodeURIComponent(roomDisplay)}`);
     }
@@ -115,25 +119,7 @@ router.get('/customer/fitting-room', requireCustomer, async (req, res) => {
   const sessionId = active.sessionId;
 
   try {
-    const products = await query(`SELECT * FROM ITEM ORDER BY ITM_ID ASC`);
-    const variants = await query(`SELECT * FROM ITEM_VARIANT`);
-
-    // Attach variants to products
-    const map = {};
-    for (const v of variants) {
-      if (!map[v.ITM_ID]) map[v.ITM_ID] = [];
-      map[v.ITM_ID].push({
-        sku: v.ITV_SKUID,
-        color: v.ITV_Color,
-        size: v.ITV_Size,
-        stock: v.ITV_Stock
-      });
-    }
-
-    products.forEach(p => {
-      p.variants = map[p.ITM_ID] || [];
-      p.image = getProductMockImage(p.ITM_Tag, p.ITM_ID);
-    });
+    const products = await catalog.listItemsWithVariants();
 
     res.render('customer/fitting-room', {
       user: req.user,
@@ -164,9 +150,8 @@ router.get('/customer/receipt/:id', async (req, res) => {
   }
 
   try {
-    const receipt = await get(`SELECT * FROM SALE_ORDER WHERE ORD_ID = ?`, [id]);
-    const isOwner = receipt && user.role === 'CUSTOMER' && receipt.CUS_ID === user.id;
-    if (!receipt || !(isOwner || user.role === 'CASHIER')) {
+    const receipt = await receipts.getReceiptWithLines(id);
+    if (!receipts.canViewReceipt(receipt, user)) {
       return res.status(404).send('Receipt not found');
     }
 
@@ -178,16 +163,6 @@ router.get('/customer/receipt/:id', async (req, res) => {
       }
     }
 
-    const items = await query(
-      `SELECT l.*, v.ITV_Color, v.ITV_Size, i.ITM_Name
-       FROM SALE_ORDER_LINE l
-       JOIN ITEM_VARIANT v ON l.ITV_SKUID = v.ITV_SKUID
-       JOIN ITEM i ON v.ITM_ID = i.ITM_ID
-       WHERE l.ORD_ID = ?`,
-      [id]
-    );
-
-    receipt.items = items;
     receipt.customerName = customerName;
 
     res.render('customer/receipt', {

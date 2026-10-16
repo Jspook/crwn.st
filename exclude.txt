@@ -1,0 +1,6 @@
+.git\
+tests\
+Dev Pipeline Plan.md
+.env.isolated
+.env.example
+Audit\

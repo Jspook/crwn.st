@@ -14,9 +14,21 @@ window.debounce = debounce;
 
 async function handleLogout() {
   try {
-    if (window.Cart && typeof window.Cart.clear === 'function') {
-      try { await window.Cart.clear(); } catch (e) {}
-    }
+    // Push the current cart to the server (awaited) so it persists across logout.
+    try {
+      // Cart is a top-level const in cart.js (not on window), so resolve the global first.
+      const cart = (typeof Cart !== 'undefined') ? Cart : window.Cart;
+      if (cart) {
+        if (typeof cart.loadFromStorage === 'function') cart.loadFromStorage();
+        if (Array.isArray(cart.items) && cart.items.length > 0) {
+          await fetch('/api/cart', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ items: cart.items })
+          });
+        }
+      }
+    } catch (e) {}
     try {
       for (let i = localStorage.length - 1; i >= 0; i--) {
         const k = localStorage.key(i);
@@ -305,7 +317,7 @@ function displayScannedProduct(product) {
   resultContainer.innerHTML = `
     <div class="p-4 rounded-2xl bg-white/80 border border-[#A3907C]/30 shadow-sm mt-3 animate-fade-in">
       <div class="flex gap-4">
-        <img src="${product.image || '/images/products/top-1.jpg'}" alt="${product.name}" class="w-20 h-20 rounded-xl object-cover bg-[#E8DFD1]">
+        <img src="${product.image || '/images/products/p1.webp'}" alt="${product.name}" class="w-20 h-20 rounded-xl object-cover bg-[#E8DFD1]">
         <div class="flex-1">
           <span class="text-[10px] uppercase tracking-wider text-[#A3907C] font-semibold">${product.category || 'Luxury Item'}</span>
           <h4 class="font-serif font-medium text-base text-[#1F2421]">${product.name}</h4>
