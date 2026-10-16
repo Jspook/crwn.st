@@ -38,11 +38,45 @@ if not exist "node_modules" (
 echo ============================================================
 echo หมายเหตุ: ระบบมีหลายบทบาทที่ทำงานร่วมกัน หากใช้ localhost แล้วสลับบทบาทไปมา cookie จะชนกัน
 echo จึงแนะนำให้ใช้ Cloudflare Tunnel ตามข้อ 10 ใน README.txt
+echo ระบบจะเปิด Cloudflare Tunnel ให้อัตโนมัติ ลิงก์สาธารณะจะแสดงในหน้าต่าง cloudflared
 echo ในการรัน บทบาทลูกค้าและพนักงานห้องลองเสื้อไปพร้อมกัน
 echo ============================================================
 pause
 
-echo เริ่มเซิร์ฟเวอร์ที่ http://localhost:3000 ^(กด Ctrl+C เพื่อหยุด^)
-start "" cmd /c "timeout /t 3 >nul && start http://localhost:3000"
-node server.js
+echo เริ่มเซิร์ฟเวอร์ที่ http://localhost:3000 ^(ปิดหน้าต่าง crwn.st server เพื่อหยุด^)
+start "crwn.st server" cmd /k node server.js
+
+echo รอให้เซิร์ฟเวอร์พร้อม...
+set /a WAIT=0
+:waitserver
+netstat -ano | findstr /R /C:":3000 .*LISTENING" >nul 2>nul
+if not errorlevel 1 goto serverready
+set /a WAIT+=1
+if %WAIT% GEQ 30 goto serverslow
+timeout /t 1 >nul
+goto waitserver
+
+:serverslow
+echo [WARN] เซิร์ฟเวอร์ยังไม่พร้อมหลัง 30 วินาที ตรวจสอบหน้าต่าง crwn.st server
+goto openbrowser
+
+:serverready
+echo เซิร์ฟเวอร์พร้อมแล้ว
+
+:openbrowser
+start "" http://localhost:3000
+
+set "CF="
+if exist "cloudflared.exe" set "CF=%CD%\cloudflared.exe"
+if not defined CF where cloudflared >nul 2>nul && set "CF=cloudflared"
+
+if not defined CF (
+  echo [INFO] ไม่พบ cloudflared.exe จึงข้าม Cloudflare Tunnel
+  goto done
+)
+
+echo เปิด Cloudflare Tunnel ในหน้าต่างใหม่ ลิงก์สาธารณะจะแสดงในหน้าต่าง cloudflared
+start "cloudflared" cmd /k ""%CF%" tunnel --url http://localhost:3000"
+
+:done
 pause
