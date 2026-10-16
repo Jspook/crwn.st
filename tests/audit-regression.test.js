@@ -699,6 +699,41 @@ describe('Audit Remediation Regression Test Suite', () => {
     });
   });
 
+  describe('Seed gender category audit (2026-10-16)', () => {
+    test('database/seed.js women items are female, others unchanged, counts male 19 / female 48', () => {
+      const seedContent = fs.readFileSync(path.join(__dirname, '../database/seed.js'), 'utf8');
+      const productsMatch = seedContent.match(/const products = (\[[\s\S]*?\]);/);
+      assert.ok(productsMatch, 'products array found in seed.js');
+      const products = JSON.parse(productsMatch[1]);
+
+      const womenIds = ['p6','p18','p26','p28','p30','p32','p34','p36','p38','p40','p46','p48','p64'];
+      for (const id of womenIds) {
+        const item = products.find(i => i.id === id);
+        assert.ok(item, `Item ${id} must exist in seed.js`);
+        assert.strictEqual(item.category, 'female', `Item ${id} category must be 'female'`);
+      }
+
+      for (const item of products) {
+        assert.ok(['male', 'female'].includes(item.category), `Item ${item.id} has invalid category ${item.category}`);
+      }
+
+      assert.strictEqual(products.length, 67);
+
+      // Unchanged: group B (ambiguous), group C (male), group D (female)
+      // User decisions: p4, p16, p24, p44, p11, p15 are male; p22 is female
+      const stillMale = ['p1','p2','p3','p4','p5','p8','p10','p11','p12','p14','p15','p16','p20','p24','p42','p44','p50','p62','p66'];
+      for (const id of stillMale) {
+        assert.strictEqual(products.find(i => i.id === id).category, 'male', `Item ${id} must be 'male'`);
+      }
+      for (const id of ['p7','p17','p22']) {
+        assert.strictEqual(products.find(i => i.id === id).category, 'female', `Item ${id} must be 'female'`);
+      }
+
+      assert.strictEqual(products.filter(i => i.category === 'male').length, 19);
+      assert.strictEqual(products.filter(i => i.category === 'female').length, 48);
+    });
+  });
+
   describe('Audit Finding: Cart Wipe Prevention on Login', () => {
     test('routes/auth.js does not wipe PAY_CART_ITEM on customer login', () => {
       const authFileContent = fs.readFileSync(path.join(__dirname, '../routes/auth.js'), 'utf8');

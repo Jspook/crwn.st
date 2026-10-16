@@ -104,7 +104,7 @@ async function seedDatabase() {
         "name": "Ribbed Long Sleeve Top",
         "desc": "เสื้อแขนยาวผ้าเนื้อร่องยืดหยุ่น นุ่มละมุนผิว สวมใส่สบายในวันที่อากาศเย็นสบาย ดีไซน์เรียบหรูสามารถใส่เดี่ยวๆ หรือใส่สวมทับด้านในก็ดูดีมีสไตล์",
         "price": 690,
-        "category": "male",
+        "category": "female",
         "tag": "top"
     },
     {
@@ -144,7 +144,7 @@ async function seedDatabase() {
         "name": "Classic Oxford Cotton Shirt",
         "desc": "เสื้อเชิ้ตผ้าอ็อกฟอร์ดเนื้อหนานุ่ม ทรงคลาสสิกตัดเย็บเนี๊ยบทุกตะเข็บ เหมาะสำหรับใส่ทำงานหรือออกงานทางการที่ต้องการลุคสุภาพและน่าเชื่อถือ",
         "price": 690,
-        "category": "female",
+        "category": "male",
         "tag": "top"
     },
     {
@@ -176,7 +176,7 @@ async function seedDatabase() {
         "name": "Striped Business Formal Shirt",
         "desc": "เสื้อเชิ้ตทำงานลายทางแนวตั้ง ดีไซน์ช่วยอำพรางรูปร่างให้ดูเพรียวสง่า ตัดเย็บจากผ้าเนื้อดีรีดง่าย ยับยาก เหมาะสำหรับนักธุรกิจยุคใหม่",
         "price": 1290,
-        "category": "female",
+        "category": "male",
         "tag": "top"
     },
     {
@@ -200,7 +200,7 @@ async function seedDatabase() {
         "name": "Classic Trench Coat",
         "desc": "เสื้อโค้ทกันหนาวทรงยาวสไตล์คลาสสิก ตัดเย็บจากผ้ากันละอองน้ำเนื้อดี มาพร้อมเข็มขัดคาดเอวช่วยให้ทรงสวยหรูหรา สง่างามทุกมุมมอง",
         "price": 2590,
-        "category": "male",
+        "category": "female",
         "tag": "outerwear"
     },
     {
@@ -232,7 +232,7 @@ async function seedDatabase() {
         "name": "Cable Knit Wool Sweater",
         "desc": "เสื้อสเวตเตอร์ไหมพรมถักลายเคเบิลนูนสวยคลาสสิก เนื้อผ้าแคชเมียร์ผสมวูลให้สัมผัสอบอุ่นและหรูหรา เหมาะสำหรับวันอากาศหนาวจัด",
         "price": 840,
-        "category": "male",
+        "category": "female",
         "tag": "top"
     },
     {
@@ -264,7 +264,7 @@ async function seedDatabase() {
         "name": "Satin Silk Camisole",
         "desc": "เสื้อสายเดี่ยวผ้าซาตินเนื้อเงางามเนียนนุ่ม สัมผัสเย็นสบายผิว ดีไซน์เรียบหรูสามารถใส่เดี่ยวหรือใส่เป็นตัวในสูทเพื่อลุคเซ็กซี่น่าค้นหา",
         "price": 690,
-        "category": "male",
+        "category": "female",
         "tag": "top"
     },
     {
@@ -280,7 +280,7 @@ async function seedDatabase() {
         "name": "Lace Trim Silk Camisole",
         "desc": "เสื้อสายเดี่ยวตกแต่งขอบลูกไม้ลายสวยหวาน เพิ่มความละมุนและเซ็กซี่เบาๆ ตัดเย็บจากผ้าไหมเทียมเนื้อพริ้วไหว สวมใส่สบายไม่อึดอัด",
         "price": 990,
-        "category": "male",
+        "category": "female",
         "tag": "top"
     },
     {
@@ -296,7 +296,7 @@ async function seedDatabase() {
         "name": "Double Strap Minimalist Cami",
         "desc": "เสื้อสายเดี่ยวดีไซน์สายไขว้คู่สุดเก๋ ผ้าโพลีเอสเตอร์ผสมสแปนเดกซ์เนื้อนุ่มทิ้งตัวสวย ไม่ต้องรีดก็สวยเป๊ะได้ตลอดวัน",
         "price": 1290,
-        "category": "male",
+        "category": "female",
         "tag": "top"
     },
     {
@@ -312,7 +312,7 @@ async function seedDatabase() {
         "name": "Ribbed Knit Tube Top",
         "desc": "เสื้อเกาะอกผ้าไหมพรมริบยืดหยุ่นสูง สวมใส่สบายไม่อึดอัด ดีไซน์เรียบง่ายสีพื้น เหมาะสำหรับแมทช์กับเสื้อคลุมเก๋ๆ ในวันพักผ่อน",
         "price": 840,
-        "category": "male",
+        "category": "female",
         "tag": "top"
     },
     {
@@ -328,7 +328,7 @@ async function seedDatabase() {
         "name": "Pleated Halter Tube Top",
         "desc": "เสื้อเกาะอกจับจีบพลีทเนื้อผ้าพริ้วไหวสวยงาม ดีไซน์เล่นระดับเพิ่มมิติให้ตัวเสื้อ ดูหรูหราและน่าสนใจในยามค่ำคืน",
         "price": 1140,
-        "category": "male",
+        "category": "female",
         "tag": "top"
     },
     {
@@ -344,7 +344,7 @@ async function seedDatabase() {
         "name": "Lightweight Linen Cardigan",
         "desc": "เสื้อคลุมคาร์ดิแกนผ้าลินินบางเบา ระบายอากาศดีเยี่ยม เหมาะสำหรับใส่กันแดดหรือใส่คลุมในห้องแอร์เย็นๆ ดีไซน์โปร่งสบาย",
         "price": 1990,
-        "category": "male",
+        "category": "female",
         "tag": "outerwear"
     },
     {
@@ -360,7 +360,7 @@ async function seedDatabase() {
         "name": "Oversized Denim Jacket",
         "desc": "เสื้อคลุมแจ็คเก็ตเดนิมทรงโอเวอร์ไซส์สุดคลาสสิก ดีไซน์กระเป๋าหน้าและกระดุมโลหะรมดำ ลุคเท่ๆ ลุยๆ ที่ใส่คลุมทับอะไรก็ดูดี",
         "price": 2590,
-        "category": "male",
+        "category": "female",
         "tag": "outerwear"
     },
     {
@@ -376,7 +376,7 @@ async function seedDatabase() {
         "name": "Cropped Windbreaker Jacket",
         "desc": "เสื้อคลุมแจ็คเก็ตกันลมทรงครอป ดีไซน์สปอร์ตฮู้ดดี้ น้ำหนักเบาพับเก็บง่าย เหมาะสำหรับสาวสายวิ่งหรือสายสตรีทแวร์",
         "price": 3190,
-        "category": "male",
+        "category": "female",
         "tag": "outerwear"
     },
     {
@@ -424,7 +424,7 @@ async function seedDatabase() {
         "name": "High-Waist Denim Shorts",
         "desc": "กางเกงยีนส์ขาสั้นเอวสูงแต่งชายรุ่ยสไตล์วินเทจ เนื้อผ้าเดนิมหนากำลังดี ใส่สบาย ไม่อึดอัด แมทช์กับเสื้อยืดตัวโปรดง่ายๆ",
         "price": 990,
-        "category": "male",
+        "category": "female",
         "tag": "bottom"
     },
     {
@@ -440,7 +440,7 @@ async function seedDatabase() {
         "name": "Tailored Chic Shorts",
         "desc": "กางเกงขาสั้นทรงสูทตัดเย็บเนี๊ยบ มีจีบหน้าเพิ่มความเก๋ สามารถใส่แมทช์กับเบลเซอร์เข้าชุดกันเพื่อให้ได้ลุคสมาร์ทแคชชวล",
         "price": 1290,
-        "category": "male",
+        "category": "female",
         "tag": "bottom"
     },
     {
@@ -568,7 +568,7 @@ async function seedDatabase() {
         "name": "Ruffle Trim Cute Socks",
         "desc": "ถุงเท้าข้อสั้นแต่งระบายลูกไม้ขอบน่ารักสไตล์คุณหนู ผลิตจากผ้าฝ้ายเนื้อละเอียด ใส่แมทช์กับรองเท้าคัทชูหรือรองเท้าแตะแฟชั่น",
         "price": 690,
-        "category": "male",
+        "category": "female",
         "tag": "accessory"
     },
     {
