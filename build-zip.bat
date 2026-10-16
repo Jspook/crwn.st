@@ -3,7 +3,7 @@ chcp 65001 >nul
 setlocal
 cd /d "%~dp0"
 
-set GROUP_NUM=00
+set GROUP_NUM=1
 set ZIP_NAME=%GROUP_NUM%-App.zip
 set PKG_DIR=%TEMP%\crwnst_pkg
 
