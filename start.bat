@@ -35,6 +35,13 @@ if not exist "node_modules" (
   )
 )
 
+echo ============================================================
+echo หมายเหตุ: ระบบมีหลายบทบาทที่ทำงานร่วมกัน หากใช้ localhost แล้วสลับบทบาทไปมา cookie จะชนกัน
+echo จึงแนะนำให้ใช้ Cloudflare Tunnel ตามข้อ 10 ใน README.txt
+echo ในการรัน บทบาทลูกค้าและพนักงานห้องลองเสื้อไปพร้อมกัน
+echo ============================================================
+pause
+
 echo เริ่มเซิร์ฟเวอร์ที่ http://localhost:3000 ^(กด Ctrl+C เพื่อหยุด^)
 start "" cmd /c "timeout /t 3 >nul && start http://localhost:3000"
 node server.js
