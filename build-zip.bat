@@ -12,7 +12,7 @@ if exist "%PKG_DIR%" rmdir /S /Q "%PKG_DIR%"
 mkdir "%PKG_DIR%\database"
 
 rem ไฟล์ระดับบนสุดที่จำเป็นต่อการรัน
-for %%F in (start.bat server.js package.json package-lock.json .env.example .env README.txt ERD.png setup-db.js cloudflared.exe) do (
+for %%F in (start.bat server.js package.json package-lock.json .env.example .env README.txt ERD.png setup-db.js) do (
   if exist "%%F" copy /Y "%%F" "%PKG_DIR%\" >nul
 )
 

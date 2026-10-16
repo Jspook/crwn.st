@@ -70,10 +70,12 @@ set "CF="
 if exist "cloudflared.exe" set "CF=%CD%\cloudflared.exe"
 if not defined CF where cloudflared >nul 2>nul && set "CF=cloudflared"
 
-if not defined CF (
-  echo [INFO] ไม่พบ cloudflared.exe จึงข้าม Cloudflare Tunnel
-  goto done
-)
+if not defined CF echo ไม่พบ cloudflared กำลังดาวน์โหลดจาก GitHub ของ Cloudflare...
+if not defined CF powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; try { Invoke-WebRequest -Uri 'https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe' -OutFile 'cloudflared.exe' -UseBasicParsing; $s = Get-AuthenticodeSignature 'cloudflared.exe'; if ($s.Status -ne 'Valid' -or $s.SignerCertificate.Subject -notlike '*Cloudflare, Inc.*') { Write-Host 'ลายเซ็นไม่ถูกต้อง ลบไฟล์แล้ว'; Remove-Item 'cloudflared.exe' -Force } } catch { Write-Host 'ดาวน์โหลดไม่สำเร็จ ตรวจสอบอินเทอร์เน็ต'; Remove-Item 'cloudflared.exe' -Force -ErrorAction SilentlyContinue }"
+if not defined CF if exist "cloudflared.exe" set "CF=%CD%\cloudflared.exe"
+
+if not defined CF echo [INFO] ไม่มี cloudflared จึงข้าม Cloudflare Tunnel ลิงก์สาธารณะจะไม่ถูกสร้าง
+if not defined CF goto done
 
 echo เปิด Cloudflare Tunnel ในหน้าต่างใหม่ ลิงก์สาธารณะจะแสดงในหน้าต่าง cloudflared
 start "cloudflared" cmd /k ""%CF%" tunnel --url http://localhost:3000"
